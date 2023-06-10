@@ -1,23 +1,20 @@
 #include "usv_guidance.h"
 
-void USVGuidance::setPath(vector<vector<double>> path, int inputEndIndex) {
+void USVGuidance::setPath(vector<vector<double> > path, int inputEndIndex) {
     xd.clear();
     yd.clear();
-    dist2USV.clear();
+
+    // 置入输入的路径
     for (int i = 0; i < static_cast<int>(path.size()); i++) {
         xd.push_back(path[i][0]);
         yd.push_back(path[i][1]);
-        dist2USV.push_back(calcNorm2(xd[i] - usvPosePtr->x, yd[i] - usvPosePtr->y));
     }
 
-    // 找 path 中离 usvPose x y 最近的点的 index
-    minDistIndex = distance(dist2USV.begin(), min_element(dist2USV.begin(), dist2USV.end()));
-
-    // 设置当前跟踪点为离 USV 最近的那个点
+    // 设置当前跟踪点为此路径的初始点
     currentIndex = 0;
 
     // 设置输入路径终点的索引
-    if (inputEndIndex == -10086) {
+    if (inputEndIndex < 0) {
         endIndex = path.size() - 1;
     } else {
         endIndex = inputEndIndex;
@@ -79,12 +76,11 @@ void USVGuidance::guidance(double uGiven, double dist2NextPoint) {
     vErr = 0 - v;   // 侧向速度误差
 
     printf("=============================================================================\n");
-    printf("Guidance 输出: 更新半径 R = %05.2f\n", dist2NextPoint);
+    printf("Guidance 输出: 更新半径 = %05.2f\n", dist2NextPoint);
     printf("此段路径当前跟踪点: No.%d, [%08.2f, %08.2f]. 此段路径终点: No.%d, [%08.2f, %08.2f].\n", currentIndex, xd[currentIndex], yd[currentIndex], endIndex, xd[endIndex], yd[endIndex]);
     printf("USV 船体系速度 u: %05.2f, v: %05.2f，合速度: %05.2f.\n", u, v, calcNorm2(u,v));
     printf("theta: %05.2f, beta: %05.2f, yErr: %05.2f\n", theta, beta, yErr);
     
-
     usvControllerPIDPtr->moveUSV(uErr, psiErr);
 
     return;

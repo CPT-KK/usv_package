@@ -280,10 +280,10 @@ inline void USVPathPlanner::calcDockPathParameters(double usvX, double usvY, dou
     tangentPointX = tvX + R * cos(tangentPointAngle);
     tangentPointY = tvY + R * sin(tangentPointAngle);
 
-    nAPPROACH = ceil(calcNorm2(usvX - tangentPointX, usvY - tangentPointY) / ds);
-    nORBIT = ceil(2.0 * PI * R / ds);
-    nTRANSFER = ceil((theta + PI / 2.0) * r / ds);
-    nADJUST = ceil(2 * l / ds);
+    nAPPROACH = static_cast<int>(round(calcNorm2(usvX - tangentPointX, usvY - tangentPointY) / ds));
+    nORBIT = static_cast<int>(round(2.0 * PI * R / ds));
+    nTRANSFER = static_cast<int>(round((theta + PI / 2.0) * r / ds));
+    nADJUST = static_cast<int>(round(2 * l / ds));
 
     return;
 }

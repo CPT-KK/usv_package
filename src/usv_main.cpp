@@ -11,11 +11,19 @@ int main(int argc, char **argv) {
     // 定义 ROS Loop 频率
     rclcpp::WallRate loopRate(5);
 
-    // 初始化无人船状态类、激光雷达类、路径规划类、控制类、制导类
+    // 初始化无人船状态类
     shared_ptr<USVPose> usvPosePtr = std::make_shared<USVPose>();
+
+    // 初始化无人船激光雷达类
     shared_ptr<LIDARPointCloud> lidarPointCloudPtr = std::make_shared<LIDARPointCloud>(usvPosePtr, 20);
+
+    // 初始化无人船路径规划类
     shared_ptr<USVPathPlanner> usvPathPlannerPtr = std::make_shared<USVPathPlanner>();
+
+    // 初始化无人船控制类
     shared_ptr<USVControllerPID> usvControllerPtr = std::make_shared<USVControllerPID>(usvPosePtr, 5);
+
+    // 初始化无人船制导类
     shared_ptr<USVGuidance> usvGuidancePtr = std::make_shared<USVGuidance>(usvPosePtr, usvControllerPtr);
 
     // 是否需要重新规划路径的标志位
@@ -103,7 +111,7 @@ int main(int argc, char **argv) {
                 printf("下一状态: 泊近-环绕段，路径起点 [%08.2f, %08.2f].\n", usvPathPlannerPtr->pathORBIT[0][0], usvPathPlannerPtr->pathORBIT[0][1]);
                 usvGuidancePtr->setPath(usvPathPlannerPtr->pathAPPROACH);
                 while (usvGuidancePtr->currentIndex < usvGuidancePtr->endIndex) {
-                    usvGuidancePtr->guidance(2, 10);
+                    usvGuidancePtr->guidance(1.8, 12);
                     rclcpp::spin_some(usvPosePtr);
                     rclcpp::spin_some(lidarPointCloudPtr);   
                     loopRate.sleep();
@@ -121,9 +129,9 @@ int main(int argc, char **argv) {
                     printf("USV 状态：泊近-环绕段（重新测量目标船）.\n");
 
                     lidarPointCloudPtr->startTVRecord();
-                    usvGuidancePtr->setPath(usvPathPlannerPtr->pathORBIT, ceil(usvGuidancePtr->pathSize / 2));
+                    usvGuidancePtr->setPath(usvPathPlannerPtr->pathORBIT, static_cast<int>(round(0.666667 * static_cast<double>(usvPathPlannerPtr->nORBIT))));
                     while (usvGuidancePtr->currentIndex < usvGuidancePtr->endIndex) {
-                        usvGuidancePtr->guidance(1.5, 16);
+                        usvGuidancePtr->guidance(1.25, 15);
                         rclcpp::spin_some(usvPosePtr);
                         rclcpp::spin_some(lidarPointCloudPtr);   
                         loopRate.sleep();
@@ -147,7 +155,7 @@ int main(int argc, char **argv) {
                 printf("下一段路径: 变轨段，路径起点 [%08.2f, %08.2f].\n", usvPathPlannerPtr->pathTRANSFER[0][0], usvPathPlannerPtr->pathTRANSFER[0][1]);
                 usvGuidancePtr->setPath(usvPathPlannerPtr->pathORBIT, usvPathPlannerPtr->minDist2TransferIndex - 1);
                 while (usvGuidancePtr->currentIndex < usvGuidancePtr->endIndex) {
-                    usvGuidancePtr->guidance(1.5, 16);
+                    usvGuidancePtr->guidance(1.25, 15);
 
                     rclcpp::spin_some(usvPosePtr);
                     rclcpp::spin_some(lidarPointCloudPtr);   
@@ -165,7 +173,7 @@ int main(int argc, char **argv) {
                 printf("下一段路径: 调整段，路径起点 [%08.2f, %08.2f].\n", usvPathPlannerPtr->pathADJUST[0][0], usvPathPlannerPtr->pathADJUST[0][1]);
                 usvGuidancePtr->setPath(usvPathPlannerPtr->pathTRANSFER);
                 while (usvGuidancePtr->currentIndex < usvGuidancePtr->endIndex) {
-                    usvGuidancePtr->guidance(0.75, 7.7);
+                    usvGuidancePtr->guidance(0.55, 8.5);
 
                     rclcpp::spin_some(usvPosePtr);
                     rclcpp::spin_some(lidarPointCloudPtr);   
@@ -184,7 +192,7 @@ int main(int argc, char **argv) {
                 printf("下一段路径: 泊近-最终段.\n");
                 usvGuidancePtr->setPath(usvPathPlannerPtr->pathADJUST);
                 while (usvGuidancePtr->currentIndex < usvGuidancePtr->endIndex) {
-                    usvGuidancePtr->guidance(0.5, 7);
+                    usvGuidancePtr->guidance(0.3, 8);
 
                     rclcpp::spin_some(usvPosePtr);
                     rclcpp::spin_some(lidarPointCloudPtr);   

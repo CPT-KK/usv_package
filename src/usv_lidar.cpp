@@ -38,7 +38,7 @@ void LIDARPointCloud::calcBestRecord() {
     //     dLWRatio.push_back(fabs(tvRecordLWRatio[i] - estLWRatio));
     // }
 
-    tvRecordBestAngle = median(tvRecordAngle);
+    tvRecordBestAngle = 1 * median(tvRecordAngle);
             
     return;
 }

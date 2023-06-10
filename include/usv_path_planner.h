@@ -16,16 +16,16 @@ using namespace std;
 class USVPathPlanner {
    
    public:
-    double r = 19;  // 路径规划算法的参数：小圆弧的半径（m）
+    double r = 15;  // 路径规划算法的参数：小圆弧的半径（m）
     double l = 20;  // 路径规划算法的参数：小圆弧出口点距离目标船侧向轴线的垂直距离（m）
     double d = 10;   // 路径规划算法的参数：最后直线段距离目标船纵轴的距离（m，不考虑误差时，直线段应与目标船纵轴平行）
 
-    double nPURSUE = 0;    // PURSUE 阶段的路径点数
-    double nAVOIDODS = 0;  // avoid_OBS阶段的路径点数
-    double nAPPROACH = 0;  // DOCK_APPROACH 阶段的路径点数
-    double nORBIT = 0;     // DOCK_ORBIT 阶段的路径点数
-    double nTRANSFER = 0;  // DOCK_TRANSFER 阶段的路径点数
-    double nADJUST = 0;    // DOCK_ADJUST 阶段的路径点数
+    int nPURSUE = 0;    // PURSUE 阶段的路径点数
+    int nAVOIDODS = 0;  // avoid_OBS阶段的路径点数
+    int nAPPROACH = 0;  // DOCK_APPROACH 阶段的路径点数
+    int nORBIT = 0;     // DOCK_ORBIT 阶段的路径点数
+    int nTRANSFER = 0;  // DOCK_TRANSFER 阶段的路径点数
+    int nADJUST = 0;    // DOCK_ADJUST 阶段的路径点数
 
     int minDist2TransferIndex = 0;  // DOCK_ORBIT 段中距离 DOCK_TRANSFER 第一个点最近的那个点的索引
     

@@ -4,21 +4,20 @@
 #include <cmath>
 #include <vector>
 #include <algorithm>
+#include <numeric>
 
 const double PI = 3.1415926535;
 
-inline double getPoint2LineDist(double x, double y, double lx0, double ly0, double lxf, double lyf);
-inline double calcNorm2(double dx, double dy);
-inline double wrapPI(double angle);
-inline void frameTF2D(double x, double y, double angle, double& xNew, double & yNew);
-inline void frameTF2D(float x, float y, float angle, float& xNew, float & yNew);
-inline double satuator(double input, double inputMax);
-inline double sign(double x);
-
-inline double rad2deg(double radAngle);
-inline double deg2rad(double degAngle);
-inline float rad2deg(float radAngle);
-inline float deg2rad(float degAngle);
+inline double sign(double x) {
+    const double tol = 1e-6;
+    if (x > tol) {
+        return 1;
+    } else if (x < -tol) {
+        return -1;
+    } else {
+        return 0;
+    }
+}
 
 inline double calcNorm2(double dx, double dy) {
     return sqrt(pow(dx, 2.0) + pow(dy, 2.0));
@@ -46,17 +45,6 @@ inline double satuator(double input, double inputMax){
         return sign(input) * inputMax;
     } else {
         return input;
-    }
-}
-
-inline double sign(double x) {
-    const double tol = 1e-6;
-    if (x > tol) {
-        return 1;
-    } else if (x < -tol) {
-        return -1;
-    } else {
-        return 0;
     }
 }
 
@@ -104,10 +92,23 @@ inline double getPoint2LineDist(double x, double y, double lx0, double ly0, doub
 }
 
 inline double median(std::vector<double> inVec) {
+    if (inVec.size() == 0) {
+        return 0.0;
+    }
+    
     std::sort(inVec.begin(), inVec.end());
     if (inVec.size() % 2 == 0) {
         return 0.5 * (inVec[inVec.size() / 2] + inVec[inVec.size() / 2 + 1]);
     } else {
         return inVec[(inVec.size() + 1) / 2];
     }
+}
+inline double mean(std::vector<double> inVec) {
+    double sum = accumulate(inVec.begin(), inVec.end(), 0.0);
+    if (inVec.size() == 0) {
+        return 0.0;
+    } else {
+        return sum / static_cast<double>(inVec.size());
+    }
+    
 }
