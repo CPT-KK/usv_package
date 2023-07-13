@@ -78,11 +78,11 @@ class PathPlanner:
         phi2 = wrapTo2Pi(wrapTo2Pi(tvAngle - self.theta) + pi)
 
         flag = 0
-        if (phi1 < phi2 & usvTVAngle > phi1 & usvTVAngle <= phi2):
+        if (phi1 < phi2) & (usvTVAngle > phi1) & (usvTVAngle <= phi2):
             flag = 2
         elif (phi1 < phi2):
             flag = 1
-        elif (phi1 > phi2 & usvTVAngle > phi2 & usvTVAngle <= phi1):
+        elif (phi1 > phi2) & (usvTVAngle > phi2) & (usvTVAngle <= phi1):
             flag = 1
         else:
             flag = 2

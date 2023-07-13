@@ -96,6 +96,7 @@ def main(args=None):
                     currPath = usvPathPlanner.planPursue(usvPose.x, usvPose.y, usvComm.tvEstPosX, usvComm.tvEstPosY)
                     usvGuidance.setPath(currPath)
                     mainNode.get_logger().info("USV 追踪段已规划.")
+                    mainNode.get_logger().info("当前状态：追踪段.")
                     isPursuePlan = True
 
                 # 如果 USV 当前位置距离当前跟踪点太远，则重新规划（以防万一）
@@ -130,7 +131,7 @@ def main(args=None):
                     continue
 
                 # 如果没有找到目标船，则继续跟随追踪路径
-                mainNode.get_logger().info("当前状态：追踪段.")
+                
                 [uSP, psiSP] = usvGuidance.guidance(3.0, 25.0, usvPose.x, usvPose.y, usvPose.vx, usvPose.vy, usvPose.psi)
                 usvControl.moveUSV(uSP, psiSP, usvPose.x, usvPose.y, usvPose.vx, usvPose.vy, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
 
@@ -140,14 +141,12 @@ def main(args=None):
             
             elif usvState == DOCK_APPROACH:
                 if (isDockApproachPlan == False):
-                    currPath = usvPathPlanner.planDockApproach(usvPose.x, usvPose.y, tvY, tvY)
+                    currPath = usvPathPlanner.planDockApproach(usvPose.x, usvPose.y, tvX, tvY)
                     usvGuidance.setPath(currPath)
                     mainNode.get_logger().info("USV 泊近-接近段路径已规划.")
+                    mainNode.get_logger().info("USV 状态：泊近-接近段.")
                     isDockApproachPlan = True
-
-                    mainNode.get_logger().info("开始测量目标船姿态.")
-
-                mainNode.get_logger().info("USV 状态：泊近-接近段.")
+                        
                 [uSP, psiSP] = usvGuidance.guidance(2.0, 20.0, usvPose.x, usvPose.y, usvPose.vx, usvPose.vy, usvPose.psi)
                 usvControl.moveUSV(uSP, psiSP, usvPose.x, usvPose.y, usvPose.vx, usvPose.vy, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
 
@@ -158,12 +157,13 @@ def main(args=None):
 
             elif usvState == DOCK_MEASURE:
                 if (isDockMeasurePlan == False):
-                    currPath = usvPathPlanner.planDockMeasure(usvPose.x, usvPose.y, tvY, tvY)
+                    currPath = usvPathPlanner.planDockMeasure(usvPose.x, usvPose.y, tvX, tvY)
                     usvGuidance.setPath(currPath)
-                    mainNode.get_logger().info("USV 泊近-接近段路径已规划.")
+                    mainNode.get_logger().info("USV 泊近-测量段路径已规划.")
+                    mainNode.get_logger().info("USV 状态：泊近-测量段.")
                     isDockMeasurePlan = True
-
-                mainNode.get_logger().info("USV 状态：泊近-测量段.")
+                    mainNode.get_logger().info("开始测量目标船姿态.")
+       
                 [uSP, psiSP] = usvGuidance.guidance(2.0, 20.0, usvPose.x, usvPose.y, usvPose.vx, usvPose.vy, usvPose.psi)
                 usvControl.moveUSV(uSP, psiSP, usvPose.x, usvPose.y, usvPose.vx, usvPose.vy, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
 
@@ -180,17 +180,18 @@ def main(args=None):
                     tvX = tvX + usvPose.x
                     tvY = tvY + usvPose.y
                     tvAngle = median(tvRecordAngle[0:tvRecordNum])
-                    mainNode.get_logger().info("测量的目标船姿态为: %.4f (rad)，%.4f (deg).", tvAngle, rad2deg(tvAngle))
+                    mainNode.get_logger().info("测量的目标船姿态为: %.4f (rad)，%.4f (deg)." % (tvAngle, rad2deg(tvAngle)))
+                    mainNode.get_logger().info("结束测量目标船姿态.")
                     usvState = DOCK_TRANSFER
 
             elif usvState == DOCK_TRANSFER:
                 if (isDockTransferPlan == False):
-                    currPath = usvPathPlanner.planDockTransfer(usvPose.x, usvPose.y, tvY, tvY, tvAngle)
+                    currPath = usvPathPlanner.planDockTransfer(usvPose.x, usvPose.y, tvX, tvY, tvAngle)
                     usvGuidance.setPath(currPath)
                     isDockTransferPlan = True
                     mainNode.get_logger().info("USV 泊近-变轨段路径已规划.")
-
-                mainNode.get_logger().info("USV 状态：泊近-变轨段.")
+                    mainNode.get_logger().info("USV 状态：泊近-变轨段.")
+           
                 [xSP, ySP, psiSP] = usvGuidance.guidanceVec(12.0, 2.0)
                 usvControl.moveUSVVec(xSP, ySP, psiSP, usvPose.x, usvPose.y, usvPose.vx, usvPose.vy, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
              
@@ -202,6 +203,7 @@ def main(args=None):
                 usvState = DOCK_FINAL
 
             elif usvState == DOCK_FINAL:
+                mainNode.get_logger().info("USV 状态：泊近-最终段.")
                 return
 
             # elif usvState == DOCK_EMERGENCY:

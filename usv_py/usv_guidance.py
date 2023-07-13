@@ -81,11 +81,11 @@ class Guidance(Node):
         psiSP = tanAngle - beta + arctan2(-yErr, self.delta)
 
         # Debug 用输出
-        print("=============================================================================")
-        print("Guidance 输出: 更新半径 = %.2f" % dist2Next)
-        print("此段路径当前跟踪点: No.%d, [%.2f, %.2f]. 此段路径终点: No.%d, [%.2f, %.2f]." % (self.currentIdx, xSP, ySP, self.endIdx, self.path[self.endIdx, 0], self.path[self.endIdx, 1]))
-        print("USV 船体系速度 u: %.2f, v: %.2f，合速度: %.2f." % (u, v, norm((u,v))))
-        print("theta: %5.2f, beta: %5.2f, yErr: %5.2f" % (tanAngle, beta, yErr))
+        # print("=============================================================================")
+        # print("Guidance 输出: 更新半径 = %.2f" % dist2Next)
+        # print("此段路径当前跟踪点: No.%d, [%.2f, %.2f]. 此段路径终点: No.%d, [%.2f, %.2f]." % (self.currentIdx, xSP, ySP, self.endIdx, self.path[self.endIdx, 0], self.path[self.endIdx, 1]))
+        # print("USV 船体系速度 u: %.2f, v: %.2f，合速度: %.2f." % (u, v, norm((u,v))))
+        # print("theta: %5.2f, beta: %5.2f, yErr: %5.2f" % (tanAngle, beta, yErr))
 
         # ROS2 内发送制导指令
         self.pubSetpoints(xSP, ySP, psiSP)
@@ -121,11 +121,11 @@ class Guidance(Node):
         beta = arctan2(v, u)
 
         # Debug 用输出
-        print("=============================================================================")
-        print("Guidance 输出:")
-        print("此段路径当前跟踪点: No.%d, [%.2f, %.2f]. 此段路径终点: No.%d, [%.2f, %.2f]." % (self.currentIdx, xSP, ySP, self.endIdx, self.path[self.endIdx, 0], self.path[self.endIdx, 1]))
-        print("USV 船体系速度 u: %.2f, v: %.2f，合速度: %.2f." % (u, v, norm((u,v))))
-        print("期望 psi: %.2f" % rad2deg(psiSP))
+        # print("=============================================================================")
+        # print("Guidance 输出:")
+        # print("此段路径当前跟踪点: No.%d, [%.2f, %.2f]. 此段路径终点: No.%d, [%.2f, %.2f]." % (self.currentIdx, xSP, ySP, self.endIdx, self.path[self.endIdx, 0], self.path[self.endIdx, 1]))
+        # print("USV 船体系速度 u: %.2f, v: %.2f，合速度: %.2f." % (u, v, norm((u,v))))
+        # print("期望 psi: %.2f" % rad2deg(psiSP))
 
         # ROS2 内发送制导指令
         self.pubSetpoints(self, xSP, ySP, psiSP)

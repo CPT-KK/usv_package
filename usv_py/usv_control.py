@@ -97,11 +97,11 @@ class Control(Node):
         # 发布推力
         self.thrustPub(rpmL, rpmR, angleL, angleR)
 
-        print("=============================================================================")
-        print("Control 输出: ")
-        print("USV 位置：[%.2f, %.2f]m | USV 速度：[%.2f, %.2f]m/s" % (x, y, vx, vy))
-        print("u 速度误差：%.2fm/s, 角度误差：%.2f, 角速度误差: %.2f," % (uErr, psiErr, rErr))
-        print("左右转速 Setpoint：[%.2f, %.2f] rpm" % (rpmL, rpmR))
+        # print("=============================================================================")
+        # print("Control 输出: ")
+        # print("USV 位置：[%.2f, %.2f]m | USV 速度：[%.2f, %.2f]m/s" % (x, y, vx, vy))
+        # print("u 速度误差：%.2fm/s, 角度误差：%.2f, 角速度误差: %.2f," % (uErr, psiErr, rErr))
+        # print("左右转速 Setpoint：[%.2f, %.2f] rpm" % (rpmL, rpmR))
 
         return
     

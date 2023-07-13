@@ -203,8 +203,8 @@ class Lidar(Node):
             
             # 获取 激光雷达扫描到的物体 与 目标船（在无人船船体系下） 的距离
             # 获取 激光雷达扫描到的物体 与 无人船 的距离
-            dist2EstTV = np.linalg.norm([dx - self.objInfo[:, 0], dy - self.objInfo[:, 1]], axis=1)
-            dist2USV = np.linalg.norm([self.objInfo[:, 0], self.objInfo[:, 1]], axis=1)
+            dist2EstTV = np.linalg.norm(np.dot(np.ones((self.objNum, 1)), np.array([[dx, dy]])) - self.objInfo[0:self.objNum, 0:2], axis=1) # 2 个 [] 对应的才是向量
+            dist2USV = np.linalg.norm(self.objInfo[0:self.objNum, 0:2], axis=1)
 
             # 获取 dist2EstTV 中的最小值，判断其是否为目标船，如果是，则记录其索引，并在 dist2USV 中将目标船的距离设为 inf，避免其被识别为障碍物
             if np.min(dist2EstTV) <= self.tvPredictR:
@@ -213,8 +213,8 @@ class Lidar(Node):
                 dist2USV[idxTV] = np.Inf
 
             # 取 dist2USV 中的最小值，判断其是否为障碍物
-            # 障碍物为非目标船，且距离船在 70m 内的最近的那一个
-            if np.min(dist2USV) <= 70.0:
+            # 障碍物为非目标船，且距离船在 60m 内的最近的那一个
+            if np.min(dist2USV) <= 60.0:
                 idxObs = np.argmin(dist2USV)
                 isObsFound = True
             

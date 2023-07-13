@@ -5,7 +5,7 @@ def wrapToPi(x):
     return x
 
 def wrapTo2Pi(x):
-    x = wrapToPi(x)
+    x = array(wrapToPi(x))
     x[x < 0] = x[x < 0] + 2 * pi
 
     return x
