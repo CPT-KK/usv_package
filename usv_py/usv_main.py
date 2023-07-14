@@ -202,8 +202,6 @@ def main(args=None):
             elif usvState == DOCK_ADJUST:
                 # 在 ADJUST 段，读取大物体方位角，在大物体侧停下来
                 mainNode.get_logger().info("USV 状态：泊近-调整段.")
-
-                # 调整段结束，进入最终段
                 usvState = DOCK_FINAL
 
             elif usvState == DOCK_FINAL:
