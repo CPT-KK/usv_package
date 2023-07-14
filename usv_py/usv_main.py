@@ -61,7 +61,7 @@ def main(args=None):
     isDockTransferPlan = False
 
     # 无人船状态
-    usvState = STARTUP
+    usvState = PURSUE
 
     # 无人船当前正在使用的路径
     currPath = zeros((2000, 2))
@@ -114,7 +114,7 @@ def main(args=None):
                 # 读取激光雷达信息
                 [idxTV, isTVFound, _, isObsFound] = usvLidar.objRead(usvPose.x, usvPose.y, usvPose.psi, usvComm.tvEstPosX, usvComm.tvEstPosY)
                 
-                # 如果找到目标船，则进入 DOCK_PREPARE
+                # 如果找到目标船，则进入 DOCK
                 if (isTVFound):
                     [tvX, tvY] = rotationZ(usvLidar.objInfo[idxTV, 0], usvLidar.objInfo[idxTV, 1], -usvPose.psi)
                     tvX = tvX + usvPose.x
@@ -170,9 +170,10 @@ def main(args=None):
                 # 读取激光雷达信息（这个时候应该能保证读到目标船吧？）
                 [idxTV, isTVFound, _, _] = usvLidar.objRead(usvPose.x, usvPose.y, usvPose.psi, usvComm.tvEstPosX, usvComm.tvEstPosY)
 
-                # 读取目标船信息
-                tvRecordNum = tvRecordNum + 1
-                tvRecordAngle[tvRecordNum] = usvLidar.objInfo[idxTV, 4] + usvPose.psi
+                # 如果目标船的测量信息满足要求，则读取并保存目标船朝向角（ENU下）
+                if (usvLidar.objInfo[idxTV, 2] > 10) & (usvLidar.objInfo[idxTV, 3] > 5) & (usvLidar.objInfo[idxTV, 2] / usvLidar.objInfo[idxTV, 3] > 2.25):
+                    tvRecordNum = tvRecordNum + 1
+                    tvRecordAngle[tvRecordNum] = usvLidar.objInfo[idxTV, 4] + usvPose.psi
 
                 # 如果测量段结束了，打印出测量段测量结果，进入变轨段
                 if (usvGuidance.currentIdx >= usvGuidance.endIdx):
@@ -186,14 +187,17 @@ def main(args=None):
 
             elif usvState == DOCK_TRANSFER:
                 if (isDockTransferPlan == False):
-                    currPath = usvPathPlanner.planDockTransfer(usvPose.x, usvPose.y, tvX, tvY, tvAngle)
-                    usvGuidance.setPath(currPath)
+                    currPath = usvPathPlanner.planDockTransfer(currPath[-1, 0], currPath[-1, 1], tvX, tvY, tvAngle) # 用上一段路径的最后一个点作为起始点
+                    usvGuidance.setPath(currPath) 
                     isDockTransferPlan = True
                     mainNode.get_logger().info("USV 泊近-变轨段路径已规划.")
                     mainNode.get_logger().info("USV 状态：泊近-变轨段.")
            
-                [xSP, ySP, psiSP] = usvGuidance.guidanceVec(12.0, 2.0)
+                [xSP, ySP, psiSP] = usvGuidance.guidanceVec(12.0, 3.0, usvPose.x, usvPose.y, usvPose.vx, usvPose.vy, usvPose.psi)
                 usvControl.moveUSVVec(xSP, ySP, psiSP, usvPose.x, usvPose.y, usvPose.vx, usvPose.vy, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
+
+                if (usvGuidance.currentIdx >= usvGuidance.endIdx):
+                    usvState = DOCK_ADJUST
              
             elif usvState == DOCK_ADJUST:
                 # 在 ADJUST 段，读取大物体方位角，在大物体侧停下来
@@ -222,7 +226,8 @@ def main(args=None):
         pass   
 
     except Exception as e:
-        raise(e)
+        print(e)
+        return
         # pass
 
 

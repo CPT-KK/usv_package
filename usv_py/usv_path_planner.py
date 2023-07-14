@@ -2,7 +2,7 @@ from numpy import pi
 from numpy import vstack
 from numpy import linspace
 from numpy.linalg import norm
-from numpy import round
+from numpy import round, delete
 from numpy import sin, cos, tan, arcsin, arccos, arctan, arctan2
 from usv_math import wrapTo2Pi
 
@@ -115,4 +115,5 @@ class PathPlanner:
             l2Y = l1Y - 2.0 * self.l * sin(tvAngle + 0.5*pi - 0.5*pi)
             path2 = planLinePath(l1X, l1Y, l2X, l2Y, self.ds)
 
-        return [vstack((path0, path1, path2))]
+        # 返回时，去除 path0 和 path1 最后一个点，避免造成路径点重复
+        return vstack((path0[:-1], path1[:-1], path2))

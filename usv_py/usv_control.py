@@ -16,8 +16,8 @@ class Control(Node):
 
     uSPMax = 3.0
     rSPMax = deg2rad(45)
-    vxSPMax = 0.75
-    vySPMax = 0.75
+    vxSPMax = 1.25
+    vySPMax = 1
 
     rpmMax = 1200.0
     angleMax = 1.047198 # 60 deg
@@ -47,10 +47,10 @@ class Control(Node):
         self.psiPID = PID(1.25, 0.0, 0.15, control_frequency)
         self.rPID = PID(0.03, 0.000, 0.3, control_frequency)
 
-        self.xPID = PID(0.1, 0.001, 0.005, control_frequency)
-        self.yPID = PID(0.2, 0.001, 0.005, control_frequency)
-        self.vxPID = PID(0.1, 0.001, 0.005, control_frequency)
-        self.vyPID = PID(0.15, 0.001, 0.005, control_frequency)
+        self.xPID = PID(0.2, 0.000, 0.000, control_frequency)
+        self.yPID = PID(0.3, 0.000, 0.000, control_frequency)
+        self.vxPID = PID(0.2, 0.001, 0.005, control_frequency)
+        self.vyPID = PID(0.25, 0.001, 0.005, control_frequency)
 
     def __del__(self):
         # 析构时，关闭无人船推力输出
@@ -115,8 +115,8 @@ class Control(Node):
         vySP = self.yPID.compute(yErr, vy)
 
         # vx vy setpoints 限幅
-        vxSP = clip(vxSP, - self.vxMax, self.vxMax)
-        vySP = clip(vySP, - self.vyMax, self.vyMax)
+        vxSP = clip(vxSP, - self.vxSPMax, self.vxSPMax)
+        vySP = clip(vySP, - self.vySPMax, self.vySPMax)
        
         # 计算 vx vy 误差
         vxErr = vxSP - vx

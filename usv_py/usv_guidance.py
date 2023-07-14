@@ -2,9 +2,9 @@ from rclpy.node import Node
 from geometry_msgs.msg import PointStamped
 
 from numpy import sin, cos, tan, arcsin, arccos, arctan, arctan2, rad2deg, deg2rad
-from numpy import clip, size, zeros
+from numpy import clip, size, zeros, array
 from numpy.linalg import norm
-from usv_math import rotationZ
+from usv_math import rotationZ, wrapToPi
 
 
 class Guidance(Node):
@@ -17,7 +17,7 @@ class Guidance(Node):
     psiSP = 0.0
     uSP = 0.0
     vSP = 0.0
-    delta = 6.0 * 6.0
+    delta = 3.5 * 6.0
 
     path = zeros((2000, 2))
     currentIdx = 0
@@ -46,10 +46,10 @@ class Guidance(Node):
 
     def guidance(self, uSP, dist2Next, x, y, vx, vy, psi):
         if (self.isPathInit == False):
-            return
+            return [None, None]
         
         if (self.currentIdx >= self.endIdx):
-            return
+            return [None, None]
         
         # 限幅
         dist2Next = clip(dist2Next, self.dist2NextMin, self.dist2NextMax)
@@ -95,30 +95,32 @@ class Guidance(Node):
 
     def guidanceVec(self, dist2Next, vel2Next, x, y, vx, vy, psi):
         if (self.isPathInit == False):
-            return
+            return [None, None, None]
         
         if (self.currentIdx >= self.endIdx):
-            return
+            return [None, None, None]
         
         # 限幅
         dist2Next = clip(dist2Next, self.dist2NextMin, self.dist2NextMax)
         vel2Next = clip(vel2Next, - self.vel2NextMax, self.vel2NextMin)
 
         # 更新当前的跟踪点
-        while (norm(self.path[self.currentIdx, :] - [x, y]) <= dist2Next) & (self.currentIdx < self.endIdx):
+        while (norm(self.path[self.currentIdx, :] - array([[x, y]])) <= dist2Next) & (self.currentIdx < self.endIdx):
             self.currentIdx = self.currentIdx + 1
         xSP = self.path[self.currentIdx, 0]
         ySP = self.path[self.currentIdx, 1]
 
         # 求跟踪点的切线角
         if (self.currentIdx == self.endIdx):
-            psiSP = arctan2(ySP - self.path[self.currentIdx - 1, 1], xSP - self.path[self.currentIdx - 1, 0])
+            tanAngle = arctan2(ySP - self.path[self.endIdx - 1, 1], xSP - self.path[self.endIdx - 1, 0])
         else :
-            psiSP = arctan2(self.path[self.currentIdx + 1, 1] - ySP, self.path[self.currentIdx + 1, 0] - xSP)
+            tanAngle = arctan2(self.path[self.currentIdx + 1, 1] - ySP, self.path[self.currentIdx + 1, 0] - xSP)
 
-        # 求船体系下速度与侧滑角 beta
-        [u, v] = rotationZ(vx, vy, psi)
-        beta = arctan2(v, u)
+        # 计算无人船相对于当前跟踪点切线的垂直方向的误差
+        yErr = -(x - xSP) * sin(tanAngle) + (y - ySP) * cos(tanAngle)
+
+        # 计算期望的朝向角
+        psiSP = wrapToPi(tanAngle + arctan2(-yErr, self.delta))
 
         # Debug 用输出
         # print("=============================================================================")
@@ -128,7 +130,7 @@ class Guidance(Node):
         # print("期望 psi: %.2f" % rad2deg(psiSP))
 
         # ROS2 内发送制导指令
-        self.pubSetpoints(self, xSP, ySP, psiSP)
+        self.pubSetpoints(xSP, ySP, psiSP)
 
         # 返回制导指令
         return [xSP, ySP, psiSP]
