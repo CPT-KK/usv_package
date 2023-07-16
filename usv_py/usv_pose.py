@@ -1,5 +1,7 @@
 import message_filters
-
+from numpy import arctan2
+from numpy.linalg import norm
+from usv_math import rotationZ
 from rclpy.node import Node
 
 from nav_msgs.msg import Odometry
@@ -8,16 +10,19 @@ from sensor_msgs.msg import Imu
 from quaternions import Quaternion
 
 class Pose(Node):
-    t = 0
-    x = 0
-    y = 0
-    vx = 0
-    vy = 0
-    axb = 0
-    ayb = 0
+    t = 0.0
+    x = 0.0
+    y = 0.0
+    vx = 0.0
+    vy = 0.0
+    u = 0.0
+    v = 0.0
+    axb = 0.0
+    ayb = 0.0
 
-    psi = 0
-    r = 0
+    psi = 0.0
+    beta =0.0
+    r = 0.0
     
     isValid = False
 
@@ -50,7 +55,12 @@ class Pose(Node):
         q = Quaternion(imu.orientation.w, imu.orientation.x, imu.orientation.y, imu.orientation.z)
         rpyAngle = Quaternion.get_euler(q)
         self.psi = rpyAngle[2]
-
+        
+        [self.u, self.v] = rotationZ(self.vx, self.vy, self.psi)
+        if (norm([self.vx, self.vy]) < 0.1):
+            self.beta = 0
+        else:
+            self.beta = arctan2(self.v, self.u)
         self.isValid = True
 
 

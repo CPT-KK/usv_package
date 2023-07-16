@@ -21,7 +21,7 @@ class Lidar(Node):
     objInfo = np.zeros((20,6)) # 最多考虑 20 个物体
 
     # 目标船的预测范围
-    tvPredictR = 20
+    tvPredictR = 15
 
     def __init__(self):
         super().__init__('usv_lidar_node')
@@ -190,7 +190,7 @@ class Lidar(Node):
         # cloud3.paint_uniform_color([0, 0, 1])
         # o3d.visualization.draw_geometries([cloud1, cloud2, cloud3])
         
-    def objRead(self, x, y, psi, tvEstX, tvEstY):
+    def objRead(self, x, y, psi,beta, tvEstX, tvEstY):
         idxTV = None
         idxObs = None
         isTVFound = False
@@ -213,8 +213,8 @@ class Lidar(Node):
                 dist2USV[idxTV] = np.Inf
 
             # 取 dist2USV 中的最小值，判断其是否为障碍物
-            # 障碍物为非目标船，且距离船在 60m 内的最近的那一个
-            if np.min(dist2USV) <= 60.0:
+            # 障碍物为非目标船，且距离船在 60m 内的最近的那一个  且在速度方向的正负60（deg）内
+            if (np.min(dist2USV) <= 60.0) and (abs(self.objInfo[np.argmin(dist2USV),5] - beta) <= np.deg2rad(60)):
                 idxObs = np.argmin(dist2USV)
                 isObsFound = True
             

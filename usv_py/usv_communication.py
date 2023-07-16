@@ -6,8 +6,8 @@ from numpy import arctan
 
 class Communication(Node):
     isTVEst = True
-    tvEstPosX = 500
-    tvEstPosY = 0
+    tvEstPosX = 695
+    tvEstPosY = 100
 
     isBigObj = False
     bigObjAngle = 0

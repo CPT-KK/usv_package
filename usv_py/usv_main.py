@@ -1,7 +1,7 @@
 import rclpy
 import threading
 
-from numpy import zeros, rad2deg, median
+from numpy import zeros, rad2deg, median, deg2rad
 from numpy.linalg import norm
 
 from usv_lidar import Lidar
@@ -76,6 +76,7 @@ def main(args=None):
     # 试一下
     try:
         while rclpy.ok():
+  
             if usvState == STARTUP:
                 if (usvPose.isValid):
                     mainNode.get_logger().info("收到 USV 位置.")
@@ -111,8 +112,8 @@ def main(args=None):
                     isPursuePlan = False
                     continue
      
-                # 读取激光雷达信息
-                [idxTV, isTVFound, _, isObsFound] = usvLidar.objRead(usvPose.x, usvPose.y, usvPose.psi, usvComm.tvEstPosX, usvComm.tvEstPosY)
+                # 读取激光雷达信息 
+                [idxTV, isTVFound, idxOBS, isObsFound] = usvLidar.objRead(usvPose.x, usvPose.y, usvPose.psi, usvPose.beta, usvComm.tvEstPosX, usvComm.tvEstPosY)
                 
                 # 如果找到目标船，则进入 DOCK
                 if (isTVFound):
@@ -131,11 +132,17 @@ def main(args=None):
                     continue
 
                 # 如果没有找到目标船，则继续跟随追踪路径
-                
-                [uSP, psiSP] = usvGuidance.guidance(3.0, 25.0, usvPose.x, usvPose.y, usvPose.vx, usvPose.vy, usvPose.psi)
+                [uSP, psiSP] = usvGuidance.guidance(3.0, 25.0, usvPose.x, usvPose.y,usvPose.beta)
                 usvControl.moveUSV(uSP, psiSP, usvPose.x, usvPose.y, usvPose.vx, usvPose.vy, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
 
-            # elif usvState == PURSUE_DETECT_OBS:
+            elif usvState == PURSUE_DETECT_OBS:
+                if (abs(usvLidar.objInfo[idxOBS,5] - usvPose.beta) <= deg2rad(60)):
+                    mainNode.get_logger().info("USV 状态：避障.")
+                    [uSP, psiSP] = usvGuidance.guidanceOBS(usvLidar.objInfo[idxOBS,0],usvLidar.objInfo[idxOBS,1], usvLidar.objInfo[idxOBS, 5], usvPose.psi,usvPose.beta,1.0)
+                    usvControl.moveUSV(uSP, psiSP, usvPose.x, usvPose.y, usvPose.vx, usvPose.vy, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
+           
+                else:
+                    usvState = PURSUE
 
             # elif usvState == PURSUE_EMERGENCY:
             
@@ -147,7 +154,7 @@ def main(args=None):
                     mainNode.get_logger().info("USV 状态：泊近-接近段.")
                     isDockApproachPlan = True
                         
-                [uSP, psiSP] = usvGuidance.guidance(2.0, 20.0, usvPose.x, usvPose.y, usvPose.vx, usvPose.vy, usvPose.psi)
+                [uSP, psiSP] = usvGuidance.guidance(2.0, 20.0, usvPose.x, usvPose.y, usvPose.beta)
                 usvControl.moveUSV(uSP, psiSP, usvPose.x, usvPose.y, usvPose.vx, usvPose.vy, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
 
                 # 如果接近段结束了，则进入测量段
@@ -164,11 +171,11 @@ def main(args=None):
                     isDockMeasurePlan = True
                     mainNode.get_logger().info("开始测量目标船姿态.")
        
-                [uSP, psiSP] = usvGuidance.guidance(2.0, 20.0, usvPose.x, usvPose.y, usvPose.vx, usvPose.vy, usvPose.psi)
+                [uSP, psiSP] = usvGuidance.guidance(2.0, 20.0, usvPose.x, usvPose.y, usvPose.beta)
                 usvControl.moveUSV(uSP, psiSP, usvPose.x, usvPose.y, usvPose.vx, usvPose.vy, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
 
                 # 读取激光雷达信息（这个时候应该能保证读到目标船吧？）
-                [idxTV, isTVFound, _, _] = usvLidar.objRead(usvPose.x, usvPose.y, usvPose.psi, usvComm.tvEstPosX, usvComm.tvEstPosY)
+                [idxTV, isTVFound, _, _] = usvLidar.objRead(usvPose.x, usvPose.y, usvPose.psi, usvPose.beta, usvComm.tvEstPosX, usvComm.tvEstPosY)
 
                 # 如果目标船的测量信息满足要求，则读取并保存目标船朝向角（ENU下）
                 if (usvLidar.objInfo[idxTV, 2] > 10) & (usvLidar.objInfo[idxTV, 3] > 5) & (usvLidar.objInfo[idxTV, 2] / usvLidar.objInfo[idxTV, 3] > 2.25):
@@ -193,7 +200,7 @@ def main(args=None):
                     mainNode.get_logger().info("USV 泊近-变轨段路径已规划.")
                     mainNode.get_logger().info("USV 状态：泊近-变轨段.")
            
-                [xSP, ySP, psiSP] = usvGuidance.guidanceVec(12.0, 3.0, usvPose.x, usvPose.y, usvPose.vx, usvPose.vy, usvPose.psi)
+                [xSP, ySP, psiSP] = usvGuidance.guidanceVec(12.0, 3.0, usvPose.x, usvPose.y)
                 usvControl.moveUSVVec(xSP, ySP, psiSP, usvPose.x, usvPose.y, usvPose.vx, usvPose.vy, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
 
                 if (usvGuidance.currentIdx >= usvGuidance.endIdx):
