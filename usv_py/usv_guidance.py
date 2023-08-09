@@ -55,7 +55,7 @@ class Guidance(Node):
         
         # 限幅
         dist2Next = clip(dist2Next, self.dist2NextMin, self.dist2NextMax)
-        uSP = clip(uSP, - self.uSPMax, self.uSPMax)
+       # uSP = clip(uSP, - self.uSPMax, self.uSPMax)
 
         # 更新当前的跟踪点
         while (norm(self.path[self.currentIdx, :] - [x, y]) <= dist2Next) & (self.currentIdx < self.endIdx):
