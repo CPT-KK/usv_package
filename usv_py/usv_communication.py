@@ -1,22 +1,20 @@
-from rclpy.node import Node
+import rospy
 from geometry_msgs.msg import PoseStamped
 from geometry_msgs.msg import PointStamped
 
 from numpy import arctan
 
-class Communication(Node):
-    isTVEst = True
-    tvEstPosX = 695
-    tvEstPosY = 100
+class Communication():
+    isTVEst = False
+    tvEstPosX = 0
+    tvEstPosY = 0
 
     isBigObj = False
     bigObjAngle = 0
 
     def __init__(self):
-        super().__init__('usv_comm_node')
-        self.tvEstPosSub = self.create_subscription(PoseStamped, '/usv/target/pose', self.tvOdomCallback, 10)
-        self.bigObjPosSub = self.create_subscription(PoseStamped, '/usv/big_obj/pose', self.bigObjCallback, 10)
-        # self.transUAVPub
+        self.tvEstPosSub = rospy.Subscriber('/usv/target/pose', PoseStamped, self.tvOdomCallback)
+        self.bigObjPosSub = rospy.Subscriber('/usv/big_obj/pose', PoseStamped, self.bigObjCallback)
 
     def tvOdomCallback(self, msg):
         self.tvEstPosX = msg.pose.position.x

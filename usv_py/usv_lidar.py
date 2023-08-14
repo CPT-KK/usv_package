@@ -1,5 +1,4 @@
 import message_filters
-from rclpy.node import Node
 from sensor_msgs.msg import PointCloud2
 
 import open3d as o3d
@@ -9,8 +8,7 @@ import itertools
 from pctype import pointcloud22open3d
 from usv_math import rotationMatrixToEulerAngles, rotationZ
 
-
-class Lidar(Node):
+class Lidar():
     # 时间戳
     t = 0 
 
@@ -24,13 +22,12 @@ class Lidar(Node):
     tvPredictR = 15
 
     def __init__(self):
-        super().__init__('usv_lidar_node')
-        self.lidar1 = message_filters.Subscriber(self, PointCloud2, '/usv/slot0/points')
-        self.lidar2 = message_filters.Subscriber(self, PointCloud2, '/usv/slot2/points')
-        self.lidar3 = message_filters.Subscriber(self, PointCloud2, '/usv/slot3/points')
+        self.lidar1 = message_filters.Subscriber('/usv/slot0/points', PointCloud2)
+        self.lidar2 = message_filters.Subscriber('/usv/slot2/points', PointCloud2)
+        self.lidar3 = message_filters.Subscriber('/usv/slot3/points', PointCloud2)
 
-        ts = message_filters.ApproximateTimeSynchronizer([self.lidar1, self.lidar2, self.lidar3], 1, 0.1)
-        ts.registerCallback(self.lidarCallback)
+        self.ts = message_filters.ApproximateTimeSynchronizer([self.lidar1, self.lidar2, self.lidar3], queue_size=10, slop=0.1)
+        self.ts.registerCallback(self.lidarCallback)
 
     def cloudCut(self, cloud, xLB, xUB, yLB, yUB):
         if cloud.is_empty():

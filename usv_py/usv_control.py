@@ -1,4 +1,4 @@
-from rclpy.node import Node
+import rospy
 from std_msgs.msg import Float64
 
 from numpy import sin, cos, tan, arcsin, arccos, arctan, arctan2, rad2deg, deg2rad, clip, abs, sign
@@ -8,7 +8,7 @@ from usv_math import rotationZ, wrapToPi
 
 from PID import PID
 
-class Control(Node):
+class Control():
      
     # 控制器限幅参数
     xErrMax = 10.0
@@ -36,11 +36,10 @@ class Control(Node):
     NUU = 0.0
 
     def __init__(self, control_frequency):
-        super().__init__('usv_control_node')
-        self.lThrustPublisher_ = self.create_publisher(Float64, "/usv/left/thrust/cmd_thrust", 10)
-        self.rThrustPublisher_ = self.create_publisher(Float64, "/usv/right/thrust/cmd_thrust", 10)
-        self.lAnglePublisher_ = self.create_publisher(Float64, "/usv/left/thrust/joint/cmd_pos", 10)
-        self.rAnglePublisher_ = self.create_publisher(Float64, "/usv/right/thrust/joint/cmd_pos", 10)
+        self.lThrustPublisher_ = rospy.Publisher("/usv/left/thrust/cmd_thrust", Float64, queue_size=10)
+        self.rThrustPublisher_ = rospy.Publisher("/usv/right/thrust/cmd_thrust", Float64, queue_size=10)
+        self.lAnglePublisher_ = rospy.Publisher("/usv/left/thrust/joint/cmd_pos", Float64, queue_size=10)
+        self.rAnglePublisher_ = rospy.Publisher("/usv/right/thrust/joint/cmd_pos", Float64, queue_size=10)
 
         # PID 初始化
         self.uPID = PID(0.675, 0.078, 0.02, control_frequency)

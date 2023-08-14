@@ -2,14 +2,14 @@ import message_filters
 from numpy import arctan2
 from numpy.linalg import norm
 from usv_math import rotationZ
-from rclpy.node import Node
+
 
 from nav_msgs.msg import Odometry
 from sensor_msgs.msg import Imu
 
 from quaternions import Quaternion
 
-class Pose(Node):
+class Pose():
     t = 0.0
     x = 0.0
     y = 0.0
@@ -35,12 +35,11 @@ class Pose(Node):
     y_lidat_last = 0
 
     def __init__(self):
-        super().__init__('usv_pose_node')
-        self.odomSub = message_filters.Subscriber(self, Odometry, '/usv/odom')
-        self.imuSub = message_filters.Subscriber(self, Imu, '/usv/imu/data')
+        self.odomSub = message_filters.Subscriber('/usv/odom', Odometry)
+        self.imuSub = message_filters.Subscriber('/usv/imu/data', Imu)
 
-        ts = message_filters.ApproximateTimeSynchronizer([self.odomSub, self.imuSub], 10, 0.1)
-        ts.registerCallback(self.poseCallback)
+        self.ts = message_filters.ApproximateTimeSynchronizer([self.odomSub, self.imuSub], queue_size=10, slop=0.1)
+        self.ts.registerCallback(self.poseCallback)
 
     def poseCallback(self, odom, imu):
         self.t = 0.5 * (odom.header.stamp.sec + 1e-9 * odom.header.stamp.nanosec + imu.header.stamp.sec + 1e-9 * imu.header.stamp.nanosec)

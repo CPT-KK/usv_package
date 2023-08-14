@@ -1,12 +1,11 @@
-from rclpy.node import Node
+import rospy
 from geometry_msgs.msg import PointStamped
 from numpy import sin, cos, tan, arcsin, arccos, arctan, arctan2, rad2deg, deg2rad
 from numpy import clip, size, zeros, array
 from numpy.linalg import norm
 from usv_math import rotationZ, wrapToPi
 
-
-class Guidance(Node):
+class Guidance():
     uSPMax = 3.0
     dist2NextMax = 30
     dist2NextMin = 8
@@ -28,8 +27,7 @@ class Guidance(Node):
     isPathInit = False
 
     def __init__(self):
-        super().__init__('usv_guidance_node')
-        self.publisher_ = self.create_publisher(PointStamped, "/usv/guidance/guidanceSP", 10)
+        self.publisher_ = rospy.Publisher('/usv/guidance/guidanceSP', PointStamped, queue_size=10)
 
     def setPath(self, inPath, inEndIdx=0):
         # 设置路径
@@ -149,6 +147,6 @@ class Guidance(Node):
         msg.point.z = psiSP
 
         msg.header.frame_id = "usv_enu_frame"
-        msg.header.stamp = self.get_clock().now().to_msg()
+        msg.header.stamp = rospy.Time.now()
         self.publisher_.publish(msg)
 

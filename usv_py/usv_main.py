@@ -1,4 +1,4 @@
-import rclpy
+import rospy
 import threading
 
 from numpy import zeros, rad2deg, median, deg2rad
@@ -28,15 +28,13 @@ ATTACH = 31
 STOP = 9
 
 def main(args=None):
-    rclpy.init(args=args)
-    
     # 添加主节点
-    mainNode = rclpy.create_node('usv_main_node')
+    rospy.init_node('usv_main_node')
 
     # 定频
     rate = 5
-    rosRate = mainNode.create_rate(rate)
-    
+    rosRate = rospy.Rate(rate)
+
     # 添加功能节点
     usvPose = Pose()
     usvLidar = Lidar()
@@ -44,16 +42,13 @@ def main(args=None):
     usvPathPlanner = PathPlanner()
     usvGuidance = Guidance()
     usvControl = Control(rate)
-    
-    # 设置节点并行 spin
-    executor = rclpy.executors.MultiThreadedExecutor()
-    executor.add_node(mainNode)
-    executor.add_node(usvPose)
-    executor.add_node(usvLidar)
-    executor.add_node(usvComm)
-    executor_thread = threading.Thread(target=executor.spin, daemon=True)
-    executor_thread.start()
 
+    # 开一个线程用于处理 rospy.spin()
+    # 确保 daemon=True，这样主进程结束后，这个线程也会被结束
+    # 不然，线程会一直运行，即便主进程结束
+    spinThread = threading.Thread(target=rospy.spin, daemon=True)
+    spinThread.start()
+    
     # 初始化标志位
     isPursuePlan = False
     isDockApproachPlan = False
@@ -61,7 +56,7 @@ def main(args=None):
     isDockTransferPlan = False
 
     # 无人船状态
-    usvState = PURSUE
+    usvState = STARTUP
 
     # 无人船当前正在使用的路径
     currPath = zeros((2000, 2))
@@ -75,40 +70,39 @@ def main(args=None):
       
     # 试一下
     try:
-        while rclpy.ok():
-  
+        while not rospy.is_shutdown():
             if usvState == STARTUP:
                 if (usvPose.isValid):
-                    mainNode.get_logger().info("收到 USV 位置.")
+                    rospy.loginfo("收到 USV 位置.")
                     usvState = STANDBY
                 else:
-                    mainNode.get_logger().info("等待传来 USV 位置.")
+                    rospy.loginfo("等待传来 USV 位置.")
 
             elif usvState == STANDBY:
                 if (usvComm.isTVEst):
-                    mainNode.get_logger().info("收到目标船的估计位置.")
+                    rospy.loginfo("收到目标船的估计位置.")
                     usvState = PURSUE
                 else:
-                    mainNode.get_logger().info("等待目标船的估计位置.")
+                    rospy.loginfo("等待目标船的估计位置.")
                     
             elif usvState == PURSUE:
                 # 如果需要规划追踪段路径，则规划并发送给制导
                 if (isPursuePlan == False):
                     currPath = usvPathPlanner.planPursue(usvPose.x, usvPose.y, usvComm.tvEstPosX, usvComm.tvEstPosY)
                     usvGuidance.setPath(currPath)
-                    mainNode.get_logger().info("USV 追踪段已规划.")
-                    mainNode.get_logger().info("当前状态：追踪段.")
+                    rospy.loginfo("USV 追踪段已规划.")
+                    rospy.loginfo("当前状态：追踪段.")
                     isPursuePlan = True
 
                 # 如果 USV 当前位置距离当前跟踪点太远，则重新规划（以防万一）
                 if (norm([usvPose.x - usvGuidance.path[usvGuidance.currentIdx, 0], usvPose.y - usvGuidance.path[usvGuidance.currentIdx, 1]]) >= 40):
-                    mainNode.get_logger().info("USV 疑似脱离路径？立即重新规划追踪段.")
+                    rospy.loginfo("USV 疑似脱离路径？立即重新规划追踪段.")
                     isPursuePlan = False
                     continue
 
                 # 如果跑完了所有点都没有找到目标船，则重新规划（以防万一）
                 if (usvGuidance.currentIdx >= usvGuidance.endIdx):
-                    mainNode.get_logger().info("跑完了追踪段但激光雷达仍没有发现目标船？立即重新规划追踪段.")
+                    rospy.loginfo("跑完了追踪段但激光雷达仍没有发现目标船？立即重新规划追踪段.")
                     isPursuePlan = False
                     continue
      
@@ -120,14 +114,14 @@ def main(args=None):
                     [tvX, tvY] = rotationZ(usvLidar.objInfo[idxTV, 0], usvLidar.objInfo[idxTV, 1], -usvPose.psi)
                     tvX = tvX + usvPose.x
                     tvY = tvY + usvPose.y
-                    mainNode.get_logger().info("激光雷达探测到目标船.")
-                    mainNode.get_logger().info("估计目标船在: [%.2f, %.2f]（USV 船体系下），方向角: %.4f (rad) 或 %.4f (deg)." % (usvLidar.objInfo[idxTV, 0], usvLidar.objInfo[idxTV, 1], usvLidar.objInfo[idxTV, 4], rad2deg(usvLidar.objInfo[idxTV, 4])))
+                    rospy.loginfo("激光雷达探测到目标船.")
+                    rospy.loginfo("估计目标船在: [%.2f, %.2f]（USV 船体系下），方向角: %.4f (rad) 或 %.4f (deg)." % (usvLidar.objInfo[idxTV, 0], usvLidar.objInfo[idxTV, 1], usvLidar.objInfo[idxTV, 4], rad2deg(usvLidar.objInfo[idxTV, 4])))
                     usvState = DOCK_APPROACH
                     continue
 
                 # 如果检测到障碍物，则进入 PURSUE_DETECT_OBS
                 if (isObsFound):
-                    mainNode.get_logger().info("检测到障碍物，执行避障.")
+                    rospy.loginfo("检测到障碍物，执行避障.")
                     usvState = PURSUE_DETECT_OBS
                     continue
 
@@ -144,7 +138,7 @@ def main(args=None):
                     [uSP, psiSP] = usvGuidance.guidanceOBS(usvLidar.objInfo[idxOBS, 0],usvLidar.objInfo[idxOBS, 1], usvLidar.objInfo[idxOBS, 5], usvPose.psi, usvPose.beta, 1.0)
                     usvControl.moveUSV(uSP, psiSP, usvPose.x, usvPose.y, usvPose.vx, usvPose.vy, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r) 
                 else:
-                    mainNode.get_logger().info("USV 避障完成，恢复追踪目标船.")
+                    rospy.loginfo("USV 避障完成，恢复追踪目标船.")
                     isPursuePlan = False
                     usvState = PURSUE
 
@@ -154,8 +148,8 @@ def main(args=None):
                 if (isDockApproachPlan == False):
                     currPath = usvPathPlanner.planDockApproach(usvPose.x, usvPose.y, tvX, tvY)
                     usvGuidance.setPath(currPath)
-                    mainNode.get_logger().info("USV 泊近-接近段路径已规划.")
-                    mainNode.get_logger().info("USV 状态：泊近-接近段.")
+                    rospy.loginfo("USV 泊近-接近段路径已规划.")
+                    rospy.loginfo("USV 状态：泊近-接近段.")
                     isDockApproachPlan = True
                         
                 [uSP, psiSP] = usvGuidance.guidance(2.0, 20.0, usvPose.x, usvPose.y, usvPose.beta)
@@ -170,10 +164,10 @@ def main(args=None):
                 if (isDockMeasurePlan == False):
                     currPath = usvPathPlanner.planDockMeasure(usvPose.x, usvPose.y, tvX, tvY)
                     usvGuidance.setPath(currPath)
-                    mainNode.get_logger().info("USV 泊近-测量段路径已规划.")
-                    mainNode.get_logger().info("USV 状态：泊近-测量段.")
+                    rospy.loginfo("USV 泊近-测量段路径已规划.")
+                    rospy.loginfo("USV 状态：泊近-测量段.")
                     isDockMeasurePlan = True
-                    mainNode.get_logger().info("开始测量目标船姿态.")
+                    rospy.loginfo("开始测量目标船姿态.")
        
                 [uSP, psiSP] = usvGuidance.guidance(2.0, 20.0, usvPose.x, usvPose.y, usvPose.beta)
                 usvControl.moveUSV(uSP, psiSP, usvPose.x, usvPose.y, usvPose.vx, usvPose.vy, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
@@ -192,8 +186,8 @@ def main(args=None):
                     tvX = tvX + usvPose.x
                     tvY = tvY + usvPose.y
                     tvAngle = median(tvRecordAngle[0:tvRecordNum])
-                    mainNode.get_logger().info("测量的目标船姿态为: %.4f (rad)，%.4f (deg)." % (tvAngle, rad2deg(tvAngle)))
-                    mainNode.get_logger().info("结束测量目标船姿态.")
+                    rospy.loginfo("测量的目标船姿态为: %.4f (rad)，%.4f (deg)." % (tvAngle, rad2deg(tvAngle)))
+                    rospy.loginfo("结束测量目标船姿态.")
                     usvState = DOCK_TRANSFER
 
             elif usvState == DOCK_TRANSFER:
@@ -201,8 +195,8 @@ def main(args=None):
                     currPath = usvPathPlanner.planDockTransfer(currPath[-1, 0], currPath[-1, 1], tvX, tvY, tvAngle) # 用上一段路径的最后一个点作为起始点
                     usvGuidance.setPath(currPath) 
                     isDockTransferPlan = True
-                    mainNode.get_logger().info("USV 泊近-变轨段路径已规划.")
-                    mainNode.get_logger().info("USV 状态：泊近-变轨段.")
+                    rospy.loginfo("USV 泊近-变轨段路径已规划.")
+                    rospy.loginfo("USV 状态：泊近-变轨段.")
            
                 [xSP, ySP, psiSP] = usvGuidance.guidanceVec(12.0, 3.0, usvPose.x, usvPose.y)
                 usvControl.moveUSVVec(xSP, ySP, psiSP, usvPose.x, usvPose.y, usvPose.vx, usvPose.vy, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
@@ -212,11 +206,11 @@ def main(args=None):
              
             elif usvState == DOCK_ADJUST:
                 # 在 ADJUST 段，读取大物体方位角，在大物体侧停下来
-                mainNode.get_logger().info("USV 状态：泊近-调整段.")
+                rospy.loginfo("USV 状态：泊近-调整段.")
                 usvState = DOCK_FINAL
 
             elif usvState == DOCK_FINAL:
-                mainNode.get_logger().info("USV 状态：泊近-最终段.")
+                rospy.loginfo("USV 状态：泊近-最终段.")
                 return
 
             # elif usvState == DOCK_EMERGENCY:
@@ -229,6 +223,7 @@ def main(args=None):
                 print("%.2fs, [%.2f, %.2f]m, [%.2f, %.2f]m/s, [%.2f, %.2f]m/s^{-2}, %.2frad, %.2frad/s" % (usvPose.t, usvPose.x, usvPose.y, usvPose.vx, usvPose.vy, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r))
                 print("%.2fs, %d, " % (usvLidar.t, usvLidar.objNum))
             
+            
             rosRate.sleep()
 
     except KeyboardInterrupt:
@@ -236,9 +231,8 @@ def main(args=None):
 
     except Exception as e:
         print(e)
-        return
-        # pass
 
+    return
 
 if __name__ == '__main__':
     main()
