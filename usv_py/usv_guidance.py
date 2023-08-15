@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import rospy
 from geometry_msgs.msg import PointStamped
 from numpy import sin, cos, tan, arcsin, arccos, arctan, arctan2, rad2deg, deg2rad

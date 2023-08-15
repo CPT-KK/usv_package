@@ -1,18 +1,48 @@
 <?xml version="1.0"?>
-<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
-<package format="3">
-  <name>usv_py</name>
-  <version>0.0.0</version>
-  <description>TODO: Package description</description>
+<package format="2">
+  <name>usv_package</name>
+  <version>1.0.0</version>
+  <description>This is the ROS package that controls the USV in MBZIRC 2024</description>
   <maintainer email="cptkk@qq.com">kk</maintainer>
-  <license>TODO: License declaration</license>
+  <license>GPLv2</license>
+  
+  <buildtool_depend>catkin</buildtool_depend>
+  <build_depend>roscpp</build_depend>
+  <build_depend>rospy</build_depend>
+  <build_depend>std_msgs</build_depend>
+  <build_depend>geometry_msgs</build_depend>
+  <build_depend>sensor_msgs</build_depend>
+  <build_depend>nav_msgs</build_depend>
+  <build_depend>message_filters</build_depend>
+  <build_depend>threading</build_depend>
+  <build_depend>numpy</build_depend>
+  <build_depend>open3d</build_depend>
+  <build_depend>itertools</build_depend>
 
-  <test_depend>ament_copyright</test_depend>
-  <test_depend>ament_flake8</test_depend>
-  <test_depend>ament_pep257</test_depend>
-  <test_depend>python3-pytest</test_depend>
+  <build_export_depend>roscpp</build_export_depend>
+  <build_export_depend>rospy</build_export_depend>
+  <build_export_depend>std_msgs</build_export_depend>
+  <build_export_depend>geometry_msgs</build_export_depend>
+  <build_export_depend>sensor_msgs</build_export_depend>
+  <build_export_depend>nav_msgs</build_export_depend>
+  <build_export_depend>message_filters</build_export_depend>
+  <build_export_depend>threading</build_export_depend>
+  <build_export_depend>numpy</build_export_depend>
+  <build_export_depend>open3d</build_export_depend>
+  <build_export_depend>itertools</build_export_depend>
 
+  <exec_depend>roscpp</exec_depend>
+  <exec_depend>rospy</exec_depend>
+  <exec_depend>std_msgs</exec_depend>
+  <exec_depend>geometry_msgs</exec_depend>
+  <exec_depend>sensor_msgs</exec_depend>
+  <exec_depend>nav_msgs</exec_depend>
+  <exec_depend>message_filters</exec_depend>
+  <exec_depend>threading</exec_depend>
+  <exec_depend>numpy</exec_depend>
+  <exec_depend>open3d</exec_depend>
+  <exec_depend>itertools</exec_depend>
+ 
   <export>
-    <build_type>ament_python</build_type>
   </export>
 </package>

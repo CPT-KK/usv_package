@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import message_filters
 from sensor_msgs.msg import PointCloud2
 

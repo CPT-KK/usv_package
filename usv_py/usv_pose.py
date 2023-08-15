@@ -1,9 +1,11 @@
+#!/usr/bin/env python3
+
 import message_filters
 from numpy import arctan2
 from numpy.linalg import norm
 from usv_math import rotationZ
 
-
+from geometry_msgs.msg import PoseStamped, TwistStamped
 from nav_msgs.msg import Odometry
 from sensor_msgs.msg import Imu
 
@@ -37,6 +39,10 @@ class Pose():
     def __init__(self):
         self.odomSub = message_filters.Subscriber('/usv/odom', Odometry)
         self.imuSub = message_filters.Subscriber('/usv/imu/data', Imu)
+
+        self.px4PosSub = message_filters.Subscriber('/mavros/local_position/pose', PoseStamped) # For PX4 MAVROS local position
+        self.px4VelSub = message_filters.Subscriber('/mavros/local_position/velocity', TwistStamped) # For PX4 MAVROS local velocity
+        self.px4IMUSub = message_filters.Subscriber('/mavros/imu/data', Imu) # For PX4 MAVROS IMU
 
         self.ts = message_filters.ApproximateTimeSynchronizer([self.odomSub, self.imuSub], queue_size=10, slop=0.1)
         self.ts.registerCallback(self.poseCallback)

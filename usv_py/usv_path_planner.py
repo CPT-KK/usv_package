@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 from numpy import pi
 from numpy import vstack
 from numpy import linspace

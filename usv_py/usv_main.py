@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import rospy
 import threading
 
@@ -221,17 +223,16 @@ def main(args=None):
             # elif usvState == ATTACH:
 
             else:
-                print("%.2fs, [%.2f, %.2f]m, [%.2f, %.2f]m/s, [%.2f, %.2f]m/s^{-2}, %.2frad, %.2frad/s" % (usvPose.t, usvPose.x, usvPose.y, usvPose.vx, usvPose.vy, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r))
-                print("%.2fs, %d, " % (usvLidar.t, usvLidar.objNum))
-            
+                # 程序不应该执行到这里
+                rospy.loginfo("变量 [usvState] 取到异常值 %d，请检查程序." % (usvState))
             
             rosRate.sleep()
 
     except KeyboardInterrupt:
-        pass   
+        rospy.loginfo("程序退出.")
 
     except Exception as e:
-        print(e)
+        rospy.loginfo(e)
 
     return
 
