@@ -27,13 +27,14 @@ DOCK_EMERGENCY = 29
 ATTACH = 31
 STOP = 9
 
+# ROS 定频
+ROSRATE = 5
+
 def main(args=None):
     # 添加主节点
     rospy.init_node('usv_main_node')
-
-    # 定频
-    rate = 5
-    rosRate = rospy.Rate(rate)
+ 
+    rosRate = rospy.Rate(ROSRATE)
 
     # 添加功能节点
     usvPose = Pose()
@@ -41,8 +42,8 @@ def main(args=None):
     usvComm = Communication()
     usvPathPlanner = PathPlanner()
     usvGuidance = Guidance()
-    usvControl = Control(rate)
-
+    usvControl = Control(ROSRATE)
+ 
     # 开一个线程用于处理 rospy.spin()
     # 确保 daemon=True，这样主进程结束后，这个线程也会被结束
     # 不然，线程会一直运行，即便主进程结束

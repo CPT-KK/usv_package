@@ -30,7 +30,6 @@ def planCirclePath(cirX, cirY, cirR, startAngle, endAngle, ds):
     else:
         pNum = round(abs(endAngle - startAngle) * cirR / ds)
     
-
     if (pNum <= 4):
         pNum = 4
     

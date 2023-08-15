@@ -43,7 +43,6 @@ class Guidance():
 
         self.isPathInit = True
 
-
     def guidance(self, uSP, dist2Next, x, y, beta):
         if (self.isPathInit == False):
             return [None, None]
