@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import rospy
-from std_msgs.msg import Float64
+from std_msgs.msg import Float32, Int16
 
 from numpy import sin, cos, tan, arcsin, arccos, arctan, arctan2, rad2deg, deg2rad, clip, abs, sign
 from numpy.linalg import norm
@@ -38,10 +38,10 @@ class Control():
     NUU = 0.0
 
     def __init__(self, control_frequency):
-        self.lThrustPublisher_ = rospy.Publisher("/usv/left/thrust/cmd_thrust", Float64, queue_size=10)
-        self.rThrustPublisher_ = rospy.Publisher("/usv/right/thrust/cmd_thrust", Float64, queue_size=10)
-        self.lAnglePublisher_ = rospy.Publisher("/usv/left/thrust/joint/cmd_pos", Float64, queue_size=10)
-        self.rAnglePublisher_ = rospy.Publisher("/usv/right/thrust/joint/cmd_pos", Float64, queue_size=10)
+        self.lThrustPublisher_ = rospy.Publisher("/workshop_setup/pods/left", Int16, queue_size=10)
+        self.rThrustPublisher_ = rospy.Publisher("/workshop_setup/pods/right", Int16, queue_size=10)
+        self.lAnglePublisher_ = rospy.Publisher("/workshop_setup/pod_steer/left_steer", Float32, queue_size=10)
+        self.rAnglePublisher_ = rospy.Publisher("/workshop_setup/pod_steer/right_steer", Float32, queue_size=10)
 
         # PID 初始化
         self.uPID = PID(0.675, 0.078, 0.02, control_frequency)
@@ -175,10 +175,10 @@ class Control():
         return [rpmL, rpmR, angleL, angleR]
     
     def thrustPub(self, rpmL, rpmR, angleL, angleR):
-        lT = Float64(data=rpmL)
-        rT = Float64(data=rpmR)
-        lA = Float64(data=angleL)
-        rA = Float64(data=angleR)
+        lT = Int16(data=rpmL)
+        rT = Int16(data=rpmR)
+        lA = Float32(data=angleL)
+        rA = Float32(data=angleR)
 
         self.lThrustPublisher_.publish(lT)
         self.rThrustPublisher_.publish(rT)
@@ -187,3 +187,30 @@ class Control():
 
         return
     
+if __name__ == '__main__':
+    # 以下代码为测试代码
+    rospy.init_node('usv_control_test_node')
+    rosRate = rospy.Rate(5)
+    usvControl = Control(5)
+
+    usvControl.thrustPub(10, 10, 0, 0)
+    rosRate.sleep()
+    usvControl.thrustPub(10, 10, 0, 0)
+    rosRate.sleep()
+    usvControl.thrustPub(10, 10, 0, 0)
+    rosRate.sleep()
+    usvControl.thrustPub(10, 10, 0, 0)
+    rosRate.sleep()
+    usvControl.thrustPub(10, 10, 0, 0)
+    rosRate.sleep()
+
+    usvControl.thrustPub(0, 0, 0, 0)
+    rosRate.sleep()
+    usvControl.thrustPub(0, 0, 0, 0)
+    rosRate.sleep()
+    usvControl.thrustPub(0, 0, 0, 0)
+    rosRate.sleep()
+    usvControl.thrustPub(0, 0, 0, 0)
+    rosRate.sleep()
+    usvControl.thrustPub(0, 0, 0, 0)
+    rosRate.sleep()
