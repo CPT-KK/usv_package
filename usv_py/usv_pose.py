@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-
+import rospy, threading
 import message_filters
 from numpy import arctan2
 from numpy.linalg import norm
@@ -40,15 +40,15 @@ class Pose():
         self.odomSub = message_filters.Subscriber('/usv/odom', Odometry)
         self.imuSub = message_filters.Subscriber('/usv/imu/data', Imu)
 
-        self.px4PosSub = message_filters.Subscriber('/mavros/local_position/pose', PoseStamped) # For PX4 MAVROS local position
-        self.px4VelSub = message_filters.Subscriber('/mavros/local_position/velocity', TwistStamped) # For PX4 MAVROS local velocity
+        self.px4OdomSub = message_filters.Subscriber('/mavros/local_position/odom', Odometry) # For PX4 MAVROS local position and velocity
         self.px4IMUSub = message_filters.Subscriber('/mavros/imu/data', Imu) # For PX4 MAVROS IMU
 
-        self.ts = message_filters.ApproximateTimeSynchronizer([self.odomSub, self.imuSub], queue_size=10, slop=0.1)
+        self.ts = message_filters.ApproximateTimeSynchronizer([self.px4OdomSub, self.px4IMUSub], queue_size=10, slop=0.1)
         self.ts.registerCallback(self.poseCallback)
 
     def poseCallback(self, odom, imu):
-        self.t = 0.5 * (odom.header.stamp.sec + 1e-9 * odom.header.stamp.nanosec + imu.header.stamp.sec + 1e-9 * imu.header.stamp.nanosec)
+        
+        self.t = 0.5 * (odom.header.stamp.secs + 1e-9 * odom.header.stamp.nsecs + imu.header.stamp.secs + 1e-9 * imu.header.stamp.nsecs)
         self.x = odom.pose.pose.position.x
         self.y = odom.pose.pose.position.y
         self.vx = odom.twist.twist.linear.x
@@ -67,6 +67,18 @@ class Pose():
         else:
             self.beta = arctan2(self.v, self.u)
         self.isValid = True
+        
 
+if __name__ == '__main__':
+    # 以下代码为测试代码
+    rospy.init_node('usv_pos_test_node')
+    rosRate = rospy.Rate(2)
 
+    usvPose = Pose()
 
+    spinThread = threading.Thread(target=rospy.spin, daemon=True)
+    spinThread.start()
+
+    while True:
+        rospy.loginfo("USV: [%.2f, %.2f]m | [%.2f, %.2f]m/s | [%.2f, %.2f]m/s^2 | %.2fdeg" % (usvPose.x, usvPose.y, usvPose.vx, usvPose.vy, usvPose.axb, usvPose.ayb, usvPose.psi * 57.3))
+        rosRate.sleep()

@@ -190,33 +190,37 @@ class Control():
 if __name__ == '__main__':
     # 以下代码为测试代码
     rospy.init_node('usv_control_test_node')
-    rosRate = rospy.Rate(2)
+    rate = 10
+    rosRate = rospy.Rate(rate)
     usvControl = Control(5)
 
-    rpmValue = 10
+    lastTime = 5
+    loopTimes = round(lastTime / (1 / rate))
+
+    rpmValue = 250
     angleValue = deg2rad(45)
 
     rospy.loginfo("Moving forward...")
-    for i in range(5):
+    for i in range(loopTimes):
         usvControl.thrustPub(rpmValue, rpmValue, 0, 0)
         rosRate.sleep()
 
     rospy.loginfo("Moving backward...")
-    for i in range(5):
+    for i in range(loopTimes):
         usvControl.thrustPub(-rpmValue, -rpmValue, 0, 0)
         rosRate.sleep()
 
-    rospy.loginfo("Moving left forward...")
-    for i in range(5):
-        usvControl.thrustPub(rpmValue, rpmValue, angleValue, angleValue)
-        rosRate.sleep()
+    # rospy.loginfo("Moving left forward...")
+    # for i in range(loopTimes):
+    #     usvControl.thrustPub(rpmValue, rpmValue, angleValue, angleValue)
+    #     rosRate.sleep()
 
-    rospy.loginfo("Moving right forward...")
-    for i in range(5):
-        usvControl.thrustPub(rpmValue, rpmValue, -angleValue, -angleValue)
-        rosRate.sleep()
+    # rospy.loginfo("Moving right forward...")
+    # for i in range(loopTimes):
+    #     usvControl.thrustPub(rpmValue, rpmValue, -angleValue, -angleValue)
+    #     rosRate.sleep()
 
     rospy.loginfo("Stopping...")
-    for i in range(5):
+    for i in range(loopTimes):
         usvControl.thrustPub(0, 0, 0, 0)
         rosRate.sleep()
