@@ -21,7 +21,9 @@ class Control():
     vxSPMax = 3
     vySPMax = 3
 
-    rpmMax = 1200.0
+    # USV motor from 250RPM to 1300RPM
+    # USV angle from -80deg to 80deg
+    rpmMax = 1200
     angleMax = 1.047198 # 60 deg
 
     # 无人船参数
@@ -161,24 +163,24 @@ class Control():
         angleR = arctan(aySP / axSP)
 
         # 推力偏角限幅
-        angleL = clip(angleL, - self.angleMax, self.angleMax)
-        angleR = clip(angleR, - self.angleMax, self.angleMax)
+        angleL = clip(angleL, -self.angleMax, self.angleMax)
+        angleR = clip(angleR, -self.angleMax, self.angleMax)
 
         # 计算推力大小
         rpmL = self.usvMass * sign(axSP) * norm([axSP, aySP]) / 2.0 - self.usvInerZ * etaSP / (2.0 * self.usvThrust2Center * cos(angleL))
         rpmR = self.usvMass * sign(axSP) * norm([axSP, aySP]) / 2.0 + self.usvInerZ * etaSP / (2.0 * self.usvThrust2Center * cos(angleR))
 
         # 推力大小限幅
-        rpmL = clip(rpmL, - self.rpmMax, self.rpmMax)
-        rpmR = clip(rpmR, - self.rpmMax, self.rpmMax)
+        rpmL = clip(rpmL, -self.rpmMax, self.rpmMax)
+        rpmR = clip(rpmR, -self.rpmMax, self.rpmMax)
    
         return [rpmL, rpmR, angleL, angleR]
     
     def thrustPub(self, rpmL, rpmR, angleL, angleR):
-        lT = Int16(data=rpmL)
-        rT = Int16(data=rpmR)
-        lA = Float32(data=angleL)
-        rA = Float32(data=angleR)
+        lT = Int16(data=int(rpmL))
+        rT = Int16(data=int(rpmR))
+        lA = Float32(data=rad2deg(angleL))
+        rA = Float32(data=rad2deg(angleR))
 
         self.lThrustPublisher_.publish(lT)
         self.rThrustPublisher_.publish(rT)
@@ -198,7 +200,7 @@ if __name__ == '__main__':
     loopTimes = round(lastTime / (1 / rate))
 
     rpmValue = 250
-    angleValue = deg2rad(45)
+    angleValue = 45
 
     rospy.loginfo("Moving forward...")
     for i in range(loopTimes):
