@@ -37,11 +37,11 @@ class Pose():
     y_lidat_last = 0
 
     def __init__(self):
-        self.odomSub = message_filters.Subscriber('/usv/odom', Odometry)
-        self.imuSub = message_filters.Subscriber('/usv/imu/data', Imu)
+        # For PX4 MAVROS local position and velocity (usv body frame)
+        self.px4OdomSub = message_filters.Subscriber('/mavros/local_position/odom', Odometry) 
 
-        self.px4OdomSub = message_filters.Subscriber('/mavros/local_position/odom', Odometry) # For PX4 MAVROS local position and velocity
-        self.px4IMUSub = message_filters.Subscriber('/mavros/imu/data', Imu) # For PX4 MAVROS IMU
+        # For PX4 MAVROS IMU
+        self.px4IMUSub = message_filters.Subscriber('/mavros/imu/data', Imu) 
 
         self.ts = message_filters.ApproximateTimeSynchronizer([self.px4OdomSub, self.px4IMUSub], queue_size=10, slop=0.1)
         self.ts.registerCallback(self.poseCallback)
@@ -51,8 +51,8 @@ class Pose():
         self.t = 0.5 * (odom.header.stamp.secs + 1e-9 * odom.header.stamp.nsecs + imu.header.stamp.secs + 1e-9 * imu.header.stamp.nsecs)
         self.x = odom.pose.pose.position.x
         self.y = odom.pose.pose.position.y
-        self.vx = odom.twist.twist.linear.x
-        self.vy = odom.twist.twist.linear.y
+        self.u = odom.twist.twist.linear.x
+        self.v = odom.twist.twist.linear.y
         self.axb = imu.linear_acceleration.x
         self.ayb = imu.linear_acceleration.y
         self.r = imu.angular_velocity.z     
@@ -61,7 +61,8 @@ class Pose():
         rpyAngle = Quaternion.get_euler(q)
         self.psi = rpyAngle[2]
         
-        [self.u, self.v] = rotationZ(self.vx, self.vy, self.psi)
+        [self.vx, self.vy]  = rotationZ(self.u, self.v, -self.psi)
+
         if (norm([self.vx, self.vy]) < 0.1):
             self.beta = 0
         else:
