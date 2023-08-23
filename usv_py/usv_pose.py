@@ -37,7 +37,7 @@ class Pose():
     y_lidat_last = 0
 
     def __init__(self):
-        # For PX4 MAVROS local position and velocity (usv body frame)
+        # For PX4 MAVROS local position and velocity (Velocity is in USV body frame)
         self.px4OdomSub = message_filters.Subscriber('/mavros/local_position/odom', Odometry) 
 
         # For PX4 MAVROS IMU
@@ -81,5 +81,10 @@ if __name__ == '__main__':
     spinThread.start()
 
     while True:
-        rospy.loginfo("USV: [%.2f, %.2f]m | [%.2f, %.2f]m/s | [%.2f, %.2f]m/s^2 | %.2fdeg" % (usvPose.x, usvPose.y, usvPose.vx, usvPose.vy, usvPose.axb, usvPose.ayb, usvPose.psi * 57.3))
-        rosRate.sleep()
+        try:
+            rospy.loginfo("USV: [%.2f, %.2f]m | [%.2f, %.2f]m/s | [%.2f, %.2f]m/s^2 | %.2fdeg" % (usvPose.x, usvPose.y, usvPose.vx, usvPose.vy, usvPose.axb, usvPose.ayb, usvPose.psi * 57.3))
+            rosRate.sleep()
+        except KeyboardInterrupt:
+            break
+
+        
