@@ -23,6 +23,8 @@ class Control():
 
     # USV motor from 250RPM to 1300RPM
     # USV angle from -80deg to 80deg
+    rpmThreshold = 50
+    rpmMin = 250
     rpmMax = 1200
     angleMax = 1.047198 # 60 deg
 
@@ -51,7 +53,7 @@ class Control():
         self.rPID = PID(0.03, 0.000, 0.3, control_frequency)
 
         self.xPID = PID(0.2, 0.000, 0.000, control_frequency)
-        self.yPID = PID(0.3, 0.000, 0.000, control_frequency)
+        self.yPID = PID(0.2, 0.000, 0.000, control_frequency)
         self.vxPID = PID(0.4, 0.005, 0.01, control_frequency)
         self.vyPID = PID(0.5, 0.005, 0.01, control_frequency)
 
@@ -173,6 +175,17 @@ class Control():
         # 推力大小限幅
         rpmL = clip(rpmL, -self.rpmMax, self.rpmMax)
         rpmR = clip(rpmR, -self.rpmMax, self.rpmMax)
+
+        if (abs(rpmL) <= self.rpmMin) & (abs(rpmL) >= self.rpmThreshold):
+            rpmL = sign(rpmL) * self.rpmMin
+        if (abs(rpmL) <= self.rpmMin) & (abs(rpmL) < self.rpmThreshold):
+            rpmL = 0
+
+        if (abs(rpmR) <= self.rpmMin) & (abs(rpmR) >= self.rpmThreshold):
+            rpmR = sign(rpmR) * self.rpmMin
+        if (abs(rpmR) <= self.rpmMin) & (abs(rpmR) < self.rpmThreshold):
+            rpmR = 0  
+
    
         return [rpmL, rpmR, angleL, angleR]
     
