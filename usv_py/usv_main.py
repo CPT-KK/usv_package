@@ -3,12 +3,12 @@
 import rospy
 import threading
 
-from numpy import zeros, rad2deg, median, deg2rad
+from numpy import zeros, rad2deg, median, deg2rad, sin, cos
 from numpy.linalg import norm
 
 from usv_lidar import Lidar
 from usv_pose import Pose
-from usv_path_planner import PathPlanner
+from usv_path_planner import PathPlanner, planCirclePath
 from usv_guidance import Guidance
 from usv_control import Control
 from usv_communication import Communication
@@ -28,9 +28,10 @@ DOCK_FINAL = 25
 DOCK_EMERGENCY = 29
 ATTACH = 31
 STOP = 9
+TEST_CIRCLE = 101
 
 # ROS 定频
-ROSRATE = 5
+ROSRATE = 10
 
 def main(args=None):
     # 添加主节点
@@ -58,6 +59,8 @@ def main(args=None):
     isDockMeasurePlan = False
     isDockTransferPlan = False
 
+    isTestCirclePlan = False
+
     # 无人船状态
     usvState = STARTUP
 
@@ -84,7 +87,7 @@ def main(args=None):
             elif usvState == STANDBY:
                 if (usvComm.isTVEst):
                     rospy.loginfo("收到目标船的估计位置.")
-                    usvState = PURSUE
+                    usvState = TEST_CIRCLE
                 else:
                     rospy.loginfo("等待目标船的估计位置.")
                     
@@ -215,6 +218,26 @@ def main(args=None):
             elif usvState == DOCK_FINAL:
                 rospy.loginfo("USV 状态：泊近-最终段.")
                 return
+            
+            elif usvState == TEST_CIRCLE:
+                if (isTestCirclePlan == False):
+                    pi = 3.1415926
+                    R = 30
+                    cirCenX = usvPose.x - R * cos(usvPose.psi - pi/2)
+                    cirCenY = usvPose.y - R * sin(usvPose.psi - pi/2)
+                    currPath = planCirclePath(cirCenX, cirCenY, R, usvPose.psi - pi/2, usvPose.psi - pi/2 + 4 * 2 * pi, 4)
+                    usvGuidance.setPath(currPath)
+                    rospy.loginfo("USV 测试-圆路径已规划.")
+                    rospy.loginfo("当前状态：测试-圆.")
+                    isTestCirclePlan = True
+
+                if (usvGuidance.currentIdx >= usvGuidance.endIdx):
+                    rospy.signal_shutdown("Test end.")
+                    return
+
+                [uSP, psiSP] = usvGuidance.guidance(1.5, 20.0, usvPose.x, usvPose.y, usvPose.beta)
+                usvControl.moveUSV(uSP, psiSP, usvPose.x, usvPose.y, usvPose.vx, usvPose.vy, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
+
 
             # elif usvState == DOCK_EMERGENCY:
 

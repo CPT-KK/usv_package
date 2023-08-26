@@ -25,7 +25,7 @@ class Control():
     # USV angle from -80deg to 80deg
     rpmThreshold = 50
     rpmMin = 250
-    rpmMax = 1200
+    rpmMax = 1000
     angleMax = 1.047198 # 60 deg
 
     # 无人船参数
@@ -48,9 +48,9 @@ class Control():
         self.rAnglePublisher_ = rospy.Publisher("/workshop_setup/pod_steer/right_steer", Float32, queue_size=10)
 
         # PID 初始化
-        self.uPID = PID(0.675, 0.078, 0.02, control_frequency)
-        self.psiPID = PID(1.25, 0.0, 0.15, control_frequency)
-        self.rPID = PID(0.03, 0.000, 0.3, control_frequency)
+        self.uPID = PID(0.75, 0.05, 0.01, control_frequency)
+        self.psiPID = PID(0.75, 0.05, 0.1, control_frequency)
+        self.rPID = PID(1.5, 0.005, 0.02, control_frequency)
 
         self.xPID = PID(0.2, 0.000, 0.000, control_frequency)
         self.yPID = PID(0.2, 0.000, 0.000, control_frequency)
@@ -209,11 +209,11 @@ if __name__ == '__main__':
     rosRate = rospy.Rate(rate)
     usvControl = Control(5)
 
-    lastTime = 5
+    lastTime = 10
     loopTimes = round(lastTime / (1 / rate))
 
-    rpmValue = 250
-    angleValue = 45
+    rpmValue = 400
+    angleValue = 0
 
     rospy.loginfo("Moving forward...")
     for i in range(loopTimes):
