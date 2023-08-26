@@ -115,6 +115,9 @@ class Guidance():
         # 计算期望的朝向角
         psiSP = wrapToPi(tanAngle + arctan2(-yErr, self.delta))
 
+        # 根据 yErr 的值，计算可行的 uSP (避免速度太大转不过弯)
+        uSP = sign(uSP) * (abs(uSP) - 0.1*abs(yErr))
+
         # Debug 用输出
         # print("=============================================================================")
         # print("Guidance 输出:")
