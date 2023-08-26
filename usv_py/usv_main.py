@@ -28,6 +28,9 @@ DOCK_FINAL = 25
 DOCK_EMERGENCY = 29
 ATTACH = 31
 STOP = 9
+
+isTestEnable = True
+TEST_LINE = 100
 TEST_CIRCLE = 101
 
 # ROS 定频
@@ -87,7 +90,11 @@ def main(args=None):
             elif usvState == STANDBY:
                 if (usvComm.isTVEst):
                     rospy.loginfo("收到目标船的估计位置.")
-                    usvState = TEST_CIRCLE
+                    if (isTestEnable):
+                        rospy.loginfo("进入测试模式！")
+                        usvState = TEST_CIRCLE
+                    else:
+                        usvState = PURSUE
                 else:
                     rospy.loginfo("等待目标船的估计位置.")
                     
@@ -218,14 +225,18 @@ def main(args=None):
             elif usvState == DOCK_FINAL:
                 rospy.loginfo("USV 状态：泊近-最终段.")
                 return
+
+            elif usvState == TEST_LINE:
+
             
             elif usvState == TEST_CIRCLE:
                 if (isTestCirclePlan == False):
                     pi = 3.1415926
                     R = 30
+                    circleTimes = 4
                     cirCenX = usvPose.x - R * cos(usvPose.psi - pi/2)
                     cirCenY = usvPose.y - R * sin(usvPose.psi - pi/2)
-                    currPath = planCirclePath(cirCenX, cirCenY, R, usvPose.psi - pi/2, usvPose.psi - pi/2 + 4 * 2 * pi, 4)
+                    currPath = planCirclePath(cirCenX, cirCenY, R, usvPose.psi - pi/2, usvPose.psi - pi/2 + circleTimes * 2 * pi, 4)
                     usvGuidance.setPath(currPath)
                     rospy.loginfo("USV 测试-圆路径已规划.")
                     rospy.loginfo("当前状态：测试-圆.")
