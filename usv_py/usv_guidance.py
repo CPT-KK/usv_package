@@ -20,7 +20,7 @@ class Guidance():
     psiSP = 0.0
     uSP = 0.0
     vSP = 0.0
-    delta = 3.5 * 6.0
+    delta = 2 * 6.0
 
     path = zeros((2000, 2))
     currentIdx = 0
