@@ -16,7 +16,7 @@ class Control():
     xErrMax = 10.0
     yErrMax = 10.0
 
-    uSPMax = 3.0
+    uSPMax = 4.0
     rSPMax = deg2rad(45)
     vxSPMax = 3
     vySPMax = 3
@@ -49,8 +49,8 @@ class Control():
 
         # PID 初始化
         self.uPID = PID(0.75, 0.05, 0.01, control_frequency)
-        self.psiPID = PID(0.75, 0.05, 0.1, control_frequency)
-        self.rPID = PID(1.5, 0.005, 0.02, control_frequency)
+        self.psiPID = PID(1, 0.00, 0.0, control_frequency)
+        self.rPID = PID(2, 0.005, 0.05, control_frequency)
 
         self.xPID = PID(0.2, 0.000, 0.000, control_frequency)
         self.yPID = PID(0.2, 0.000, 0.000, control_frequency)
@@ -186,7 +186,6 @@ class Control():
         if (abs(rpmR) <= self.rpmMin) & (abs(rpmR) < self.rpmThreshold):
             rpmR = 0  
 
-   
         return [rpmL, rpmR, angleL, angleR]
     
     def thrustPub(self, rpmL, rpmR, angleL, angleR):
