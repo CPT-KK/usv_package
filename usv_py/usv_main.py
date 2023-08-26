@@ -246,7 +246,7 @@ def main(args=None):
                     rospy.signal_shutdown("Test end.")
                     return
 
-                [uSP, psiSP] = usvGuidance.guidance(1.5, 20.0, usvPose.x, usvPose.y, usvPose.beta)
+                [uSP, psiSP] = usvGuidance.guidance(1.5, 16.0, usvPose.x, usvPose.y, usvPose.beta)
                 usvControl.moveUSV(uSP, psiSP, usvPose.x, usvPose.y, usvPose.vx, usvPose.vy, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
 
 
