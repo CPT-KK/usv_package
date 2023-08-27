@@ -7,9 +7,9 @@ from geometry_msgs.msg import PointStamped
 from numpy import arctan
 
 class Communication():
-    isTVEst = True
-    tvEstPosX = -150
-    tvEstPosY = 150
+    isTVEst = False
+    tvEstPosX = 0
+    tvEstPosY = 0
 
     isBigObj = False
     bigObjAngle = 0

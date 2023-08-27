@@ -2,8 +2,9 @@
 
 import rospy
 import threading
+import atexit
 
-from numpy import zeros, rad2deg, median, deg2rad, sin, cos
+from numpy import zeros, rad2deg, median, deg2rad, sin, cos, pi
 from numpy.linalg import norm
 
 from usv_lidar import Lidar
@@ -32,9 +33,16 @@ STOP = 9
 isTestEnable = True
 TEST_LINE = 100
 TEST_CIRCLE = 101
+TEST_BOTH = 102
+TEST_MODE = TEST_LINE
 
 # ROS 定频
 ROSRATE = 10
+
+@atexit.register 
+def clean():
+    rospy.loginfo("程序退出...")
+    rospy.signal_shutdown("End of USV main node.")
 
 def main(args=None):
     # 添加主节点
@@ -62,6 +70,7 @@ def main(args=None):
     isDockMeasurePlan = False
     isDockTransferPlan = False
 
+    isTestLinePlan = False
     isTestCirclePlan = False
 
     # 无人船状态
@@ -92,7 +101,7 @@ def main(args=None):
                     rospy.loginfo("收到目标船的估计位置.")
                     if (isTestEnable):
                         rospy.loginfo("进入测试模式！")
-                        usvState = TEST_CIRCLE
+                        usvState = TEST_MODE
                     else:
                         usvState = PURSUE
                 else:
@@ -224,33 +233,73 @@ def main(args=None):
 
             elif usvState == DOCK_FINAL:
                 rospy.loginfo("USV 状态：泊近-最终段.")
-                return
+                break
 
             elif usvState == TEST_LINE:
-                rospy.signal_shutdown("Test end.")
-                return
+                if (isTestLinePlan == False):
+                    endX = -300
+                    endY = 200
+                    currPath = usvPathPlanner.planPursue(usvPose.x, usvPose.y, endX, endY)
+                    usvGuidance.setPath(currPath)
+                    rospy.loginfo("USV 测试-直线路径已规划. 前往 [%d, %d]." % (endX, endY))
+                    rospy.loginfo("当前状态：测试-直线.")
+                    isTestLinePlan = True
+
+                if (usvGuidance.currentIdx >= usvGuidance.endIdx):    
+                    rospy.loginfo("USV 测试-直线结束.")
+                    break
+
+                [uSP, psiSP] = usvGuidance.guidance(1.5, 16.0, usvPose.x, usvPose.y, usvPose.psi, usvPose.beta)
+                usvControl.moveUSV(uSP, psiSP, usvPose.x, usvPose.y, usvPose.vx, usvPose.vy, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
             
             elif usvState == TEST_CIRCLE:
                 if (isTestCirclePlan == False):
-                    pi = 3.1415926
                     R = 30
                     circleTimes = 4
                     cirCenX = usvPose.x - R * cos(usvPose.psi - pi/2)
                     cirCenY = usvPose.y - R * sin(usvPose.psi - pi/2)
                     currPath = planCirclePath(cirCenX, cirCenY, R, usvPose.psi - pi/2, usvPose.psi - pi/2 + circleTimes * 2 * pi, 4)
                     usvGuidance.setPath(currPath)
-                    rospy.loginfo("USV 测试-圆路径已规划.")
+                    rospy.loginfo("USV 测试-圆路径已规划. 圆心 [%.2f, %.2f]m. 半径 %.2fm. 环绕次数 %d." % (cirCenX, cirCenY, R, circleTimes))
                     rospy.loginfo("当前状态：测试-圆.")
                     isTestCirclePlan = True
 
-                if (usvGuidance.currentIdx >= usvGuidance.endIdx):
-                    rospy.signal_shutdown("Test end.")
-                    return
+                if (usvGuidance.currentIdx >= usvGuidance.endIdx):  
+                    rospy.loginfo("USV 测试-圆结束.")  
+                    break
 
                 [uSP, psiSP] = usvGuidance.guidance(1.5, 16.0, usvPose.x, usvPose.y, usvPose.psi, usvPose.beta)
                 usvControl.moveUSV(uSP, psiSP, usvPose.x, usvPose.y, usvPose.vx, usvPose.vy, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
 
+            elif usvState == TEST_BOTH:
+                if (isTestLinePlan == False):
+                    lineLength = 300
+                    endX = usvPose.x + lineLength*cos(usvPose.psi);
+                    endY = usvPose.y + lineLength*sin(usvPose.psi);
+                    currPath = usvPathPlanner.planPursue(usvPose.x, usvPose.y, endX, endY)
+                    usvGuidance.setPath(currPath)
+                    rospy.loginfo("USV 测试-直线+圆的直线段路径已规划. 前往 [%.2f, %.2f]m." % (endX, endY))
+                    rospy.loginfo("当前状态：测试-直线+圆 | 直线.")
+                    isTestLinePlan = True
 
+                if (usvGuidance.currentIdx >= usvGuidance.endIdx & isTestCirclePlan == False):  
+                    R = 30
+                    circleTimes = 3
+                    cirCenX = usvPose.x - R * cos(usvPose.psi - pi/2)
+                    cirCenY = usvPose.y - R * sin(usvPose.psi - pi/2)
+                    currPath = planCirclePath(cirCenX, cirCenY, R, usvPose.psi - pi/2, usvPose.psi - pi/2 + circleTimes * 2 * pi, 4)
+                    usvGuidance.setPath(currPath)
+                    rospy.loginfo("USV 测试-直线+圆的圆段路径已规划. 圆心 [%.2f, %.2f]m. 半径 %.2fm. 环绕次数 %d." % (cirCenX, cirCenY, R, circleTimes))
+                    rospy.loginfo("当前状态：测试-直线+圆 | 圆.")
+                    isTestCirclePlan = True
+
+                if (usvGuidance.currentIdx >= usvGuidance.endIdx):  
+                    rospy.loginfo("USV 测试-直线+圆结束.")  
+                    break
+                
+                [uSP, psiSP] = usvGuidance.guidance(1.5, 16.0, usvPose.x, usvPose.y, usvPose.psi, usvPose.beta)
+                usvControl.moveUSV(uSP, psiSP, usvPose.x, usvPose.y, usvPose.vx, usvPose.vy, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
+                
             # elif usvState == DOCK_EMERGENCY:
 
             # elif usvState == STOP:
@@ -260,6 +309,7 @@ def main(args=None):
             else:
                 # 程序不应该执行到这里
                 rospy.loginfo("变量 [usvState] 取到异常值 %d，请检查程序." % (usvState))
+                break
             
             rosRate.sleep()
 
