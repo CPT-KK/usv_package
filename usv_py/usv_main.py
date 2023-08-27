@@ -139,7 +139,7 @@ def main(args=None):
                     continue
 
                 # 如果没有找到目标船，则继续跟随追踪路径
-                [uSP, psiSP] = usvGuidance.guidance(3.0, 25.0, usvPose.x, usvPose.y,usvPose.beta)
+                [uSP, psiSP] = usvGuidance.guidance(3.0, 25.0, usvPose.x, usvPose.y, usvPose.psi, usvPose.beta)
                 usvControl.moveUSV(uSP, psiSP, usvPose.x, usvPose.y, usvPose.vx, usvPose.vy, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
 
             elif usvState == PURSUE_DETECT_OBS:
@@ -165,7 +165,7 @@ def main(args=None):
                     rospy.loginfo("USV 状态：泊近-接近段.")
                     isDockApproachPlan = True
                         
-                [uSP, psiSP] = usvGuidance.guidance(2.0, 20.0, usvPose.x, usvPose.y, usvPose.beta)
+                [uSP, psiSP] = usvGuidance.guidance(2.0, 20.0, usvPose.x, usvPose.y, usvPose.psi, usvPose.beta)
                 usvControl.moveUSV(uSP, psiSP, usvPose.x, usvPose.y, usvPose.vx, usvPose.vy, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
 
                 # 如果接近段结束了，则进入测量段
@@ -182,7 +182,7 @@ def main(args=None):
                     isDockMeasurePlan = True
                     rospy.loginfo("开始测量目标船姿态.")
        
-                [uSP, psiSP] = usvGuidance.guidance(2.0, 20.0, usvPose.x, usvPose.y, usvPose.beta)
+                [uSP, psiSP] = usvGuidance.guidance(2.0, 20.0, usvPose.x, usvPose.y, usvPose.psi, usvPose.beta)
                 usvControl.moveUSV(uSP, psiSP, usvPose.x, usvPose.y, usvPose.vx, usvPose.vy, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
 
                 # 读取激光雷达信息（这个时候应该能保证读到目标船吧？）
@@ -227,7 +227,8 @@ def main(args=None):
                 return
 
             elif usvState == TEST_LINE:
-
+                rospy.signal_shutdown("Test end.")
+                return
             
             elif usvState == TEST_CIRCLE:
                 if (isTestCirclePlan == False):
@@ -246,7 +247,7 @@ def main(args=None):
                     rospy.signal_shutdown("Test end.")
                     return
 
-                [uSP, psiSP] = usvGuidance.guidance(1.5, 16.0, usvPose.x, usvPose.y, usvPose.beta)
+                [uSP, psiSP] = usvGuidance.guidance(1.5, 16.0, usvPose.x, usvPose.y, usvPose.psi, usvPose.beta)
                 usvControl.moveUSV(uSP, psiSP, usvPose.x, usvPose.y, usvPose.vx, usvPose.vy, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
 
 

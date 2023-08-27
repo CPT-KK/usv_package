@@ -2,7 +2,7 @@
 
 import rospy
 from geometry_msgs.msg import PointStamped
-from numpy import sin, cos, tan, arcsin, arccos, arctan, arctan2, rad2deg, deg2rad
+from numpy import sin, cos, tan, arcsin, arccos, arctan, arctan2, rad2deg, deg2rad, sign, pi
 from numpy import clip, size, zeros, array
 from numpy.linalg import norm
 from usv_math import rotationZ, wrapToPi
@@ -45,7 +45,7 @@ class Guidance():
 
         self.isPathInit = True
 
-    def guidance(self, uSP, dist2Next, x, y, beta):
+    def guidance(self, uSP, dist2Next, x, y, psi, beta):
         if (self.isPathInit == False):
             return [None, None]
         
@@ -73,6 +73,10 @@ class Guidance():
 
         # 计算期望的朝向角
         psiSP = tanAngle - beta + arctan2(-yErr, self.delta)
+
+        # 根据 yErr 的值，计算可行的 uSP (避免速度太大转不过弯)
+        psiErr = wrapToPi(psiSP - psi)
+        uSP = uSP * abs(psiErr / pi)
 
         # Debug 用输出
         # print("=============================================================================")
@@ -114,9 +118,6 @@ class Guidance():
 
         # 计算期望的朝向角
         psiSP = wrapToPi(tanAngle + arctan2(-yErr, self.delta))
-
-        # 根据 yErr 的值，计算可行的 uSP (避免速度太大转不过弯)
-        uSP = sign(uSP) * (abs(uSP) - 0.1*abs(yErr))
 
         # Debug 用输出
         # print("=============================================================================")
