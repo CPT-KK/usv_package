@@ -97,13 +97,13 @@ def main(args=None):
                     rospy.loginfo("等待传来 USV 位置.")
 
             elif usvState == STANDBY:
+                if (isTestEnable):
+                    rospy.loginfo("测试模式启动，不再接收目标船的估计位置.")
+                    usvState = TEST_MODE
+
                 if (usvComm.isTVEst):
                     rospy.loginfo("收到目标船的估计位置.")
-                    if (isTestEnable):
-                        rospy.loginfo("进入测试模式！")
-                        usvState = TEST_MODE
-                    else:
-                        usvState = PURSUE
+                    usvState = PURSUE
                 else:
                     rospy.loginfo("等待目标船的估计位置.")
                     
