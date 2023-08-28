@@ -8,7 +8,7 @@ from numpy.linalg import norm
 from usv_math import rotationZ, wrapToPi
 
 class Guidance():
-    uSPMax = 3.0
+    uSPMax = 4.0
     dist2NextMax = 30
     dist2NextMin = 8
     vel2NextMax = 1.5
@@ -20,7 +20,7 @@ class Guidance():
     psiSP = 0.0
     uSP = 0.0
     vSP = 0.0
-    delta = 2 * 6.0
+    delta = 2.5 * 6.0
 
     path = zeros((2000, 2))
     currentIdx = 0
@@ -76,7 +76,7 @@ class Guidance():
 
         # 根据 yErr 的值，计算可行的 uSP (避免速度太大转不过弯)
         psiErr = wrapToPi(psiSP - psi)
-        uSP = uSP * (0.5 + 0.5*(1-abs(psiErr / pi)))    
+        uSP = uSP * (0.4 + 0.6*(1-abs(psiErr / pi)))    
 
         # Debug 用输出
         # print("=============================================================================")
