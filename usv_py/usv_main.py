@@ -34,7 +34,7 @@ isTestEnable = True
 TEST_LINE = 100
 TEST_CIRCLE = 101
 TEST_BOTH = 102
-TEST_MODE = TEST_BOTH
+TEST_MODE = TEST_LINE
 
 # ROS 定频
 ROSRATE = 10
@@ -237,8 +237,8 @@ def main(args=None):
 
             elif usvState == TEST_LINE:
                 if (isTestLinePlan == False):
-                    endX = -150
-                    endY = 100
+                    endX = 0
+                    endY = -100
                     # endX = -400
                     # endY = 300
                     currPath = usvPathPlanner.planPursue(usvPose.x, usvPose.y, endX, endY)
@@ -277,7 +277,7 @@ def main(args=None):
 
             elif usvState == TEST_BOTH:
                 
-                if (isTestLinePlan == False):
+                if (isTestLinePlan == False) & (isTestCirclePlan == False):
                     lineLength = 200
                     endX = usvPose.x + lineLength*cos(usvPose.psi);
                     endY = usvPose.y + lineLength*sin(usvPose.psi);
