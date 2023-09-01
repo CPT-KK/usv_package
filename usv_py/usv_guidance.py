@@ -94,11 +94,11 @@ class Guidance():
         if (self.isPathInit == False):
             return [None, None, None]
         
-        if (self.currentIdx >= self.endIdx):
+        if (self.currentIdx > self.endIdx):
             return [None, None, None]
         
         # 限幅
-        dist2Next = clip(dist2Next, self.dist2NextMin, self.dist2NextMax)
+        dist2Next = clip(dist2Next, - self.dist2NextMin, self.dist2NextMax)
         vel2Next = clip(vel2Next, - self.vel2NextMax, self.vel2NextMin)
 
         # 更新当前的跟踪点

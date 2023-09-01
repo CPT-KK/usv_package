@@ -26,7 +26,7 @@ class Control():
     rpmThreshold = 50
     rpmMin = 250
     rpmMax = 1250
-    angleMax = 1.047198 # 60 deg
+    angleMax = 1.3963 # 60 deg
 
     # 无人船参数
     usvMass = 775.0
@@ -161,8 +161,8 @@ class Control():
 
     def mixer(self, axSP, aySP, etaSP):
         # 计算推力偏角
-        angleL = arctan(aySP / axSP)
-        angleR = arctan(aySP / axSP)
+        angleL = -arctan(aySP / axSP)
+        angleR = -arctan(aySP / axSP)
 
         # 推力偏角限幅
         angleL = clip(angleL, -self.angleMax, self.angleMax)
@@ -208,33 +208,33 @@ if __name__ == '__main__':
     rosRate = rospy.Rate(rate)
     usvControl = Control(5)
 
-    lastTime = 10
+    lastTime = 20
     loopTimes = round(lastTime / (1 / rate))
 
-    rpmValue = 400
-    angleValue = 0
+    rpmValue = 500
+    angleValue = deg2rad(-85)
 
-    rospy.loginfo("Moving forward...")
-    for i in range(loopTimes):
-        usvControl.thrustPub(rpmValue, rpmValue, 0, 0)
-        rosRate.sleep()
-
-    rospy.loginfo("Moving backward...")
-    for i in range(loopTimes):
-        usvControl.thrustPub(-rpmValue, -rpmValue, 0, 0)
-        rosRate.sleep()
-
-    # rospy.loginfo("Moving left forward...")
+    # rospy.loginfo("Moving forward...")
     # for i in range(loopTimes):
-    #     usvControl.thrustPub(rpmValue, rpmValue, angleValue, angleValue)
+    #     usvControl.thrustPub(rpmValue, rpmValue, 0, 0)
     #     rosRate.sleep()
+
+    # rospy.loginfo("Moving backward...")
+    # for i in range(loopTimes):
+    #     usvControl.thrustPub(-rpmValue, -rpmValue, 0, 0)
+    #     rosRate.sleep()
+
+    rospy.loginfo("Moving left forward...")
+    for i in range(loopTimes):
+        usvControl.thrustPub(rpmValue, rpmValue, angleValue, angleValue)
+        rosRate.sleep()
 
     # rospy.loginfo("Moving right forward...")
     # for i in range(loopTimes):
     #     usvControl.thrustPub(rpmValue, rpmValue, -angleValue, -angleValue)
     #     rosRate.sleep()
 
-    rospy.loginfo("Stopping...")
-    for i in range(loopTimes):
-        usvControl.thrustPub(0, 0, 0, 0)
-        rosRate.sleep()
+    # rospy.loginfo("Stopping...")
+    # for i in range(loopTimes):
+    #     usvControl.thrustPub(0, 0, 0, 0)
+    #     rosRate.sleep()

@@ -39,7 +39,7 @@ TEST_VECT_LINE = 103
 TEST_VECT_CIRCLE = 104
 TEST_VECT_BOTH = 105
 
-TEST_MODE = TEST_LINE
+TEST_MODE = TEST_VECT_LINE
 
 # ROS 定频
 ROSRATE = 10
@@ -242,23 +242,22 @@ def main(args=None):
                 
             #LOS测试部分
             elif usvState == TEST_LINE:
-
                 if (isTestLinePlan == False):
-                    endX = 0
-                    endY = -100
+                    endX = -50
+                    endY = 50
                     # endX = -400
                     # endY = 300
                     currPath = usvPathPlanner.planPursue(usvPose.x, usvPose.y, endX, endY)
                     usvGuidance.setPath(currPath)
                     rospy.loginfo("USV 测试-直线路径已规划. 前往 [%d, %d]." % (endX, endY))
                     rospy.loginfo("当前状态：测试-直线.")   
-                    isTestLinePlan = True
+                    isTestLinePlan = True       
 
                 if (usvGuidance.currentIdx >= usvGuidance.endIdx):    
                     rospy.loginfo("USV 测试-直线结束.")
                     break
 
-                [uSP, psiSP] = usvGuidance.guidance(4, 20.0, usvPose.x, usvPose.y, usvPose.psi, usvPose.beta)
+                [uSP, psiSP] = usvGuidance.guidance(2.5, 20.0, usvPose.x, usvPose.y, usvPose.psi, usvPose.beta)
                 usvControl.moveUSV(uSP, psiSP, usvPose.x, usvPose.y, usvPose.vx, usvPose.vy, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
             
             elif usvState == TEST_CIRCLE:
@@ -319,10 +318,9 @@ def main(args=None):
 
             # 矢量推力 测试部分
             elif usvState == TEST_VECT_LINE:
-
                 if (isTestLinePlan == False):
-                    endX = 0
-                    endY = -100
+                    endX = usvPose.x
+                    endY = usvPose.y
                     # endX = -400
                     # endY = 300
                     currPath = usvPathPlanner.planPursue(usvPose.x, usvPose.y, endX, endY)
@@ -331,11 +329,11 @@ def main(args=None):
                     rospy.loginfo("当前状态：矢量推力测试-直线.")   
                     isTestLinePlan = True
 
-                if (usvGuidance.currentIdx >= usvGuidance.endIdx):    
-                    rospy.loginfo("USV 矢量推力测试-直线结束.")
-                    break
+                # if (usvGuidance.currentIdx >= usvGuidance.endIdx):    
+                #     rospy.loginfo("USV 矢量推力测试-直线结束.")
+                #     break
 
-                [xSP, ySP, psiSP] = usvGuidance.guidanceVec(4, 4, usvPose.x, usvPose.y)
+                [xSP, ySP, psiSP] = usvGuidance.guidanceVec(5, 4, usvPose.x, usvPose.y)
                 usvControl.moveUSVVec(xSP, ySP, psiSP, usvPose.x, usvPose.y, usvPose.vx, usvPose.vy, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
             
             elif usvState == TEST_VECT_CIRCLE:
