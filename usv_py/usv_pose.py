@@ -9,7 +9,8 @@ from geometry_msgs.msg import PoseStamped, TwistStamped
 from nav_msgs.msg import Odometry
 from sensor_msgs.msg import Imu
 
-from quaternions import Quaternion
+# from quaternions import Quaternion
+from tf.transformations import quaternion_from_euler, euler_from_quaternion
 
 class Pose():
     t = 0.0
@@ -57,9 +58,7 @@ class Pose():
         self.ayb = imu.linear_acceleration.y
         self.r = imu.angular_velocity.z     
 
-        q = Quaternion(imu.orientation.w, imu.orientation.x, imu.orientation.y, imu.orientation.z)
-        rpyAngle = Quaternion.get_euler(q)
-        self.psi = rpyAngle[2]
+        [_, _, self.psi] = euler_from_quaternion([odom.pose.pose.orientation.x, odom.pose.pose.orientation.w, odom.pose.pose.orientation.z, odom.pose.pose.orientation.w])
         
         [self.vx, self.vy]  = rotationZ(self.u, self.v, -self.psi)
 
