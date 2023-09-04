@@ -5,7 +5,7 @@ from numpy import arctan2
 from numpy.linalg import norm
 from usv_math import rotationZ
 
-from geometry_msgs.msg import PoseStamped, TwistStamped
+from geometry_msgs.msg import PoseStamped, TwistStamped, Vector3Stamped
 from nav_msgs.msg import Odometry
 from sensor_msgs.msg import Imu
 
@@ -37,6 +37,9 @@ class Pose():
     x_lidar_last = 0
     y_lidat_last = 0
 
+    u_dvl = 0
+    v_dvl = 0
+
     def __init__(self):
         # For PX4 MAVROS local position and velocity (Velocity is in USV body frame)
         self.px4OdomSub = message_filters.Subscriber('/mavros/local_position/odom', Odometry) 
@@ -47,8 +50,10 @@ class Pose():
         self.ts = message_filters.ApproximateTimeSynchronizer([self.px4OdomSub, self.px4IMUSub], queue_size=10, slop=0.1)
         self.ts.registerCallback(self.poseCallback)
 
+        # For doppler
+        self.dvlVelSub = rospy.Subscriber('/mavros/vision_speed/speed_vector', Vector3Stamped, self.dvlVelSub)
+
     def poseCallback(self, odom, imu):
-        
         self.t = 0.5 * (odom.header.stamp.secs + 1e-9 * odom.header.stamp.nsecs + imu.header.stamp.secs + 1e-9 * imu.header.stamp.nsecs)
         self.x = odom.pose.pose.position.x
         self.y = odom.pose.pose.position.y
@@ -68,6 +73,10 @@ class Pose():
             self.beta = arctan2(self.v, self.u)
         self.isValid = True
         
+    def dvlCallback(self, dvlMsg):
+        self.u_dvl = dvlMsg.vector.x
+        self.v_dvl = dvlMsg.vector.y
+
 
 if __name__ == '__main__':
     # 以下代码为测试代码

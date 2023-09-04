@@ -35,11 +35,11 @@ TEST_LINE = 100
 TEST_CIRCLE = 101
 TEST_BOTH = 102
 
-TEST_VECT_LINE = 103
+TEST_VEC_STABLE = 103
 TEST_VECT_CIRCLE = 104
 TEST_VECT_BOTH = 105
 
-TEST_MODE = TEST_VECT_LINE
+TEST_MODE = TEST_VEC_STABLE
 
 # ROS 定频
 ROSRATE = 10
@@ -154,7 +154,7 @@ def main(args=None):
 
                 # 如果没有找到目标船，则继续跟随追踪路径
                 [uSP, psiSP] = usvGuidance.guidance(3.0, 25.0, usvPose.x, usvPose.y, usvPose.psi, usvPose.beta)
-                usvControl.moveUSV(uSP, psiSP, usvPose.x, usvPose.y, usvPose.vx, usvPose.vy, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
+                usvControl.moveUSV(uSP, psiSP, usvPose.u, usvPose.axb, usvPose.psi, usvPose.r)
 
             elif usvState == PURSUE_DETECT_OBS:
                 # 读取激光雷达信息 
@@ -163,7 +163,7 @@ def main(args=None):
                 # 判断是否还需要避障
                 if (isObsFound):       
                     [uSP, psiSP] = usvGuidance.guidanceOBS(usvLidar.objInfo[idxOBS, 0],usvLidar.objInfo[idxOBS, 1], usvLidar.objInfo[idxOBS, 5], usvPose.psi, usvPose.beta, 1.0)
-                    usvControl.moveUSV(uSP, psiSP, usvPose.x, usvPose.y, usvPose.vx, usvPose.vy, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r) 
+                    usvControl.moveUSV(uSP, psiSP, usvPose.u, usvPose.axb, usvPose.psi, usvPose.r) 
                 else:
                     rospy.loginfo("USV 避障完成，恢复追踪目标船.")
                     isPursuePlan = False
@@ -180,7 +180,7 @@ def main(args=None):
                     isDockApproachPlan = True
                         
                 [uSP, psiSP] = usvGuidance.guidance(2.0, 20.0, usvPose.x, usvPose.y, usvPose.psi, usvPose.beta)
-                usvControl.moveUSV(uSP, psiSP, usvPose.x, usvPose.y, usvPose.vx, usvPose.vy, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
+                usvControl.moveUSV(uSP, psiSP, usvPose.u, usvPose.axb, usvPose.psi, usvPose.r)
 
                 # 如果接近段结束了，则进入测量段
                 if (usvGuidance.currentIdx >= usvGuidance.endIdx):
@@ -197,7 +197,7 @@ def main(args=None):
                     rospy.loginfo("开始测量目标船姿态.")
        
                 [uSP, psiSP] = usvGuidance.guidance(2.0, 20.0, usvPose.x, usvPose.y, usvPose.psi, usvPose.beta)
-                usvControl.moveUSV(uSP, psiSP, usvPose.x, usvPose.y, usvPose.vx, usvPose.vy, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
+                usvControl.moveUSV(uSP, psiSP, usvPose.u, usvPose.axb, usvPose.psi, usvPose.r)
 
                 # 读取激光雷达信息（这个时候应该能保证读到目标船吧？）
                 [idxTV, isTVFound, _, _] = usvLidar.objRead(usvPose.x, usvPose.y, usvPose.psi, usvPose.beta, usvComm.tvEstPosX, usvComm.tvEstPosY)
@@ -240,7 +240,7 @@ def main(args=None):
                 rospy.loginfo("USV 状态：泊近-最终段.")
                 break
                 
-            #LOS测试部分
+            # 测试部分
             elif usvState == TEST_LINE:
                 if (isTestLinePlan == False):
                     endX = -50
@@ -258,7 +258,7 @@ def main(args=None):
                     break
 
                 [uSP, psiSP] = usvGuidance.guidance(2.5, 20.0, usvPose.x, usvPose.y, usvPose.psi, usvPose.beta)
-                usvControl.moveUSV(uSP, psiSP, usvPose.x, usvPose.y, usvPose.vx, usvPose.vy, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
+                usvControl.moveUSV(uSP, psiSP, usvPose.u, usvPose.axb, usvPose.psi, usvPose.r)
             
             elif usvState == TEST_CIRCLE:
 
@@ -280,7 +280,7 @@ def main(args=None):
                 # R = 30m, dist2Next = 15m, uSP = 3m/s
                 # R = 15m, dist2Next = 7m, uSP = 2.6m/s
                 [uSP, psiSP] = usvGuidance.guidance(2.6, 7, usvPose.x, usvPose.y, usvPose.psi, usvPose.beta)
-                usvControl.moveUSV(uSP, psiSP, usvPose.x, usvPose.y, usvPose.vx, usvPose.vy, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
+                usvControl.moveUSV(uSP, psiSP, usvPose.u, usvPose.axb, usvPose.psi, usvPose.r)
 
             elif usvState == TEST_BOTH:
                 
@@ -314,83 +314,19 @@ def main(args=None):
                     break
                 
                 [uSP, psiSP] = usvGuidance.guidance(theSpeed, theDist2Next, usvPose.x, usvPose.y, usvPose.psi, usvPose.beta)
-                usvControl.moveUSV(uSP, psiSP, usvPose.x, usvPose.y, usvPose.vx, usvPose.vy, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
+                usvControl.moveUSV(uSP, psiSP, usvPose.u, usvPose.axb, usvPose.psi, usvPose.r)
 
             # 矢量推力 测试部分
-            elif usvState == TEST_VECT_LINE:
+            elif usvState == TEST_VEC_STABLE:
                 if (isTestLinePlan == False):
-                    endX = usvPose.x
-                    endY = usvPose.y
-                    # endX = -400
-                    # endY = 300
-                    currPath = usvPathPlanner.planPursue(usvPose.x, usvPose.y, endX, endY)
-                    usvGuidance.setPath(currPath)
-                    rospy.loginfo("USV 矢量推力测试-直线路径已规划. 前往 [%d, %d]." % (endX, endY))
-                    rospy.loginfo("当前状态：矢量推力测试-直线.")   
+                    rospy.loginfo("USV 矢量推力-自稳测试")
                     isTestLinePlan = True
 
-                # if (usvGuidance.currentIdx >= usvGuidance.endIdx):    
-                #     rospy.loginfo("USV 矢量推力测试-直线结束.")
-                #     break
+                # GPS
+                usvControl.moveUSVVec2(0, 0, usvPose.psi, usvPose.u, usvPose.v, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
 
-                [xSP, ySP, psiSP] = usvGuidance.guidanceVec(5, 4, usvPose.x, usvPose.y)
-                usvControl.moveUSVVec(xSP, ySP, psiSP, usvPose.x, usvPose.y, usvPose.vx, usvPose.vy, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
-            
-            elif usvState == TEST_VECT_CIRCLE:
-                if (isTestCirclePlan == False):
-                    R = 15
-                    circleTimes = 3
-                    cirCenX = usvPose.x - R * cos(usvPose.psi - pi/2)
-                    cirCenY = usvPose.y - R * sin(usvPose.psi - pi/2)
-                    currPath = planCirclePath(cirCenX, cirCenY, R, usvPose.psi - pi/2, usvPose.psi - pi/2 + circleTimes * 2 * pi, 4)
-                    usvGuidance.setPath(currPath)
-                    rospy.loginfo("USV 矢量推力测试-圆路径已规划. 圆心 [%.2f, %.2f]m. 半径 %.2fm. 环绕次数 %d." % (cirCenX, cirCenY, R, circleTimes))
-                    rospy.loginfo("当前状态：矢量推力测试-圆.")
-                    isTestCirclePlan = True
-
-                if (usvGuidance.currentIdx >= usvGuidance.endIdx):  
-                    rospy.loginfo("USV 矢量推力测试-圆结束.")  
-                    break
-    
-                [xSP, ySP, psiSP] = usvGuidance.guidanceVec(2.6, 7, usvPose.x, usvPose.y)
-                usvControl.moveUSVVec(xSP, ySP, psiSP, usvPose.x, usvPose.y, usvPose.vx, usvPose.vy, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
-
-            elif usvState == TEST_VECT_BOTH:
-                
-                if (isTestLinePlan == False) & (isTestCirclePlan == False):
-                    lineLength = 200
-                    endX = usvPose.x + lineLength*cos(usvPose.psi);
-                    endY = usvPose.y + lineLength*sin(usvPose.psi);
-                    currPath = usvPathPlanner.planPursue(usvPose.x, usvPose.y, endX, endY)
-                    usvGuidance.setPath(currPath)
-                    rospy.loginfo("USV 矢量推力测试-直线+圆的直线段路径已规划. 前往 [%.2f, %.2f]m." % (endX, endY))
-                    rospy.loginfo("当前状态：矢量推力测试-直线+圆 | 直线.")
-                    isTestLinePlan = True
-                    vel2Next = 4
-                    dist2Next = 20
-
-                if (usvGuidance.currentIdx >= usvGuidance.endIdx) & (isTestLinePlan == True) & (isTestCirclePlan == False):  
-                    R = 30
-                    circleTimes = 3
-                    cirCenX = usvPose.x - R * cos(usvPose.psi - pi/2)
-                    cirCenY = usvPose.y - R * sin(usvPose.psi - pi/2)
-                    currPath = planCirclePath(cirCenX, cirCenY, R, usvPose.psi - pi/2, usvPose.psi - pi/2 + circleTimes * 2 * pi, 4)
-                    usvGuidance.setPath(currPath)
-                    rospy.loginfo("USV 矢量推力测试-直线+圆的圆段路径已规划. 圆心 [%.2f, %.2f]m. 半径 %.2fm. 环绕次数 %d." % (cirCenX, cirCenY, R, circleTimes))    
-                    rospy.loginfo("当前状态：矢量推力测试-直线+圆 | 圆.")
-                    isTestCirclePlan = True
-                    vel2Next = 3
-                    dist2Next = 16
-
-                if (usvGuidance.currentIdx >= usvGuidance.endIdx & isTestCirclePlan == True & isTestLinePlan == True):  
-                    rospy.loginfo("USV 矢量推力测试-直线+圆结束.")  
-                    break
-                
-                [xSP, ySP, psiSP] = usvGuidance.guidanceVec(dist2Next, vel2Next, usvPose.x, usvPose.y)
-                usvControl.moveUSVVec(xSP, ySP, psiSP, usvPose.x, usvPose.y, usvPose.vx, usvPose.vy, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
-
-
-
+                # DVL
+                # usvControl.moveUSVVec2(0, 0, usvPose.psi, usvPose.u_dvl, usvPose.v_dvl, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
 
             # elif usvState == DOCK_EMERGENCY:
 

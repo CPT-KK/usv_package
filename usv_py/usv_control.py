@@ -18,15 +18,15 @@ class Control():
 
     uSPMax = 4.0
     rSPMax = deg2rad(45)
-    vxSPMax = 3
-    vySPMax = 3
+    uSPMax = 3
+    vSPMax = 1
 
     # USV motor from 250RPM to 1300RPM
-    # USV angle from -80deg to 80deg
+    # USV angle from -85deg to 85deg
     rpmThreshold = 50
     rpmMin = 250
     rpmMax = 1250
-    angleMax = 1.3963 # 60 deg
+    angleMax = deg2rad(85) # 85 deg
 
     # 无人船参数
     usvMass = 775.0
@@ -54,8 +54,8 @@ class Control():
 
         self.xPID = PID(0.2, 0.000, 0.000, control_frequency)
         self.yPID = PID(0.2, 0.000, 0.000, control_frequency)
-        self.vxPID = PID(0.4, 0.005, 0.01, control_frequency)
-        self.vyPID = PID(0.5, 0.005, 0.01, control_frequency)
+        self.vxPID = PID(0.6, 0.00, 0.05, control_frequency)
+        self.vyPID = PID(0.8, 0.00, 0.05, control_frequency)
 
     def __del__(self):
         # 析构时，关闭无人船推力输出
@@ -64,9 +64,8 @@ class Control():
             self.thrustPub(0.0, 0.0, 0.0, 0.0)
 
 
-    def moveUSV(self, uSP, psiSP, x, y, vx, vy, axb, ayb, psi, r):
+    def moveUSV(self, uSP, psiSP, u, axb, psi, r):
         # 计算船体系速度
-        [u, v] = rotationZ(vx, vy, psi)
 
         # 限幅
         uSP = clip(uSP, - self.uSPMax, self.uSPMax)
@@ -110,6 +109,44 @@ class Control():
 
         return
     
+    def moveUSVVec2(self, uSP, vSP, psiSP, u, v, axb, ayb, psi, r):
+        # u v setpoints 限幅
+        uSP = clip(uSP, -self.uSPMax, self.uSPMax)
+        vSP = clip(vSP, -self.vSPMax, self.vSPMax)
+
+        # 计算 vx vy 误差
+        uErr = uSP - u
+        vErr = vSP - v
+
+        axbSP = self.vxPID.compute(uErr, axb)
+        aybSP = self.vyPID.compute(vErr, ayb)
+
+        # 计算朝向角误差
+        psiErr = psiSP - psi
+
+        # 朝向角误差限幅
+        psiErr = wrapToPi(psiErr)
+
+        # 计算期望朝向角速度
+        rSP = self.psiPID.compute(psiErr, r)
+
+        # 期望朝向角速度限幅
+        rSP = wrapToPi(rSP)
+
+        # 计算期望角速度误差
+        rErr = rSP - r
+
+        # 计算所需角加速度大小
+        etaSP = self.rPID.compute(rErr)
+
+        # 送入混控
+        [rpmL, rpmR, angleL, angleR] = self.mixer(axbSP, aybSP, etaSP)
+
+        # 发布推力
+        self.thrustPub(rpmL, rpmR, angleL, angleR)
+
+        return
+
     def moveUSVVec(self, xSP, ySP, psiSP, x, y, vx, vy, axb, ayb, psi, r):
         # 计算 x y 误差
         xErr = xSP - x
@@ -120,8 +157,8 @@ class Control():
         vySP = self.yPID.compute(yErr, vy)
 
         # vx vy setpoints 限幅
-        vxSP = clip(vxSP, - self.vxSPMax, self.vxSPMax)
-        vySP = clip(vySP, - self.vySPMax, self.vySPMax)
+        vxSP = clip(vxSP, - self.uSPMax, self.uSPMax)
+        vySP = clip(vySP, - self.vSPMax, self.vSPMax)
        
         # 计算 vx vy 误差
         vxErr = vxSP - vx
