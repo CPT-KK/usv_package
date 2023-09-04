@@ -63,7 +63,7 @@ class Pose():
         self.ayb = imu.linear_acceleration.y
         self.r = imu.angular_velocity.z     
 
-        [_, _, self.psi] = euler_from_quaternion([odom.pose.pose.orientation.x, odom.pose.pose.orientation.w, odom.pose.pose.orientation.z, odom.pose.pose.orientation.w])
+        [_, _, self.psi] = euler_from_quaternion([odom.pose.pose.orientation.x, odom.pose.pose.orientation.y, odom.pose.pose.orientation.z, odom.pose.pose.orientation.w])
         
         [self.vx, self.vy]  = rotationZ(self.u, self.v, -self.psi)
 
