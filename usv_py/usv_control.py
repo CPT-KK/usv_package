@@ -52,10 +52,10 @@ class Control():
         self.psiPID = PID(1, 0.00, 0.0, control_frequency)
         self.rPID = PID(2, 0.01, 0.1, control_frequency)
 
-        self.xPID = PID(0.2, 0.000, 0.000, control_frequency)
-        self.yPID = PID(0.2, 0.000, 0.000, control_frequency)
-        self.vxPID = PID(0.6, 0.00, 0.05, control_frequency)
-        self.vyPID = PID(0.8, 0.00, 0.05, control_frequency)
+        self.xPID = PID(0.12, 0.000, 0.000, control_frequency)
+        self.yPID = PID(0.15, 0.000, 0.000, control_frequency)
+        self.vxPID = PID(0.4, 0.00, 0.05, control_frequency)
+        self.vyPID = PID(0.5, 0.00, 0.05, control_frequency)
 
     def __del__(self):
         # 析构时，关闭无人船推力输出
@@ -250,6 +250,7 @@ if __name__ == '__main__':
 
     rpmValue = 500
     angleValue = deg2rad(-85)
+    
 
     # rospy.loginfo("Moving forward...")
     # for i in range(loopTimes):
@@ -261,10 +262,10 @@ if __name__ == '__main__':
     #     usvControl.thrustPub(-rpmValue, -rpmValue, 0, 0)
     #     rosRate.sleep()
 
-    rospy.loginfo("Moving left forward...")
-    for i in range(loopTimes):
-        usvControl.thrustPub(rpmValue, rpmValue, angleValue, angleValue)
-        rosRate.sleep()
+    # rospy.loginfo("Moving left forward...")
+    # for i in range(loopTimes):
+    #     usvControl.thrustPub(rpmValue, rpmValue, angleValue, angleValue)
+    #     rosRate.sleep()
 
     # rospy.loginfo("Moving right forward...")
     # for i in range(loopTimes):

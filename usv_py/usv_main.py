@@ -322,8 +322,10 @@ def main(args=None):
                     rospy.loginfo("USV 矢量推力-自稳测试")
                     isTestLinePlan = True
 
+                usvControl.moveUSV(2.5, deg2rad(-72), usvPose.u_dvl, usvPose.axb, usvPose.psi, usvPose.r)
+
                 # GPS
-                usvControl.moveUSVVec2(0, 0, usvPose.psi, usvPose.u, usvPose.v, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
+                # usvControl.moveUSVVec2(0, 0, usvPose.psi, usvPose.u, usvPose.v, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
 
                 # DVL
                 # usvControl.moveUSVVec2(0, 0, usvPose.psi, usvPose.u_dvl, usvPose.v_dvl, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)

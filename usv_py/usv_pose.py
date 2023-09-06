@@ -51,7 +51,7 @@ class Pose():
         self.ts.registerCallback(self.poseCallback)
 
         # For doppler
-        self.dvlVelSub = rospy.Subscriber('/mavros/vision_speed/speed_vector', Vector3Stamped, self.dvlVelSub)
+        self.dvlVelSub = rospy.Subscriber('/mavros/vision_speed/speed_vector', Vector3Stamped, self.dvlCallback)
 
     def poseCallback(self, odom, imu):
         self.t = 0.5 * (odom.header.stamp.secs + 1e-9 * odom.header.stamp.nsecs + imu.header.stamp.secs + 1e-9 * imu.header.stamp.nsecs)

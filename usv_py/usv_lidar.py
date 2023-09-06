@@ -24,9 +24,9 @@ class Lidar():
     tvPredictR = 15
 
     def __init__(self):
-        self.lidar1 = message_filters.Subscriber('/usv/slot0/points', PointCloud2)
-        self.lidar2 = message_filters.Subscriber('/usv/slot2/points', PointCloud2)
-        self.lidar3 = message_filters.Subscriber('/usv/slot3/points', PointCloud2)
+        self.lidar1 = message_filters.Subscriber('/livox/lidar_192_168_1_33', PointCloud2)
+        self.lidar2 = message_filters.Subscriber('/livox/lidar_192_168_1_31', PointCloud2)
+        self.lidar3 = message_filters.Subscriber('/livox/lidar_192_168_1_32', PointCloud2)
 
         self.ts = message_filters.ApproximateTimeSynchronizer([self.lidar1, self.lidar2, self.lidar3], queue_size=10, slop=0.1)
         self.ts.registerCallback(self.lidarCallback)
