@@ -74,10 +74,6 @@ class Guidance():
         # 计算期望的朝向角
         psiSP = tanAngle - beta + arctan2(-yErr, self.delta)
 
-        # 根据 yErr 的值，计算可行的 uSP (避免速度太大转不过弯)
-        psiErr = wrapToPi(psiSP - psi)
-        uSP = uSP * (0.3 + 0.7*(1-abs(psiErr / pi)))    
-
         # Debug 用输出
         # print("=============================================================================")
         # print("Guidance 输出: 更新半径 = %.2f" % dist2Next)

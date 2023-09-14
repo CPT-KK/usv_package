@@ -30,7 +30,7 @@ DOCK_EMERGENCY = 29
 ATTACH = 31
 STOP = 9
 
-isTestEnable = True
+isTestEnable = False
 TEST_LINE = 100
 TEST_CIRCLE = 101
 TEST_BOTH = 102
@@ -113,26 +113,6 @@ def main(args=None):
                     rospy.loginfo("等待目标船的估计位置.")
                     
             elif usvState == PURSUE:
-                # 如果需要规划追踪段路径，则规划并发送给制导
-                if (isPursuePlan == False):
-                    currPath = usvPathPlanner.planPursue(usvPose.x, usvPose.y, usvComm.tvEstPosX, usvComm.tvEstPosY)
-                    usvGuidance.setPath(currPath)
-                    rospy.loginfo("USV 追踪段已规划.")
-                    rospy.loginfo("当前状态：追踪段.")
-                    isPursuePlan = True
-
-                # 如果 USV 当前位置距离当前跟踪点太远，则重新规划（以防万一）
-                if (norm([usvPose.x - usvGuidance.path[usvGuidance.currentIdx, 0], usvPose.y - usvGuidance.path[usvGuidance.currentIdx, 1]]) >= 40):
-                    rospy.loginfo("USV 疑似脱离路径？立即重新规划追踪段.")
-                    isPursuePlan = False
-                    continue
-
-                # 如果跑完了所有点都没有找到目标船，则重新规划（以防万一）
-                if (usvGuidance.currentIdx >= usvGuidance.endIdx):
-                    rospy.loginfo("跑完了追踪段但激光雷达仍没有发现目标船？立即重新规划追踪段.")
-                    isPursuePlan = False
-                    continue
-     
                 # 读取激光雷达信息 
                 [idxTV, isTVFound, idxOBS, isObsFound] = usvLidar.objRead(usvPose.x, usvPose.y, usvPose.psi, usvPose.beta, usvComm.tvEstPosX, usvComm.tvEstPosY)
                 
@@ -153,8 +133,8 @@ def main(args=None):
                     continue
 
                 # 如果没有找到目标船，则继续跟随追踪路径
-                [uSP, psiSP] = usvGuidance.guidance(3.0, 25.0, usvPose.x, usvPose.y, usvPose.psi, usvPose.beta)
-                usvControl.moveUSV(uSP, psiSP, usvPose.u, usvPose.axb, usvPose.psi, usvPose.r)
+                uSP = 2.5
+                usvControl.moveUSV(uSP, usvComm.course2TV, usvPose.u_dvl, usvPose.axb, usvPose.psi, usvPose.r)
 
             elif usvState == PURSUE_DETECT_OBS:
                 # 读取激光雷达信息 
@@ -322,13 +302,7 @@ def main(args=None):
                     rospy.loginfo("USV 矢量推力-自稳测试")
                     isTestLinePlan = True
 
-                usvControl.moveUSV(2.5, deg2rad(-72), usvPose.u_dvl, usvPose.axb, usvPose.psi, usvPose.r)
-
-                # GPS
-                # usvControl.moveUSVVec2(0, 0, usvPose.psi, usvPose.u, usvPose.v, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
-
-                # DVL
-                # usvControl.moveUSVVec2(0, 0, usvPose.psi, usvPose.u_dvl, usvPose.v_dvl, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
+                usvControl.moveUSV(2.5, deg2rad(-10), usvPose.u_dvl, usvPose.axb, usvPose.psi, usvPose.r)
 
             # elif usvState == DOCK_EMERGENCY:
 

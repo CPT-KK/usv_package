@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
-
+import rospy
 import message_filters
+import threading
 from sensor_msgs.msg import PointCloud2
 
 import open3d as o3d
@@ -24,9 +25,9 @@ class Lidar():
     tvPredictR = 15
 
     def __init__(self):
-        self.lidar1 = message_filters.Subscriber('/livox/lidar_192_168_1_33', PointCloud2)
-        self.lidar2 = message_filters.Subscriber('/livox/lidar_192_168_1_31', PointCloud2)
-        self.lidar3 = message_filters.Subscriber('/livox/lidar_192_168_1_32', PointCloud2)
+        self.lidar1 = message_filters.Subscriber('/livox/lidar_192_168_147_233', PointCloud2)
+        self.lidar2 = message_filters.Subscriber('/livox/lidar_192_168_147_231', PointCloud2)
+        self.lidar3 = message_filters.Subscriber('/livox/lidar_192_168_147_232', PointCloud2)
 
         self.ts = message_filters.ApproximateTimeSynchronizer([self.lidar1, self.lidar2, self.lidar3], queue_size=10, slop=0.1)
         self.ts.registerCallback(self.lidarCallback)
@@ -119,8 +120,9 @@ class Lidar():
         return clusters, clusterNum
     
     def lidarCallback(self, pc1, pc2, pc3):
+        
         # 点云转换
-        self.t = (pc1.header.stamp.sec + 1e-9 * pc1.header.stamp.nanosec + pc2.header.stamp.sec + 1e-9 * pc2.header.stamp.nanosec + pc3.header.stamp.sec + 1e-9 * pc3.header.stamp.nanosec) / 3.0
+        self.t = (pc1.header.stamp.secs + 1e-9 * pc1.header.stamp.nsecs + pc2.header.stamp.secs + 1e-9 * pc2.header.stamp.nsecs + pc3.header.stamp.secs + 1e-9 * pc3.header.stamp.nsecs) / 3.0
         cloud1 = pointcloud22open3d(pc1)
         cloud2 = pointcloud22open3d(pc2)
         cloud3 = pointcloud22open3d(pc3)
@@ -128,15 +130,15 @@ class Lidar():
         # 点云处理
         cloud1 = self.cloudCut(cloud1, -150, 150, -150, 150)
         cloud1 = self.cloudFilter(cloud1)
-        cloud1 = self.cloudTransform(cloud1, 0.738, 0, 1.68, 0, 0, 0)
+        cloud1 = self.cloudTransform(cloud1, 0, 0, 0, 0, 0, 0)
         
-        cloud2 = self.cloudCut(cloud2, 0, 150, -150, 150)
+        cloud2 = self.cloudCut(cloud2, 1.2, 150, -150, 150)
         cloud2 = self.cloudFilter(cloud2)
-        cloud2 = self.cloudTransform(cloud2, 1.7, 0, 1.14, 0, 0, np.pi/2)
+        cloud2 = self.cloudTransform(cloud2, 0, 0, 0, 0, 0, 0)
 
-        cloud3 = self.cloudCut(cloud3, 0, 150, -150, 150)
+        cloud3 = self.cloudCut(cloud3, 1.2, 150, -150, 150)
         cloud3 = self.cloudFilter(cloud3)
-        cloud3 = self.cloudTransform(cloud3, 1.7, 0, 1.14, 0, 0, -np.pi/2)     
+        cloud3 = self.cloudTransform(cloud3, 0, 0, 0, 0, 0, 0)     
 
         # 点云合并，并计算聚类数
         cloudSum = cloud1 + cloud2 + cloud3
@@ -175,7 +177,7 @@ class Lidar():
             self.objInfo[i, 5] = np.arctan2(y, x)
 
             # 输出聚类 xylwh 的信息
-            # print("Cluster %d:\t at [%.2fm, %.2fm] \t| len %.2fm, wid %.2fm \t| heading %.2fdeg" % (i + 1, x, y, l, w, np.rad2deg(heading)))
+            print("Cluster %d:\t at [%.2fm, %.2fm] \t| len %.2fm, wid %.2fm \t| heading %.2fdeg" % (i + 1, x, y, l, w, np.rad2deg(heading)))
 
             # 输出聚类数目
             # print(f"Point cloud has {clusterNum} cluster(s)")
@@ -218,4 +220,22 @@ class Lidar():
                 isObsFound = True
             
         return [idxTV, isTVFound, idxObs, isObsFound]
+        
+if __name__ == '__main__':
+    # 以下代码为测试代码
+    rospy.init_node('usv_lidar_test_node')
+    rate = 10
+    rosRate = rospy.Rate(rate)
+    usvLidar = Lidar()
+
+    spinThread = threading.Thread(target=rospy.spin, daemon=True)
+    spinThread.start()
+
+    while True:
+        try:
+            # rospy.loginfo("Lidar detects: %d object(s)" % (usvLidar.objNum))
+            rosRate.sleep()
+        except KeyboardInterrupt:
+            break
+
         

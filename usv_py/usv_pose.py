@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import rospy, threading
 import message_filters
-from numpy import arctan2
+from numpy import arctan2, rad2deg
 from numpy.linalg import norm
 from usv_math import rotationZ
 
@@ -90,7 +90,7 @@ if __name__ == '__main__':
 
     while True:
         try:
-            rospy.loginfo("USV: [%.2f, %.2f]m | [%.2f, %.2f]m/s | [%.2f, %.2f]m/s^2 | %.2fdeg" % (usvPose.x, usvPose.y, usvPose.vx, usvPose.vy, usvPose.axb, usvPose.ayb, usvPose.psi * 57.3))
+            rospy.loginfo("USV: [%.2f, %.2f]m | [%.2f, %.2f]m/s | [%.2f, %.2f]m/s^2 | %.2fdeg" % (usvPose.x, usvPose.y, usvPose.u, usvPose.v, usvPose.axb, usvPose.ayb, rad2deg(usvPose.psi)))
             rosRate.sleep()
         except KeyboardInterrupt:
             break

@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 
 import rospy
-from geometry_msgs.msg import PoseStamped
-from geometry_msgs.msg import PointStamped
+from geometry_msgs.msg import Pose2D, PoseStamped
 
-from numpy import arctan
+from numpy import arctan, deg2rad
 
 class Communication():
     isTVEst = False
@@ -15,12 +14,13 @@ class Communication():
     bigObjAngle = 0
 
     def __init__(self):
-        self.tvEstPosSub = rospy.Subscriber('/usv/target/pose', PoseStamped, self.tvOdomCallback)
+        self.tvEstPosSub = rospy.Subscriber('/usv_nav_position', Pose2D, self.tvOdomCallback)
         self.bigObjPosSub = rospy.Subscriber('/usv/big_obj/pose', PoseStamped, self.bigObjCallback)
 
     def tvOdomCallback(self, msg):
-        self.tvEstPosX = msg.pose.position.x
-        self.tvEstPosY = msg.pose.position.y
+        self.tvEstPosX = msg.x
+        self.tvEstPosY = msg.y
+        self.course2TV = deg2rad(msg.theta)
         self.isTVEst = True
 
     def bigObjCallback(self, msg):

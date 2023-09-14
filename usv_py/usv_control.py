@@ -3,7 +3,7 @@
 import rospy
 from std_msgs.msg import Float32, Int16
 
-from numpy import sin, cos, tan, arcsin, arccos, arctan, arctan2, rad2deg, deg2rad, clip, abs, sign
+from numpy import sin, cos, tan, arcsin, arccos, arctan, arctan2, rad2deg, deg2rad, clip, abs, sign, pi
 from numpy.linalg import norm
 
 from usv_math import rotationZ, wrapToPi
@@ -49,8 +49,8 @@ class Control():
 
         # PID 初始化
         self.uPID = PID(0.75, 0.05, 0.01, control_frequency)
-        self.psiPID = PID(1, 0.00, 0.0, control_frequency)
-        self.rPID = PID(2, 0.01, 0.1, control_frequency)
+        self.psiPID = PID(1.2, 0.025, 0.05, control_frequency)
+        self.rPID = PID(2, 0.025, 0.1, control_frequency)
 
         self.xPID = PID(0.12, 0.000, 0.000, control_frequency)
         self.yPID = PID(0.15, 0.000, 0.000, control_frequency)
@@ -65,7 +65,14 @@ class Control():
 
 
     def moveUSV(self, uSP, psiSP, u, axb, psi, r):
-        # 计算船体系速度
+        # 计算朝向角误差
+        psiErr = psiSP - psi
+
+        # 朝向角误差限幅
+        psiErr = wrapToPi(psiErr)
+
+        # 根据 psiErr 的值，计算可行的 uSP (避免速度太大转不过弯)
+        uSP = uSP * (0.3 + 0.7*(1-abs(psiErr / pi)))  
 
         # 限幅
         uSP = clip(uSP, - self.uSPMax, self.uSPMax)
@@ -75,13 +82,7 @@ class Control():
 
         # 计算推力大小
         axbSP = self.uPID.compute(uErr, axb)
-        aybSP = 0.0
-
-        # 计算朝向角误差
-        psiErr = psiSP - psi
-
-        # 朝向角误差限幅
-        psiErr = wrapToPi(psiErr)
+        aybSP = 0.0   
 
         # 计算期望朝向角速度
         rSP = self.psiPID.compute(psiErr, r)
