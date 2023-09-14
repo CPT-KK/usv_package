@@ -107,10 +107,10 @@ def main(args=None):
                     usvState = TEST_MODE
 
                 if (usvComm.isTVEst):
-                    rospy.loginfo("收到目标船的估计位置.")
+                    rospy.loginfo("收到前往目标船的航向 %.2f deg." % rad2deg(usvComm.course2TV))
                     usvState = PURSUE
                 else:
-                    rospy.loginfo("等待目标船的估计位置.")
+                    rospy.loginfo("等待前往目标船的航向.")
                     
             elif usvState == PURSUE:
                 # 读取激光雷达信息 

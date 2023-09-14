@@ -29,7 +29,8 @@ class Guidance():
     isPathInit = False
 
     def __init__(self):
-        self.publisher_ = rospy.Publisher('/usv/guidance/guidanceSP', PointStamped, queue_size=10)
+        # self.publisher_ = rospy.Publisher('/usv/guidance/guidanceSP', PointStamped, queue_size=10)
+        pass
 
     def setPath(self, inPath, inEndIdx=0):
         # 设置路径

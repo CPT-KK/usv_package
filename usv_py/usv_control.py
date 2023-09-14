@@ -2,6 +2,7 @@
 
 import rospy
 from std_msgs.msg import Float32, Int16
+from geometry_msgs.msg import PointStamped
 
 from numpy import sin, cos, tan, arcsin, arccos, arctan, arctan2, rad2deg, deg2rad, clip, abs, sign, pi
 from numpy.linalg import norm
@@ -46,11 +47,12 @@ class Control():
         self.rThrustPublisher_ = rospy.Publisher("/workshop_setup/pods/right", Int16, queue_size=10)
         self.lAnglePublisher_ = rospy.Publisher("/workshop_setup/pod_steer/left_steer", Float32, queue_size=10)
         self.rAnglePublisher_ = rospy.Publisher("/workshop_setup/pod_steer/right_steer", Float32, queue_size=10)
+        self.publisher_ = rospy.Publisher('/usv/guidance/guidanceSP', PointStamped, queue_size=10)
 
         # PID 初始化
         self.uPID = PID(0.75, 0.05, 0.01, control_frequency)
-        self.psiPID = PID(1.2, 0.025, 0.05, control_frequency)
-        self.rPID = PID(2, 0.025, 0.1, control_frequency)
+        self.psiPID = PID(1.15, 0.0, 0.01, control_frequency)
+        self.rPID = PID(2, 0.015, 0.05, control_frequency)
 
         self.xPID = PID(0.12, 0.000, 0.000, control_frequency)
         self.yPID = PID(0.15, 0.000, 0.000, control_frequency)
@@ -101,6 +103,7 @@ class Control():
 
         # 发布推力
         self.thrustPub(rpmL, rpmR, angleL, angleR)
+        self.pubSetpoints(uSP, 0, psiSP)
 
         # print("=============================================================================")
         # print("Control 输出: ")
@@ -145,7 +148,7 @@ class Control():
 
         # 发布推力
         self.thrustPub(rpmL, rpmR, angleL, angleR)
-
+        self.pubSetpoints(uSP, vSP, psiSP)
         return
 
     def moveUSVVec(self, xSP, ySP, psiSP, x, y, vx, vy, axb, ayb, psi, r):
@@ -238,6 +241,16 @@ class Control():
         self.rAnglePublisher_.publish(rA)
 
         return
+    
+    def pubSetpoints(self, xSP, ySP, psiSP):
+        msg = PointStamped()
+        msg.point.x = xSP
+        msg.point.y = ySP
+        msg.point.z = psiSP
+
+        msg.header.frame_id = "base_link"
+        msg.header.stamp = rospy.Time.now()
+        self.publisher_.publish(msg)
     
 if __name__ == '__main__':
     # 以下代码为测试代码

@@ -14,7 +14,7 @@ class Communication():
     bigObjAngle = 0
 
     def __init__(self):
-        self.tvEstPosSub = rospy.Subscriber('/usv_nav_position', Pose2D, self.tvOdomCallback)
+        self.tvEstPosSub = rospy.Subscriber('/target_nav_position', Pose2D, self.tvOdomCallback)
         self.bigObjPosSub = rospy.Subscriber('/usv/big_obj/pose', PoseStamped, self.bigObjCallback)
 
     def tvOdomCallback(self, msg):
