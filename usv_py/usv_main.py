@@ -30,7 +30,7 @@ DOCK_EMERGENCY = 29
 ATTACH = 31
 STOP = 9
 
-isTestEnable = False
+isTestEnable = True
 TEST_LINE = 100
 TEST_CIRCLE = 101
 TEST_BOTH = 102
@@ -302,7 +302,7 @@ def main(args=None):
                     rospy.loginfo("USV 矢量推力-自稳测试")
                     isTestLinePlan = True
 
-                usvControl.moveUSV(2.5, deg2rad(-10), usvPose.u_dvl, usvPose.axb, usvPose.psi, usvPose.r)
+                usvControl.moveUSV(1.5, deg2rad(-60), usvPose.u_dvl, usvPose.axb, usvPose.psi, usvPose.r)
 
             # elif usvState == DOCK_EMERGENCY:
 

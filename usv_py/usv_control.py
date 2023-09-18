@@ -50,9 +50,9 @@ class Control():
         self.publisher_ = rospy.Publisher('/usv/guidance/guidanceSP', PointStamped, queue_size=10)
 
         # PID 初始化
-        self.uPID = PID(0.75, 0.05, 0.01, control_frequency)
-        self.psiPID = PID(1.15, 0.0, 0.01, control_frequency)
-        self.rPID = PID(2, 0.015, 0.05, control_frequency)
+        self.uPID = PID(0.775, 0.06, 0.0125, control_frequency)
+        self.psiPID = PID(1.2, 0.005, 0.00, control_frequency)
+        self.rPID = PID(2.1, 0.0325, 0.005, control_frequency)
 
         self.xPID = PID(0.12, 0.000, 0.000, control_frequency)
         self.yPID = PID(0.15, 0.000, 0.000, control_frequency)
