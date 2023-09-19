@@ -51,7 +51,7 @@ class Control():
 
         # PID 初始化
         self.uPID = PID(0.775, 0.06, 0.0125, control_frequency)
-        self.psiPID = PID(1.2, 0.005, 0.00, control_frequency)
+        self.psiPID = PID(1.2, 0.01, 0.00, control_frequency)
         self.rPID = PID(2.1, 0.0325, 0.005, control_frequency)
 
         self.xPID = PID(0.12, 0.000, 0.000, control_frequency)
@@ -257,7 +257,7 @@ if __name__ == '__main__':
     rospy.init_node('usv_control_test_node')
     rate = 10
     rosRate = rospy.Rate(rate)
-    usvControl = Control(5)
+    usvControl = Control(rate)
 
     lastTime = 8
     loopTimes = round(lastTime / (1 / rate))
