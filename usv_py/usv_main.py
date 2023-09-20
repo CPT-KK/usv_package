@@ -117,12 +117,16 @@ def main(args=None):
                     pass
                     
             elif usvState == PURSUE:
+                if (isPursuePlan == False):
+                    rospy.loginfo("USV 状态：追踪段.")
+                    isPursuePlan = True
+
                 # 如果找到目标船，则进入 DOCK
                 if (usvComm.isLidarFindTV):
                     rospy.loginfo("激光雷达探测到目标船.")
                     rospy.loginfo("估计目标船在: [%.2f, %.2f]（USV 船体系下），方向角: %.4f (rad) 或 %.4f (deg)." % (usvComm.tvX, usvComm.tvY, 0, 0))
                     usvState = DOCK_APPROACH
-                    continue
+                    continue 
 
                 # 如果检测到障碍物，则进入 PURSUE_DETECT_OBS
                 # if (isObsFound):
@@ -154,12 +158,19 @@ def main(args=None):
                     rospy.loginfo("USV 状态：泊近-接近段.")
                     isDockApproachPlan = True
                 
-                uSP = 2.0
+                if (usvComm.tvDist < 70.0):
+                    uSP = 2.0
+                elif (usvComm.tvDist < 50.0):
+                    uSP = 1.5
+                elif (usvComm.tvDist < 30.0):
+                    uSP = 1.0
+                elif (usvComm.tvDist < 20.0):
+                    uSP = 0.5
                 psiSP = usvPose.psi + usvComm.tvAngle
                 usvControl.moveUSV(uSP, psiSP, usvPose.u_dvl, usvPose.axb, usvPose.psi, usvPose.r)
 
-                # 如果接近段结束了，则进入测量段
-                if (usvComm.tvDist < 30.0):
+                # 如果接近段结束了，则：结束（10月7、8、9日），或进入测量段（真正比赛）
+                if (usvComm.tvDist < 15.0):
                     rospy.loginfo("抵达目标船.")
                     return
                     usvState = DOCK_MEASURE

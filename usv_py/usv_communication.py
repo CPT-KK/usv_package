@@ -2,14 +2,14 @@
 
 import rospy, threading
 from geometry_msgs.msg import Pose2D, PoseStamped, PoseArray
-
+from std_msgs.msg import Float64MultiArray
 from numpy import arctan, deg2rad, zeros, abs, sqrt
 
 class Communication():
-    isTVEst = True
+    isTVEst = False
     tvEstPosX = 0
     tvEstPosY = 0
-    course2TV = deg2rad(-176)
+    course2TV = 0
     isBigObj = False
     bigObjAngle = 0
 
@@ -24,10 +24,14 @@ class Communication():
     tvAngle = 0
     tvDist = 0
 
+    isPodSearched = False
+    podYawAngle = 0
+
     def __init__(self):
         self.tvEstPosSub = rospy.Subscriber('/target_nav_position', Pose2D, self.tvOdomCallback)
         self.bigObjPosSub = rospy.Subscriber('/usv/big_obj/pose', PoseStamped, self.bigObjCallback)
         self.lidarSub = rospy.Subscriber('/filter/target', PoseArray, self.lidarCallback)
+        self.podSub = rospy.Subscriber('/usv/pod_servo_ctrl/data', Float64MultiArray, self.podCallback)
 
     def tvOdomCallback(self, msg):
         self.tvEstPosX = msg.x
@@ -56,7 +60,7 @@ class Communication():
                 self.tvY = self.objectPoses.poses[i].position.y
                 self.tvAngle = self.objectAngle[i, 0]
                 self.tvDist = self.objectDist[i, 0]
-                break
+                break   
 
 if __name__ == '__main__':
     # 以下代码为测试代码
@@ -77,3 +81,8 @@ if __name__ == '__main__':
             rosRate.sleep()
         except KeyboardInterrupt:
             break
+
+    def podCallback(self, msg):
+        self.isPodSearched = msg.data[0]
+        self.podSearchYaw = msg.data[2]
+        

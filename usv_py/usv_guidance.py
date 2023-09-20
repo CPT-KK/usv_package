@@ -136,10 +136,6 @@ class Guidance():
         # 求无人船的期望朝向角
         psiSP = - beta - arctan2(self.usvSafeR,distOBS) + lineSightOBS + psi
 
-        # print("=============================================================================")
-        # print("Guidance 输出:避障")
-        # print("期望 psi: %.2f" % rad2deg(psiSP))
-
         return [uSP, psiSP]
 
     def pubSetpoints(self, xSP, ySP, psiSP):
