@@ -8,8 +8,6 @@ from usv_math import rotationZ
 from geometry_msgs.msg import PoseStamped, TwistStamped, Vector3Stamped
 from nav_msgs.msg import Odometry
 from sensor_msgs.msg import Imu
-
-# from quaternions import Quaternion
 from tf.transformations import quaternion_from_euler, euler_from_quaternion
 
 class Pose():

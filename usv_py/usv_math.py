@@ -28,7 +28,7 @@ def rotationMatrixToEulerAngles(R) :
  
     return array([x, y, z])
 
-def rotationZ(x,  y,  angle):
+def rotationZ(x, y, angle):
     xNew = x * cos(angle) + y * sin(angle)
     yNew = -x * sin(angle) + y * cos(angle)
 
