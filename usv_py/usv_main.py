@@ -167,18 +167,12 @@ def main(args=None):
                     isDockApproachPlan = True
 
                 if (usvComm.isLidarFindTV):
-                    if (usvComm.tvDist < 20.0):
-                        uSP = 0.375
-                    elif (usvComm.tvDist < 30.0):
-                        uSP = 0.75
-                    elif (usvComm.tvDist < 50.0):
-                        uSP = 1.5
-                    elif (usvComm.tvDist < 70.0):
-                        uSP = 2.25
-                    elif (usvComm.tvDist < 100.0):
-                        uSP = 2.75
+                    if (usvComm.tvDist < 10.0):
+                        uSP = 0.1
+                    elif (usvComm.tvDist > 100.0):
+                        uSP = 3.0
                     else:
-                        uSP = 3
+                        uSP = 0.1 + (3.0 - 0.1) * (usvComm.tvDist - 10.0) / (100.0 - 10.0)
                     psiSP = usvPose.psi + usvComm.tvAngleLidar
                 elif (usvComm.isPodFindTV):
                     uSP = 3

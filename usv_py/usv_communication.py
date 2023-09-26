@@ -164,6 +164,8 @@ if __name__ == '__main__':
         try:
             if (usvComm.isLidarFindTV):
                 rospy.loginfo("激光雷达扫描到目标船 [%.2f, %.2f]m" % (usvComm.tvX, usvComm.tvY))
+            elif (usvComm.objectNum > 0):
+                rospy.loginfo("激光雷达扫描到 %d 个物体，但不认为它们是目标船" % usvComm.objectNum)
             else:
                 rospy.loginfo("激光雷达未扫描到目标船")
 
