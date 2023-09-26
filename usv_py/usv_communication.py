@@ -2,9 +2,9 @@
 
 import rospy, threading
 from geometry_msgs.msg import Pose2D, PoseStamped, PoseArray, Vector3Stamped
-from std_msgs.msg import Float64MultiArray
+from std_msgs.msg import Float64MultiArray, Int8
 from sensor_msgs.msg import Imu
-from numpy import arctan, deg2rad, zeros, abs, sqrt, rad2deg
+from numpy import arctan, deg2rad, zeros, abs, sqrt, rad2deg, arctan2
 from numpy.linalg import norm
 from tf.transformations import quaternion_from_euler, euler_from_quaternion
 
@@ -15,10 +15,10 @@ class Communication():
     vDVL = 0
     r = 0
 
-    isSearchFindTV = True
+    isSearchFindTV = False
     tvEstPosX = 0
     tvEstPosY = 0
-    course2TV = deg2rad(148)
+    course2TV = 0
 
     isArmFindBigObj = False
     bigObjAngle = 0
@@ -47,7 +47,17 @@ class Communication():
 
         self.dvlVelSub = rospy.Subscriber('/mavros/vision_speed/speed_vector', Vector3Stamped, self.dvlCallback)
 
-        self.px4IMUSub = rospy.Subscriber('/mavros/imu/data', Imu, self.imuCallback) 
+        self.px4IMUSub = rospy.Subscriber('/mavros/imu/data', Imu, self.imuCallback)
+
+        self.uavTakeOffFlagPub = rospy.Publisher('/tuav1_takeoff_flag', Int8, queue_size=2)
+        self.tvPosFromLidarPub = rospy.Publisher('/target_lidar_position', Pose2D, queue_size=2)
+
+    def sendTakeOffFlag(self):
+        self.uavTakeOffFlagPub.publish(Int8(data=1))
+    
+    def sendTVPosFromLidar(self):
+        if (self.isLidarFindTV):
+            self.tvPosFromLidarPub.publish(Pose2D(x=-self.usvX, y=-self.usvY, theta=arctan2(-self.usvY, -self.usvX)))
 
     def tvOdomCallback(self, msg):
         self.tvEstPosX = msg.x

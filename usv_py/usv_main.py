@@ -188,11 +188,19 @@ def main(args=None):
                 # 如果接近段结束了，则：结束（10月7、8、9日），或进入测量段（真正比赛）
                 if (usvComm.isLidarFindTV) & (usvComm.tvDist < 15.0):
                     rospy.loginfo("抵达目标船.")
-                    return
                     usvState = DOCK_MEASURE
                     continue
 
             elif usvState == DOCK_MEASURE:
+                # 发送起飞指令
+                rospy.loginfo("发送 tUAV 起飞指令.")
+                usvComm.sendTakeOffFlag()
+                usvComm.sendTVPosFromLidar()
+
+                # 保持静止
+                psiSP = usvPose.psi + usvComm.tvAngleLidar
+                usvControl.moveUSV(0, psiSP, usvPose.u_dvl, usvPose.axb, usvPose.psi, usvPose.r)
+                continue
                 if (isDockMeasurePlan == False):
                     currPath = usvPathPlanner.planDockMeasure(usvPose.x, usvPose.y, tvX, tvY)
                     usvGuidance.setPath(currPath)
