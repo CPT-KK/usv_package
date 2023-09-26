@@ -201,6 +201,7 @@ def main(args=None):
                 psiSP = usvPose.psi + usvComm.tvAngleLidar
                 usvControl.moveUSV(0, psiSP, usvPose.u_dvl, usvPose.axb, usvPose.psi, usvPose.r)
                 continue
+            
                 if (isDockMeasurePlan == False):
                     currPath = usvPathPlanner.planDockMeasure(usvPose.x, usvPose.y, tvX, tvY)
                     usvGuidance.setPath(currPath)
