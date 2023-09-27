@@ -18,13 +18,12 @@ class Control():
     yErrMax = 10.0
 
     uSPMax = 4.0
+    vSPMax = 1.0
     rSPMax = deg2rad(45)
-    uSPMax = 3
-    vSPMax = 1
-
+    
     # USV motor from 50RPM to 1300RPM
     # USV angle from -85deg to 85deg
-    rpmThreshold = 20
+    rpmThreshold = 10
     rpmMin = 50
     rpmMax = 1250
     angleMax = deg2rad(85) # 85 deg
@@ -50,7 +49,7 @@ class Control():
         self.publisher_ = rospy.Publisher('/usv/guidance/guidanceSP', PointStamped, queue_size=10)
 
         # PID 初始化
-        self.uPID = PID(0.775, 0.06, 0.0125, control_frequency)
+        self.uPID = PID(0.8, 0.075, 0.02, control_frequency)
         self.psiPID = PID(1.2, 0.01, 0.00, control_frequency)
         self.rPID = PID(2.1, 0.0325, 0.005, control_frequency)
 
@@ -60,11 +59,7 @@ class Control():
         self.vyPID = PID(0.5, 0.00, 0.05, control_frequency)
 
     def __del__(self):
-        # 析构时，关闭无人船推力输出
-        
-        for i in range(20):
-            self.thrustPub(0.0, 0.0, 0.0, 0.0)
-
+        pass
 
     def moveUSV(self, uSP, psiSP, u, axb, psi, r):
         # 计算朝向角误差
@@ -74,10 +69,10 @@ class Control():
         psiErr = wrapToPi(psiErr)
 
         # 根据 psiErr 的值，计算可行的 uSP (避免速度太大转不过弯)
-        uSP = uSP * (0.3 + 0.7*(1-abs(psiErr / pi)))  
+        uSP = uSP * (0.15 + 0.85*(1-abs(psiErr / pi)))  
 
         # 限幅
-        uSP = clip(uSP, - self.uSPMax, self.uSPMax)
+        uSP = clip(uSP, -self.uSPMax, self.uSPMax)
 
         # 计算轴向速度误差
         uErr = uSP - u
@@ -90,7 +85,7 @@ class Control():
         rSP = self.psiPID.compute(psiErr, r)
 
         # 期望朝向角速度限幅
-        rSP = clip(rSP, - self.rSPMax, self.rSPMax)
+        rSP = clip(rSP, -self.rSPMax, self.rSPMax)
 
         # 计算期望角速度误差
         rErr = rSP - r

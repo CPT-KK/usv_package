@@ -17,6 +17,7 @@ from usv_math import rotationZ
 
 STARTUP = 0
 STANDBY = 1
+STABLE = 2
 PURSUE = 10
 PURSUE_DETECT_OBS = 11
 PURSUE_EMERGENCY = 19
@@ -72,6 +73,9 @@ def main(args=None):
     # 初始化标志位
     isWaitSearch = False
     isPursuePlan = False
+    isAckPodFindTV = False
+    isAckLidarFindTV = False
+    isAckSendtUAVTakeOffFlag = False
     isDockApproachPlan = False
     isDockMeasurePlan = False
     isDockTransferPlan = False
@@ -91,6 +95,9 @@ def main(args=None):
     tvAngle = 0
     tvRecordNum = -1
     tvRecordAngle = zeros((4000, 1))
+
+    # 
+    usvStationTimes = 0
       
     # 试一下
     try:
@@ -108,7 +115,7 @@ def main(args=None):
                     usvState = TEST_MODE
 
                 if (usvComm.isSearchFindTV):
-                    rospy.loginfo("收到前往目标船的航向 %.2f deg." % rad2deg(usvComm.course2TV))
+                    rospy.loginfo("收到前往目标船的航向 %.2f deg." % rad2deg(usvComm.tvAngleEst))
                     usvState = PURSUE
                 elif (isWaitSearch == False):
                     rospy.loginfo("等待前往目标船的航向...")
@@ -121,29 +128,16 @@ def main(args=None):
                     rospy.loginfo("USV 状态：追踪段.")
                     isPursuePlan = True
 
-                # 如果找到目标船，则进入 DOCK
-                # if (usvComm.isLidarFindTV):
-                #     rospy.loginfo("激光雷达探测到目标船.")
-                #     rospy.loginfo("估计目标船在: [%.2f, %.2f]（USV 船体系下），方向角: %.4f (rad) 或 %.4f (deg)." % (usvComm.tvX, usvComm.tvY, 0, 0))
-                #     usvState = DOCK_APPROACH
-                #     continue 
-
                 # 如果吊舱找到目标船，则进入 DOCK
-                if (usvComm.isPodFindTV):
+                if (usvPose.isPodFindTV):
                     rospy.loginfo("吊舱探测到目标船.")
-                    rospy.loginfo("吊舱估计的目标船方位角: %.2f (deg)." % rad2deg(usvComm.tvAnglePod))
+                    rospy.loginfo("吊舱估计的目标船方位角: %.2f (deg)." % rad2deg(usvPose.tvAnglePod))
                     usvState = DOCK_APPROACH
                     continue 
 
-                # 如果检测到障碍物，则进入 PURSUE_DETECT_OBS
-                # if (isObsFound):
-                #     rospy.loginfo("检测到障碍物，执行避障.")
-                #     usvState = PURSUE_DETECT_OBS
-                #     continue
-
                 # 如果没有找到目标船，则继续跟随追踪路径
                 uSP = 3.25
-                usvControl.moveUSV(uSP, usvComm.course2TV, usvPose.u_dvl, usvPose.axb, usvPose.psi, usvPose.r)
+                usvControl.moveUSV(uSP, usvComm.tvAngleEst, usvPose.u_dvl, usvPose.axb, usvPose.psi, usvPose.r)
 
             elif usvState == PURSUE_DETECT_OBS:
                 # 读取激光雷达信息 
@@ -158,47 +152,63 @@ def main(args=None):
                     isPursuePlan = False
                     
                     usvState = PURSUE
-
-            # elif usvState == PURSUE_EMERGENCY:
             
             elif usvState == DOCK_APPROACH:
                 if (isDockApproachPlan == False):
                     rospy.loginfo("USV 状态：泊近-接近段.")
                     isDockApproachPlan = True
 
-                if (usvComm.isLidarFindTV):
-                    if (usvComm.tvDist < 10.0):
+                if (usvPose.isLidarFindTV):
+                    if (isAckLidarFindTV == False):
+                        rospy.loginfo("激光雷达发现目标船.")
+                        isAckLidarFindTV = True
+
+                    if (usvPose.tvDist < 20.0):
                         uSP = 0.1
-                    elif (usvComm.tvDist > 100.0):
+                    elif (usvPose.tvDist > 100.0):
                         uSP = 3.0
                     else:
-                        uSP = 0.1 + (3.0 - 0.1) * (usvComm.tvDist - 10.0) / (100.0 - 10.0)
-                    psiSP = usvPose.psi + usvComm.tvAngleLidar
-                elif (usvComm.isPodFindTV):
+                        uSP = 0.1 + (3.0 - 0.1) * (usvPose.tvDist - 20.0) / (100.0 - 20.0)
+
+                    psiSP = usvPose.psi + usvPose.tvAngleLidar
+                elif (usvPose.isPodFindTV):
+                    if (isAckPodFindTV == False):
+                        rospy.loginfo("吊舱发现目标船.")
+                        isAckPodFindTV = True
                     uSP = 3
-                    psiSP = usvPose.psi + usvComm.tvAnglePod
+                    psiSP = usvPose.psi + usvPose.tvAnglePod
                 else:
                     rospy.loginfo("吊舱丢失目标船，恢复追踪段.")
                     usvState = PURSUE
                     isDockApproachPlan = False
                     isPursuePlan = False
+                    isAckPodFindTV = False
+                    isAckLidarFindTV = False
                     continue
+                
                 usvControl.moveUSV(uSP, psiSP, usvPose.u_dvl, usvPose.axb, usvPose.psi, usvPose.r)
 
                 # 如果接近段结束了，则：结束（10月7、8、9日），或进入测量段（真正比赛）
-                if (usvComm.isLidarFindTV) & (usvComm.tvDist < 15.0):
-                    rospy.loginfo("抵达目标船.")
+                if (usvPose.isLidarFindTV) & (usvPose.tvDist < 15.0):
+                    rospy.loginfo("正在稳定 USV ...")
                     usvState = DOCK_MEASURE
                     continue
 
             elif usvState == DOCK_MEASURE:
-                # 发送起飞指令
-                rospy.loginfo("发送 tUAV 起飞指令.")
-                usvComm.sendTakeOffFlag()
-                usvComm.sendTVPosFromLidar()
+                # 等待船接近静止，发送起飞指令
+                if (usvStationTimes > 5 * ROSRATE):
+                    if (isAckSendtUAVTakeOffFlag == False):
+                        rospy.loginfo("稳定完成，发送 tUAV 起飞指令.")
+                        isAckSendtUAVTakeOffFlag = True
+                    usvComm.sendTakeOffFlag()
+                    usvComm.sendTVPosFromLidar()
+                elif (abs(usvPose.u_dvl) <= 0.2):
+                    usvStationTimes = usvStationTimes + 1 
+                else:
+                    usvStationTimes = 0
 
                 # 保持静止
-                psiSP = usvPose.psi + usvComm.tvAngleLidar
+                psiSP = usvPose.psi + usvPose.tvAngleLidar
                 usvControl.moveUSV(0, psiSP, usvPose.u_dvl, usvPose.axb, usvPose.psi, usvPose.r)
                 continue
             
@@ -340,8 +350,11 @@ def main(args=None):
 
             # elif usvState == DOCK_EMERGENCY:
 
-            # elif usvState == STOP:
-
+            elif usvState == STABLE:
+                rospy.loginfo("USV 自稳...")
+                psiSP = usvPose.psi + usvPose.tvAngleLidar
+                usvControl.moveUSV(0, psiSP, usvPose.u_dvl, usvPose.axb, usvPose.psi, usvPose.r)
+                
             # elif usvState == ATTACH:
 
             else:
