@@ -12,7 +12,6 @@ from sensor_msgs.msg import Imu
 from tf.transformations import quaternion_from_euler, euler_from_quaternion
 
 class Pose():
-    t = 0.0
     x = 0.0
     y = 0.0
     vx = 0.0
@@ -28,10 +27,12 @@ class Pose():
     
     isValid = False
 
+    # Dvl-A125 变量
     uDVL = 0
     vDVL = 0
     betaDVL = 0
 
+    # Lidar 变量
     isLidarFindTV = False
     objectNum = 0
     tLidarLast = 0
@@ -43,43 +44,36 @@ class Pose():
     xLidar = 0
     yLidar = 0
 
+    # Pod 变量
     isPodFindTV = False
     tvAnglePod = 0
 
+    # 容忍误差
     angleTol = deg2rad(5.0)
     distTol = 5.0
 
     def __init__(self):
         # For PX4 MAVROS local position and velocity (Velocity is in USV body frame)
-        self.px4OdomSub = message_filters.Subscriber('/mavros/local_position/odom', Odometry) 
+        self.px4OdomSub = rospy.Subscriber('/mavros/local_position/odom', Odometry, self.poseCallback, queue_size=1) 
 
         # For PX4 MAVROS IMU
-        self.px4IMUSub = message_filters.Subscriber('/mavros/imu/data', Imu) 
+        self.px4IMUSub = rospy.Subscriber('/mavros/imu/data', Imu, self.imuCallback, queue_size=1) 
 
-        self.ts = message_filters.ApproximateTimeSynchronizer([self.px4OdomSub, self.px4IMUSub], queue_size=10, slop=0.1)
-        self.ts.registerCallback(self.poseCallback)
-
-        # For doppler
+        # For DVL
         self.dvlVelSub = rospy.Subscriber('/usv/dvl/velocity', Vector3Stamped, self.dvlCallback)
 
         # For Pod
         self.podSub = rospy.Subscriber('/usv/pod_servo_ctrl/data', Float64MultiArray, self.podCallback, queue_size=1)
 
-        # For LIDAR
+        # For Lidar
         self.lidarSub = rospy.Subscriber('/filter/target', PoseArray, self.lidarCallback, queue_size=1)
 
-    def poseCallback(self, odom, imu):
-        self.t = 0.5 * (odom.header.stamp.secs + 1e-9 * odom.header.stamp.nsecs + imu.header.stamp.secs + 1e-9 * imu.header.stamp.nsecs)
-        self.x = odom.pose.pose.position.x
-        self.y = odom.pose.pose.position.y
-        self.u = odom.twist.twist.linear.x
-        self.v = odom.twist.twist.linear.y
-        self.axb = imu.linear_acceleration.x
-        self.ayb = imu.linear_acceleration.y
-        self.r = imu.angular_velocity.z     
+    def poseCallback(self, odomMsg):
+        self.x = odomMsg.pose.pose.position.x
+        self.y = odomMsg.pose.pose.position.y
+        self.u = odomMsg.twist.twist.linear.x
+        self.v = odomMsg.twist.twist.linear.y
 
-        [_, _, self.psi] = euler_from_quaternion([odom.pose.pose.orientation.x, odom.pose.pose.orientation.y, odom.pose.pose.orientation.z, odom.pose.pose.orientation.w])
-        
         [self.vx, self.vy]  = rotationZ(self.u, self.v, -self.psi)
 
         if (norm([self.vx, self.vy]) < 0.1):
@@ -88,6 +82,12 @@ class Pose():
             self.beta = arctan2(self.v, self.u)
         self.isValid = True
         
+    def imuCallback(self, imuMsg):
+        self.axb = imuMsg.linear_acceleration.x
+        self.ayb = imuMsg.linear_acceleration.y
+        self.r = imuMsg.angular_velocity.z
+        [_, _, self.psi] = euler_from_quaternion([imuMsg.orientation.x, imuMsg.orientation.y, imuMsg.orientation.z, imuMsg.orientation.w])
+    
     def dvlCallback(self, dvlMsg):
         self.uDVL = dvlMsg.vector.x
         self.vDVL = dvlMsg.vector.y
@@ -155,7 +155,8 @@ class Pose():
             
             # 计算时间差
             dt = msg.header.stamp - self.tLidar
-            # 如果时间差太大，则认为无法预测（船不再走直线）
+
+            # 如果时间差太大，则认为无法通过激光雷达上一时刻的值来预测（船不再走直线）
             if (dt.to_sec() > 3.0):
                 self.isLidarFindTV = False
                 return
@@ -163,93 +164,28 @@ class Pose():
             # 记录此刻的时间戳
             self.tLidar = msg.header.stamp
 
-            # 根据上一时刻的数据计算无人船的预测坐标 [usvENUEstX, usvENUEstY]
+            # 根据无人船上一时刻的位置坐标 [xLidar, yLidar] 预测这一时刻的坐标 [xLidarEst, yLidarEst]
             [vx, vy] = rotationZ(self.uDVL, self.vDVL, -self.psi)
-            usvEstX = self.xLidar + dt * vx
-            usvEstY = self.yLidar + dt * vy
+            xLidarEst = self.xLidar + dt * vx
+            yLidarEst = self.yLidar + dt * vy
 
             # 根据这一时刻的所有物体位置，计算无人船相对于以物体为原点的 ENU 的坐标
-            [usvPossibleX, usvPossibleY] = rotationZ(objectX, objectY, -self.psi)
-            usvPossibleX = -usvPossibleX
-            usvPossibleY = -usvPossibleY
+            [xLidarPossible, yLidarPossible] = rotationZ(objectX, objectY, -self.psi)
+            xLidarPossible = -xLidarPossible
+            yLidarPossible = -yLidarPossible
 
             # 判断：如果预测位置与真实位置接近，则认为此物体是目标船
-            dDist = norm([usvEstX - usvPossibleX, usvEstY - usvPossibleY])
+            dDist = norm([xLidarEst - xLidarPossible, yLidarEst - yLidarPossible])
             dDistIndex = argmin(dDist)
-            if (dDist[dDistIndex] < self.distTol):
+            if (dDist[dDistIndex, 0] < self.distTol):
                 self.isLidarFindTV = True
                 self.tvX = objectX[dDistIndex, 0]
                 self.tvY = objectY[dDistIndex, 0]
-                [self.xLidar, self.yLidar] = rotationZ(self.tvX, self.tvY, -self.psi)
-                self.xLidar = -self.xLidar
-                self.yLidar = -self.yLidar
                 self.tvAngleLidar = objectAngle[dDistIndex, 0]
                 self.tvDist = objectDist[dDistIndex, 0]
-                
-        # for i in range(self.objectNum):
-        #     objectX = msg.poses[i].position.x
-        #     objectY = msg.poses[i].position.y
-        #     objectAngle = arctan2(objectY, objectX)
-        #     objectDist = sqrt(objectX**2 + objectY**2)
 
-        #     # 判断激光雷达扫描到的物体是否为目标船   
-        #     if (self.isPodFindTV):
-        #         # 如果此时吊舱扫描到目标船，则比对吊舱偏航角和激光雷达扫描到物体的方位角
-        #         # 若在角度容许范围内，则认为此物体是目标船，否则，认为未识别目标船
-        #         if (abs(objectAngle - self.tvAnglePod) <= deg2rad(5)):
-        #             self.isLidarFindTV = True
-        #             self.tvX = objectX
-        #             self.tvY = objectY
-        #             [self.xLidar, self.yLidar] = rotationZ(objectX, objectY, -self.psi)
-        #             self.xLidar = -self.xLidar
-        #             self.yLidar = -self.yLidar
-        #             self.tvAngleLidar = objectAngle
-        #             self.tvDist = objectDist
-        #             self.tLidarLast = self.tLidar
-        #             self.tLidar = msg.header.stamp
-        #             break
-        #     elif (self.isLidarFindTV):
-        #         # 如果此时吊舱*未*扫描到目标船，则激光雷达必须先前锁定过目标船才能识别目标船
-        #         # 否则，直接认为未识别到目标船，不会进入此 elif 段
-        #         # 首先，通过上一时刻目标船位置和 USV 速度计算目标船这一时刻的预测位置
-        #         # 然后，读取激光雷达这一时刻扫描到物体的真实位置
-        #         # 随后，比对真实位置和预测位置的误差
-        #         # 若在位置容许范围内，则识别到目标船；否则，认为未识别到目标船
-
-        #         # 获取时间差
-        #         self.tLidarLast = self.tLidar
-        #         self.tLidar = msg.header.stamp
-        #         dt = self.tLidar.secs - self.tLidarLast.secs + 1e-9 * (self.tLidar.nsecs - self.tLidarLast.nsecs)
-
-        #         # 如果时间差太大，则认为无法预测
-        #         if (dt > 3.0):
-        #             self.isLidarFindTV = False
-        #             return
-
-        #         # 根据上一时刻数据计算目标船的预测位置
-        #         [vx, vy] = rotationZ(self.uDVL, self.vDVL, -self.psi)
-        #         usvENUEstX = self.xLidar + dt * vx
-        #         usvENUEstY = self.yLidar + dt * vy
-
-        #         # 获取物体的真实位置
-        #         [usvENUX, usvENUY] = rotationZ(objectX, objectY, -self.psi)
-        #         usvENUX = -usvENUX
-        #         usvENUY = -usvENUY
-
-        #         # 判断：如果预测位置与真实位置接近，则认为此物体是目标船
-        #         if (norm([usvENUEstX - usvENUX, usvENUEstY - usvENUY]) < 5.0):
-        #             self.isLidarFindTV = True
-        #             self.tvX = objectX
-        #             self.tvY = objectY
-        #             [self.xLidar, self.yLidar] = rotationZ(objectX, objectY, -self.psi)
-        #             self.xLidar = -self.xLidar
-        #             self.yLidar = -self.yLidar
-        #             self.tvAngleLidar = objectAngle
-        #             self.tvDist = objectDist
-        #             break
-        #     else:
-        #         self.isLidarFindTV = False
-                    
+                self.xLidar = xLidarPossible[dDistIndex, 0]
+                self.yLidar = yLidarPossible[dDistIndex, 0]            
 
 if __name__ == '__main__':
     # 以下代码为测试代码
