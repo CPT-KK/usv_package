@@ -58,7 +58,6 @@ def main(args=None):
 
     # 添加功能节点
     usvPose = Pose()
-    usvLidar = Lidar()
     usvComm = Communication()
     usvPathPlanner = PathPlanner()
     usvGuidance = Guidance()
@@ -141,12 +140,11 @@ def main(args=None):
 
             elif usvState == PURSUE_DETECT_OBS:
                 # 读取激光雷达信息 
-                [idxTV, isTVFound, idxOBS, isObsFound] = usvLidar.objRead(usvPose.x, usvPose.y, usvPose.psi, usvPose.beta, usvComm.tvEstPosX, usvComm.tvEstPosY)
+                pass
                 
                 # 判断是否还需要避障
-                if (isObsFound):       
-                    [uSP, psiSP] = usvGuidance.guidanceOBS(usvLidar.objInfo[idxOBS, 0],usvLidar.objInfo[idxOBS, 1], usvLidar.objInfo[idxOBS, 5], usvPose.psi, usvPose.beta, 1.0)
-                    usvControl.moveUSV(uSP, psiSP, usvPose.u, usvPose.axb, usvPose.psi, usvPose.r) 
+                if (True):       
+                    pass
                 else:
                     rospy.loginfo("USV 避障完成，恢复追踪目标船.")
                     isPursuePlan = False
