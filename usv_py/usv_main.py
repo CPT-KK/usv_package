@@ -53,7 +53,7 @@ endStr = " ... "
 
 @atexit.register 
 def clean():
-    rospy.loginfo("程序退出...")
+    print("程序退出...")
     # rospy.signal_shutdown("End of USV main node.")
 
 def main(args=None):
@@ -94,13 +94,6 @@ def main(args=None):
     # 无人船当前正在使用的路径
     currPath = zeros((2000, 2))
 
-    # 目标船有关
-    tvX = 0
-    tvY = 0
-    tvAngle = 0
-    tvRecordNum = -1
-    tvRecordAngle = zeros((4000, 1))
-
     # 
     usvStationTimes = 0
       
@@ -108,11 +101,11 @@ def main(args=None):
     try:
         while not rospy.is_shutdown():
             if usvState == STARTUP:
-                if (usvPose.isValid):
-                    print("收到 USV 位置 !")
+                if (usvPose.isGPSValid) & (usvPose.isImuValid) & (usvPose.isDvlValid) & (usvPose.isPodValid):
+                    print("USV 已准备好!")
                     usvState = STANDBY
                 else:
-                    print("\r等待 USV 位置", end = endStr)
+                    print("\r等待 USV 准备", end = endStr)
 
             elif usvState == STANDBY:
                 if (isTestEnable):
@@ -123,10 +116,10 @@ def main(args=None):
                     print("收到航向 %.2f deg." % rad2deg(usvComm.tvAngleEst))
                     usvState = PURSUE
                 else:
-                    print("\r等待前往目标船的航向...", end = endStr)
+                    print("\r等待前往目标船的航向", end = endStr)
                     
             elif usvState == PURSUE:
-                print("\rUSV 状态：追踪段 | [u, v] = [%.2f, %.2f] m/s | psi = %.2f deg | r = %.2f deg/s" % (usvPose.uDVL, usvPose.vDVL, rad2deg(usvPose.psi), rad2deg(usvPose.r)), end = "")
+                print("\rUSV 状态：追踪段 | [u, v] = [%.2f, %.2f] m/s | psi = %.2f deg | r = %.2f deg/s" % (usvPose.uDVL, usvPose.vDVL, rad2deg(usvPose.psi), rad2deg(usvPose.r)), end = " ")
 
                 # 如果吊舱找到目标船，则进入 DOCK
                 if (usvPose.isPodFindTV):
@@ -152,9 +145,17 @@ def main(args=None):
                     usvState = PURSUE
             
             elif usvState == DOCK_APPROACH:
-                podOutput = rad2deg(usvPose.tvAnglePod) * usvPose.isPodFindTV + (1 - usvPose.isPodFindTV)
-                lidarOutPut = usvPose.tvDist * usvPose.isLidarFindTV + (1 - usvPose.isLidarFindTV)
-                print("\rUSV 状态：泊近-接近段 (%.2f deg, %.2f m) | [u, v] = [%.2f, %.2f] m/s | psi = %.2f deg | r = %.2f deg/s" % (podOutput, lidarOutPut, usvPose.uDVL, usvPose.vDVL, rad2deg(usvPose.psi), rad2deg(usvPose.r)), end = "")
+                if (usvPose.isPodFindTV):
+                    podOutput = rad2deg(usvPose.tvAnglePod)
+                else:
+                    podOutput = float("nan")
+
+                if (usvPose.isLidarFindTV):
+                    lidarOutPut = usvPose.tvDist
+                else:
+                    lidarOutPut = float("nan")
+
+                print("\rUSV 状态：泊近-接近段 (%.2f deg, %.2f m) | [u, v] = [%.2f, %.2f] m/s | psi = %.2f deg | r = %.2f deg/s" % (podOutput, lidarOutPut, usvPose.uDVL, usvPose.vDVL, rad2deg(usvPose.psi), rad2deg(usvPose.r)), end = " ")
 
                 # 根据吊舱、激光雷达状态，生成控制指令
                 if (usvPose.isLidarFindTV):
@@ -172,10 +173,6 @@ def main(args=None):
                 else:
                     print("\n吊舱丢失目标船，恢复追踪段.")
                     usvState = PURSUE
-                    isDockApproachPlan = False
-                    isPursuePlan = False
-                    isAckPodFindTV = False
-                    isAckLidarFindTV = False
                     continue
                 
                 # 控制无人船
@@ -189,7 +186,7 @@ def main(args=None):
                     continue
 
             elif usvState == DOCK_MEASURE:
-                print("\rUSV 状态：泊近-测量段 | [u, v] = [%.2f, %.2f] m/s | psi = %.2f deg | r = %.2f deg/s" % (usvPose.uDVL, usvPose.vDVL, rad2deg(usvPose.psi), rad2deg(usvPose.r)), end = "")
+                print("\rUSV 状态：泊近-测量段 | [u, v] = [%.2f, %.2f] m/s | psi = %.2f deg | r = %.2f deg/s" % (usvPose.uDVL, usvPose.vDVL, rad2deg(usvPose.psi), rad2deg(usvPose.r)), end = " ")
                 
                 # 使用激光雷达读取的位置信息，规划测量路径
                 if (isDockMeasurePlan == False):
@@ -212,7 +209,7 @@ def main(args=None):
                     usvState = DOCK_TRANSFER
 
             elif usvState == DOCK_TRANSFER:
-                print("\rUSV 状态：泊近-变轨段 | [u, v] = [%.2f, %.2f] m/s | psi = %.2f deg | r = %.2f deg/s" % (usvPose.uDVL, usvPose.vDVL, rad2deg(usvPose.psi), rad2deg(usvPose.r)), end = "")
+                print("\rUSV 状态：泊近-变轨段 | [u, v] = [%.2f, %.2f] m/s | psi = %.2f deg | r = %.2f deg/s" % (usvPose.uDVL, usvPose.vDVL, rad2deg(usvPose.psi), rad2deg(usvPose.r)), end = " ")
                 
                 # 使用激光雷达读取的位置信息，规划变轨路径
                 if (isDockTransferPlan == False):
@@ -236,7 +233,7 @@ def main(args=None):
                 usvState = DOCK_FINAL
 
             elif usvState == DOCK_FINAL:
-                print("\rUSV 状态：泊近-最终段 | [u, v] = [%.2f, %.2f] m/s | psi = %.2f deg | r = %.2f deg/s" % (usvPose.uDVL, usvPose.vDVL, rad2deg(usvPose.psi), rad2deg(usvPose.r)), end = "")
+                print("\rUSV 状态：泊近-最终段 | [u, v] = [%.2f, %.2f] m/s | psi = %.2f deg | r = %.2f deg/s" % (usvPose.uDVL, usvPose.vDVL, rad2deg(usvPose.psi), rad2deg(usvPose.r)), end = " ")
                 # 等待船接近静止再发送起飞指令
                 if (usvStationTimes > 5 * ROSRATE):
                     print("\n稳定完成，发送 tUAV 起飞指令.")
@@ -267,7 +264,7 @@ def main(args=None):
                     print("USV 测试-直线路径已规划. 前往 [%d, %d]." % (endX, endY))
                     isTestLinePlan = True       
 
-                print("\rUSV 状态：测试 | [x, y] = [%.2f, %.2f] m | [u, v] = [%.2f, %.2f] m/s | psi = %.2f deg | r = %.2f deg/s" % (usvPose.x, usvPose.y, usvPose.uDVL, usvPose.vDVL, rad2deg(usvPose.psi), rad2deg(usvPose.r)), end = "")
+                print("\rUSV 状态：测试 | [x, y] = [%.2f, %.2f] m | [u, v] = [%.2f, %.2f] m/s | psi = %.2f deg | r = %.2f deg/s" % (usvPose.x, usvPose.y, usvPose.uDVL, usvPose.vDVL, rad2deg(usvPose.psi), rad2deg(usvPose.r)), end = " ")
 
                 if (usvGuidance.currentIdx >= usvGuidance.endIdx):    
                     print("\nUSV 测试-直线结束.")
@@ -287,7 +284,7 @@ def main(args=None):
                     print("USV 测试-圆路径已规划. 圆心 [%.2f, %.2f]m. 半径 %.2fm. 环绕次数 %d." % (cirCenX, cirCenY, R, circleTimes))
                     isTestCirclePlan = True
 
-                print("\rUSV 状态：测试 | [x, y] = [%.2f, %.2f] m | [u, v] = [%.2f, %.2f] m/s | psi = %.2f deg | r = %.2f deg/s" % (usvPose.x, usvPose.y, usvPose.uDVL, usvPose.vDVL, rad2deg(usvPose.psi), rad2deg(usvPose.r)), end = "")
+                print("\rUSV 状态：测试 | [x, y] = [%.2f, %.2f] m | [u, v] = [%.2f, %.2f] m/s | psi = %.2f deg | r = %.2f deg/s" % (usvPose.x, usvPose.y, usvPose.uDVL, usvPose.vDVL, rad2deg(usvPose.psi), rad2deg(usvPose.r)), end = " ")
                 
                 if (usvGuidance.currentIdx >= usvGuidance.endIdx):  
                     print("\nUSV 测试-圆结束.")  
@@ -322,7 +319,7 @@ def main(args=None):
                     theSpeed = 3
                     theDist2Next = 16
 
-                print("\rUSV 状态：测试 | [x, y] = [%.2f, %.2f] m | [u, v] = [%.2f, %.2f] m/s | psi = %.2f deg | r = %.2f deg/s" % (usvPose.x, usvPose.y, usvPose.uDVL, usvPose.vDVL, rad2deg(usvPose.psi), rad2deg(usvPose.r)), end = "")
+                print("\rUSV 状态：测试 | [x, y] = [%.2f, %.2f] m | [u, v] = [%.2f, %.2f] m/s | psi = %.2f deg | r = %.2f deg/s" % (usvPose.x, usvPose.y, usvPose.uDVL, usvPose.vDVL, rad2deg(usvPose.psi), rad2deg(usvPose.r)), end = " ")
 
                 if (usvGuidance.currentIdx >= usvGuidance.endIdx) & (isTestCirclePlan == True) & (isTestLinePlan == True):  
                     print("\nUSV 测试-直线+圆结束.")  
@@ -333,11 +330,11 @@ def main(args=None):
 
             # 矢量推力 测试部分
             elif usvState == TEST_VEC_STABLE:
-                print("\rUSV 状态：矢量推力-自稳测试 | [x, y] = [%.2f, %.2f] m | [u, v] = [%.2f, %.2f] m/s | psi = %.2f deg | r = %.2f deg/s" % (usvPose.x, usvPose.y, usvPose.uDVL, usvPose.vDVL, rad2deg(usvPose.psi), rad2deg(usvPose.r)), end = "")
+                print("\rUSV 状态：矢量推力-自稳测试 | [x, y] = [%.2f, %.2f] m | [u, v] = [%.2f, %.2f] m/s | psi = %.2f deg | r = %.2f deg/s" % (usvPose.x, usvPose.y, usvPose.uDVL, usvPose.vDVL, rad2deg(usvPose.psi), rad2deg(usvPose.r)), end = " ")
                 usvControl.moveUSV(3, deg2rad(-20), usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
 
             elif usvState == STABLE:
-                print("\rUSV 状态：自稳 | [u, v] = [%.2f, %.2f] m/s | psi = %.2f deg | r = %.2f deg/s" % (usvPose.uDVL, usvPose.vDVL, rad2deg(usvPose.psi), rad2deg(usvPose.r)), end = "")
+                print("\rUSV 状态：自稳 | [u, v] = [%.2f, %.2f] m/s | psi = %.2f deg | r = %.2f deg/s" % (usvPose.uDVL, usvPose.vDVL, rad2deg(usvPose.psi), rad2deg(usvPose.r)), end = " ")
                 psiSP = usvPose.psi + usvPose.tvAngleLidar
                 usvControl.moveUSV(0, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
 

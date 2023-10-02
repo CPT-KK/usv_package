@@ -25,7 +25,11 @@ class Pose():
     beta = 0.0
     r = 0.0
     
-    isValid = False
+    isGPSValid = False
+    isImuValid = False
+    isDvlValid = False
+    isPodValid = False
+    isLidarValid = False
 
     # Dvl-A125 变量
     uDVL = 0
@@ -49,7 +53,7 @@ class Pose():
     tvAnglePod = 0
 
     # 容忍误差
-    angleTol = deg2rad(5.0)
+    angleTol = deg2rad(10.0)
     distTol = 5.0
 
     def __init__(self):
@@ -80,13 +84,16 @@ class Pose():
             self.beta = 0
         else:
             self.beta = arctan2(self.v, self.u)
-        self.isValid = True
+        
+        self.isGPSValid = True
         
     def imuCallback(self, imuMsg):
         self.axb = imuMsg.linear_acceleration.x
         self.ayb = imuMsg.linear_acceleration.y
         self.r = imuMsg.angular_velocity.z
         [_, _, self.psi] = euler_from_quaternion([imuMsg.orientation.x, imuMsg.orientation.y, imuMsg.orientation.z, imuMsg.orientation.w])
+
+        self.isImuValid = True
     
     def dvlCallback(self, dvlMsg):
         self.uDVL = dvlMsg.vector.x
@@ -96,6 +103,9 @@ class Pose():
         else:
             self.betaDVL = arctan2(self.vDVL, self.uDVL)
 
+        self.isDvlValid = True
+
+
     def podCallback(self, msg):
         if (msg.data[0] == 1):
             self.isPodFindTV = True
@@ -104,8 +114,11 @@ class Pose():
             self.isPodFindTV = False
             self.tvAnglePod = None
 
+        self.isPodValid = True
+
     def lidarCallback(self, msg):   
         self.objectNum = len(msg.poses)
+        self.isLidarValid = True
 
         # 通过两个 if 确保：
         # self.objectNum > 0 的 for 循环一定会执行
@@ -125,8 +138,8 @@ class Pose():
         for i in range(self.objectNum):
             objectX[i, 0] = msg.poses[i].position.x
             objectY[i, 0] = msg.poses[i].position.y
-            objectAngle[i, 0] = arctan2(objectY, objectX)
-            objectDist[i, 0] = sqrt(objectX**2 + objectY**2)
+            objectAngle[i, 0] = arctan2(objectY[i, 0], objectX[i, 0])
+            objectDist[i, 0] = sqrt(objectX[i, 0]**2 + objectY[i, 0]**2)
 
         # 判断激光雷达扫描到的物体是否为目标船
         if (self.isPodFindTV):
@@ -199,19 +212,19 @@ if __name__ == '__main__':
 
     while True:
         try:
-            rospy.loginfo("USV: [%.2f, %.2f]m | [%.2f, %.2f]m/s | [%.2f, %.2f]m/s^2 | %.2fdeg" % (usvPose.x, usvPose.y, usvPose.u, usvPose.v, usvPose.axb, usvPose.ayb, rad2deg(usvPose.psi)))
+            print("USV: [%.2f, %.2f]m | [%.2f, %.2f]m/s | [%.2f, %.2f]m/s^2 | %.2fdeg" % (usvPose.x, usvPose.y, usvPose.u, usvPose.v, usvPose.axb, usvPose.ayb, rad2deg(usvPose.psi)))
 
             if (usvPose.isPodFindTV):
-                rospy.loginfo("吊舱扫描到目标船 %.2f deg" % rad2deg(usvPose.tvAnglePod))
+                print("吊舱扫描到目标船 %.2f deg" % rad2deg(usvPose.tvAnglePod))
             else:
-                rospy.loginfo("吊舱未扫描到目标船")
+                print("吊舱未扫描到目标船")
             
             if (usvPose.isLidarFindTV):
-                rospy.loginfo("激光雷达扫描到目标船 [%.2f, %.2f]m" % (usvPose.tvX, usvPose.tvY))
+                print("激光雷达扫描到目标船 [%.2f, %.2f]m" % (usvPose.tvX, usvPose.tvY))
             elif (usvPose.objectNum > 0):
-                rospy.loginfo("激光雷达扫描到 %d 个物体，但不认为它们是目标船" % usvPose.objectNum)
+                print("激光雷达扫描到 %d 个物体，但不认为它们是目标船" % usvPose.objectNum)
             else:
-                rospy.loginfo("激光雷达未扫描到目标船")
+                print("激光雷达未扫描到目标船")
 
             rosRate.sleep()
         except KeyboardInterrupt:
