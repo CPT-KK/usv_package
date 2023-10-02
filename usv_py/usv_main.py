@@ -353,20 +353,20 @@ def main(args=None):
 
             else:
                 # 程序不应该执行到这里
-                print("变量 [usvState] 取到异常值 %d，请检查程序." % (usvState))
+                print("\n变量 [usvState] 取到异常值 %d，请检查程序." % (usvState))
                 break
             
             usvComm.sendUSVState(usvState)
             rosRate.sleep()
 
         # 程序不应该执行到这里
-        print("程序跳出主循环. usvState = %d, rospy_is_shutdown() = %d." % (usvState, rospy.is_shutdown()))
+        print("\n程序跳出主循环. usvState = %d, rospy_is_shutdown() = %d." % (usvState, rospy.is_shutdown()))
 
     except KeyboardInterrupt:
-        print("检测到 Ctrl + C，退出 ...")
+        print("\n检测到 Ctrl + C，退出 ...")
 
     except Exception as e:
-        print("程序异常，请检查.")
+        print("\n程序异常，请检查.")
         traceback.print_exc()
          
     return
