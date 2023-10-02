@@ -16,6 +16,8 @@ from usv_control import Control
 from usv_communication import Communication
 from usv_math import rotationZ
 
+from mavros_msgs.srv import CommandLong
+
 # 无人船状态定义
 STARTUP = 0
 STANDBY = 1
@@ -59,6 +61,12 @@ def clean():
 def main(args=None):
     # 添加主节点
     rospy.init_node('usv_main_node')
+
+    # 等待服务变得可用
+    rospy.wait_for_service('/mavros/cmd/command')
+
+    # 创建服务客户端
+    cmd_long_service = rospy.ServiceProxy('/mavros/cmd/command', CommandLong)
  
     rosRate = rospy.Rate(ROSRATE)
 
@@ -114,12 +122,21 @@ def main(args=None):
 
                 if (usvComm.isSearchFindTV):
                     print("收到航向 %.2f deg." % rad2deg(usvComm.tvAngleEst))
+                    response = cmd_long_service(
+                        False,  # broadcast
+                        258,    # MAV_CMD_DO_PLAY_TUNE
+                        0,      # confirmation
+                        0,      # param1 (tune format: 0 for MML, 1 for ABC)
+                        0.0, 0.0, 0.0, 0.0,  # unused parameters
+                        0.0,  # param5 (tune string)
+                        0.0 # param6 (tune string continuation)
+                    )
                     usvState = PURSUE
                 else:
                     print("\r等待前往目标船的航向", end = endStr)
                     
             elif usvState == PURSUE:
-                print("\rUSV 状态：追踪段 | [u, v] = [%.2f, %.2f] m/s | psi = %.2f deg | r = %.2f deg/s" % (usvPose.uDVL, usvPose.vDVL, rad2deg(usvPose.psi), rad2deg(usvPose.r)), end = " ")
+                print("\rUSV 状态：追踪 | [u, v] = [%.2f, %.2f] m/s | psi = %.2f deg | r = %.2f deg/s" % (usvPose.uDVL, usvPose.vDVL, rad2deg(usvPose.psi), rad2deg(usvPose.r)), end = " ")
 
                 # 如果吊舱找到目标船，则进入 DOCK
                 if (usvPose.isPodFindTV):
@@ -155,20 +172,20 @@ def main(args=None):
                 else:
                     lidarOutPut = float("nan")
 
-                print("\rUSV 状态：泊近-接近段 (%.2f deg, %.2f m) | [u, v] = [%.2f, %.2f] m/s | psi = %.2f deg | r = %.2f deg/s" % (podOutput, lidarOutPut, usvPose.uDVL, usvPose.vDVL, rad2deg(usvPose.psi), rad2deg(usvPose.r)), end = " ")
+                print("\rUSV 状态：泊近-接近 (%.2f deg, %.2f m) | [u, v] = [%.2f, %.2f] m/s | psi = %.2f deg | r = %.2f deg/s" % (podOutput, lidarOutPut, usvPose.uDVL, usvPose.vDVL, rad2deg(usvPose.psi), rad2deg(usvPose.r)), end = " ")
 
                 # 根据吊舱、激光雷达状态，生成控制指令
                 if (usvPose.isLidarFindTV):
-                    if (usvPose.tvDist < 20.0):
-                        uSP = 0.1
+                    if (usvPose.tvDist < 15.0):
+                        uSP = 0.15
                     elif (usvPose.tvDist > 100.0):
                         uSP = 3.0
                     else:
-                        uSP = 0.1 + (3.0 - 0.1) * (usvPose.tvDist - 20.0) / (100.0 - 20.0)
+                        uSP = 0.15 + (3.0 - 0.15) * (usvPose.tvDist - 15.0) / (100.0 - 15.0)
 
                     psiSP = usvPose.psi + usvPose.tvAngleLidar
                 elif (usvPose.isPodFindTV):
-                    uSP = 3
+                    uSP = 3.25
                     psiSP = usvPose.psi + usvPose.tvAnglePod
                 else:
                     print("\n吊舱丢失目标船，恢复追踪段.")
@@ -179,14 +196,14 @@ def main(args=None):
                 usvControl.moveUSV(uSP, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
 
                 # 如果接近段结束了，则 DOCK_FINAL（10月7、8、9日），或 DOCK_MEASURE（真正比赛）
-                if (usvPose.isLidarFindTV) & (usvPose.tvDist < 15.0):
+                if (usvPose.isLidarFindTV) & (usvPose.tvDist < 5.0):
                     print("\n接近完成")
                     usvState = DOCK_FINAL
                     # usvState = DOCK_MEASURE
                     continue
 
             elif usvState == DOCK_MEASURE:
-                print("\rUSV 状态：泊近-测量段 | [u, v] = [%.2f, %.2f] m/s | psi = %.2f deg | r = %.2f deg/s" % (usvPose.uDVL, usvPose.vDVL, rad2deg(usvPose.psi), rad2deg(usvPose.r)), end = " ")
+                print("\rUSV 状态：泊近-测量 | [u, v] = [%.2f, %.2f] m/s | psi = %.2f deg | r = %.2f deg/s" % (usvPose.uDVL, usvPose.vDVL, rad2deg(usvPose.psi), rad2deg(usvPose.r)), end = " ")
                 
                 # 使用激光雷达读取的位置信息，规划测量路径
                 if (isDockMeasurePlan == False):
@@ -209,7 +226,7 @@ def main(args=None):
                     usvState = DOCK_TRANSFER
 
             elif usvState == DOCK_TRANSFER:
-                print("\rUSV 状态：泊近-变轨段 | [u, v] = [%.2f, %.2f] m/s | psi = %.2f deg | r = %.2f deg/s" % (usvPose.uDVL, usvPose.vDVL, rad2deg(usvPose.psi), rad2deg(usvPose.r)), end = " ")
+                print("\rUSV 状态：泊近-变轨 | [u, v] = [%.2f, %.2f] m/s | psi = %.2f deg | r = %.2f deg/s" % (usvPose.uDVL, usvPose.vDVL, rad2deg(usvPose.psi), rad2deg(usvPose.r)), end = " ")
                 
                 # 使用激光雷达读取的位置信息，规划变轨路径
                 if (isDockTransferPlan == False):
@@ -229,21 +246,17 @@ def main(args=None):
              
             elif usvState == DOCK_ADJUST:
                 # 在 ADJUST 段，读取大物体方位角，在大物体侧停下来
-                print("USV 状态：泊近-调整段.")
+                print("USV 状态：泊近-调整.")
                 usvState = DOCK_FINAL
 
             elif usvState == DOCK_FINAL:
-                print("\rUSV 状态：泊近-最终段 | [u, v] = [%.2f, %.2f] m/s | psi = %.2f deg | r = %.2f deg/s" % (usvPose.uDVL, usvPose.vDVL, rad2deg(usvPose.psi), rad2deg(usvPose.r)), end = " ")
+                print("\rUSV 状态：泊近-最终 | [u, v] = [%.2f, %.2f] m/s | psi = %.2f deg | r = %.2f deg/s" % (usvPose.uDVL, usvPose.vDVL, rad2deg(usvPose.psi), rad2deg(usvPose.r)), end = " ")
                 # 等待船接近静止再发送起飞指令
                 if (usvStationTimes > 5 * ROSRATE):
                     print("\n稳定完成，发送 tUAV 起飞指令.")
                     usvComm.sendTakeOffFlag()
-                    usvComm.sendTVPosFromLidar()
-                    usvComm.sendTakeOffFlag()
-                    usvComm.sendTVPosFromLidar()
-                    usvComm.sendTakeOffFlag()
-                    usvComm.sendTVPosFromLidar()
-                    usvState = STABLE
+                    usvComm.sendTVPosFromLidar(-usvPose.xLidar, -usvPose.yLidar)
+                    # usvState = STABLE
                     continue
                 elif (abs(usvPose.uDVL) <= 0.2):
                     usvStationTimes = usvStationTimes + 1 
@@ -343,6 +356,7 @@ def main(args=None):
                 print("变量 [usvState] 取到异常值 %d，请检查程序." % (usvState))
                 break
             
+            usvComm.sendUSVState(usvState)
             rosRate.sleep()
 
         # 程序不应该执行到这里

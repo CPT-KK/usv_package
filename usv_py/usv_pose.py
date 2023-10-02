@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import rospy, threading
 import message_filters
-from numpy import arctan2, rad2deg, arctan, sqrt, deg2rad, zeros, argmax, argmin
+from numpy import arctan2, rad2deg, arctan, sqrt, deg2rad, zeros, argmax, argmin, array, abs
 from numpy.linalg import norm
 from usv_math import rotationZ
 
@@ -39,7 +39,6 @@ class Pose():
     # Lidar 变量
     isLidarFindTV = False
     objectNum = 0
-    tLidarLast = 0
     tLidar = 0
     tvX = 0
     tvY = 0
@@ -179,8 +178,8 @@ class Pose():
 
             # 根据无人船上一时刻的位置坐标 [xLidar, yLidar] 预测这一时刻的坐标 [xLidarEst, yLidarEst]
             [vx, vy] = rotationZ(self.uDVL, self.vDVL, -self.psi)
-            xLidarEst = self.xLidar + dt * vx
-            yLidarEst = self.yLidar + dt * vy
+            xLidarEst = self.xLidar + dt.to_sec() * vx
+            yLidarEst = self.yLidar + dt.to_sec() * vy
 
             # 根据这一时刻的所有物体位置，计算无人船相对于以物体为原点的 ENU 的坐标
             [xLidarPossible, yLidarPossible] = rotationZ(objectX, objectY, -self.psi)
@@ -188,7 +187,7 @@ class Pose():
             yLidarPossible = -yLidarPossible
 
             # 判断：如果预测位置与真实位置接近，则认为此物体是目标船
-            dDist = norm([xLidarEst - xLidarPossible, yLidarEst - yLidarPossible])
+            dDist = sqrt((xLidarEst - xLidarPossible) ** 2 + (yLidarEst - yLidarPossible) ** 2)
             dDistIndex = argmin(dDist)
             if (dDist[dDistIndex, 0] < self.distTol):
                 self.isLidarFindTV = True
@@ -221,6 +220,7 @@ if __name__ == '__main__':
             
             if (usvPose.isLidarFindTV):
                 print("激光雷达扫描到目标船 [%.2f, %.2f]m" % (usvPose.tvX, usvPose.tvY))
+                print("无人船的位置 [%.2f, %.2f]m" % (usvPose.xLidar, usvPose.yLidar))
             elif (usvPose.objectNum > 0):
                 print("激光雷达扫描到 %d 个物体，但不认为它们是目标船" % usvPose.objectNum)
             else:

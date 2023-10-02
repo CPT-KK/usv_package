@@ -18,7 +18,7 @@ class Communication():
     isSearchFindTV = False
     tvEstPosX = 0
     tvEstPosY = 0
-    tvAngleEst = deg2rad(148)
+    tvAngleEst = deg2rad(137)
 
     isArmFindBigObj = False
     bigObjAngle = 0
@@ -35,12 +35,17 @@ class Communication():
         self.uavTakeOffFlagPub = rospy.Publisher('/tuav1_takeoff_flag', Int8, queue_size=2)
         self.tvPosFromLidarPub = rospy.Publisher('/target_lidar_position', Pose2D, queue_size=2)
 
+        # 创建发送无人船状态的话题
+        self.usvStatePub = rospy.Publisher('/usv/state', Int8, queue_size=2)
+
     def sendTakeOffFlag(self):
         self.uavTakeOffFlagPub.publish(Int8(data=1))
     
-    def sendTVPosFromLidar(self):
-        if (self.isLidarFindTV):
-            self.tvPosFromLidarPub.publish(Pose2D(x=-self.usvX, y=-self.usvY, theta=arctan2(-self.usvY, -self.usvX)))
+    def sendTVPosFromLidar(self, x, y):
+        self.tvPosFromLidarPub.publish(Pose2D(x=x, y=y, theta=arctan2(y, x)))
+
+    def sendUSVState(self, theState):
+        self.usvStatePub.publish(Int8(data=theState))
 
     def tvOdomCallback(self, msg):
         self.tvEstPosX = msg.x
