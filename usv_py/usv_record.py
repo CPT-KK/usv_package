@@ -7,7 +7,7 @@ from numpy.linalg import norm
 from rich.console import Console
 from rich.table import Column, Table
 
-def genTable(usvState, latestMsg, usvPose, usvComm, dt):    
+def genTable(usvState, latestMsg, usvPose, usvComm, dt, uSP):    
     if (usvComm.isSearchFindTV):
         sUAVOutput = rad2deg(usvComm.tvAngleEst)
     else:
@@ -33,25 +33,25 @@ def genTable(usvState, latestMsg, usvPose, usvComm, dt):
     theTable.caption = "Latest msg: " + latestMsg
     theTable.add_column("State: [underline]%s" % usvState)
     theTable.add_column("Current motion", justify="right")
-    theTable.add_column("Extern input", justify="right")
+    theTable.add_column("External input", justify="right")
     theTable.add_column("Aux vars", justify="right")
     theTable.add_row(
         "t: %.3f s" % dt,
         "",
-        "",
+        "uSP: %.2f m/s" % uSP,
         "",
     )
     theTable.add_row(
         "GPS: %d" % usvPose.isGPSValid, 
         "u: %.2f m/s" % usvPose.uDVL,
         "sUAV yaw: %.2f deg" % sUAVOutput,
-        "x: %.2f m" % usvPose.x,
+        "x(GPS): %.2f m" % usvPose.x,
     )
     theTable.add_row(
         "Imu: %d" % usvPose.isImuValid, 
         "v: %.2f m/s" % usvPose.vDVL,
         "pod yaw: %.2f deg" % podOutput,
-        "y: %.2f m" % usvPose.y,
+        "y(GPS): %.2f m" % usvPose.y,
     )
     theTable.add_row(
         "Dvl: %d" % usvPose.isDvlValid, 
@@ -71,11 +71,11 @@ def genTable(usvState, latestMsg, usvPose, usvComm, dt):
 class USVData():
     element = ["t", "x_GPS", "y_GPS", "psi", "u", "v", "r", "uSP", "vSP", "psiSP","x_DVL", "y_DVL", "u_DVL", "v_DVL", "ax", "ay", "az", "roll", "pitch", "x_Lidar", "y_Lidar","search_angle", "pod_angle", "lidar_angle"]
     elementStr = " ".join(element)
-    elementTemplate = "%.2f " * (len(element) - 1) + "%.2f"
+    elementTemplate = "%.5f " * (len(element) - 1) + "%.5f"
 
     def __init__(self, rate):
         timeStr = time.strftime('%Y%m%d_%H%M%S', time.localtime())
-        self.fileNameStr = "usvdata_" + timeStr + ".txt"
+        self.fileNameStr = "usv_data_" + timeStr + ".txt"
         with open(self.fileNameStr, 'w') as f:
             f.write(self.elementStr + '\n')
 

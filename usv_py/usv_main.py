@@ -312,12 +312,11 @@ def main(args=None):
             else:
                 # 程序不应该执行到这里
                 print("\n变量 [usvState] 取到异常值 %d，请检查程序." % (usvState))
-                print("\n变量 [usvState] 取到异常值 %d，请检查程序." % (usvState))
                 break
             
             # 打印当前状态
             dt = rospy.Time.now().to_sec() - t0
-            theTable = genTable(usvState, latestMsg, usvPose, usvComm, dt) 
+            theTable = genTable(usvState, latestMsg, usvPose, usvComm, dt, uSP) 
             console.print(theTable)
 
             # 写入当前状态到文件
