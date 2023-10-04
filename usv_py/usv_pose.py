@@ -115,8 +115,7 @@ class Pose():
             self.betaDVL = arctan2(self.vDVL, self.uDVL)
 
         self.isDvlValid = True
-
-
+   
     def podCallback(self, msg):
         if (msg.data[0] == 1):
             self.isPodFindTV = True
@@ -129,7 +128,6 @@ class Pose():
 
     def lidarCallback(self, msg):   
         self.objectNum = len(msg.poses)
-        self.isLidarValid = True
 
         # 确保：self.objectNum > 0 的 for 循环一定会执行
         if (self.objectNum <= 0):
