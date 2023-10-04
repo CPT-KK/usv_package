@@ -110,8 +110,8 @@ def main(args=None):
     while not rospy.is_shutdown():
         try:
             if usvState == "STARTUP":
-                pubTopicList = rospy.get_published_topics()
-                pubTopicList = sum(pubTopicList, [])
+                # 单独为激光雷达设置启动检查
+                pubTopicList = sum(rospy.get_published_topics(), [])
                 usvPose.isLidarValid = ('/filter/target' in pubTopicList)
                     
                 if (usvPose.isGPSValid) & (usvPose.isImuValid) & (usvPose.isDvlValid) & (usvPose.isPodValid) & (usvPose.isLidarValid):
