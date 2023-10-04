@@ -1,39 +1,67 @@
-import rospy
-from mavros_msgs.srv import CommandLong
+#!/usr/bin/env python3
 
-def play_tune():
-    # 初始化ROS节点
-    rospy.init_node('play_tune_node', anonymous=True)
+import asyncio
+from mavsdk import System
+from mavsdk.tune import (SongElement, TuneDescription, TuneError)
 
-    # 等待服务变得可用
-    rospy.wait_for_service('/mavros/cmd/command')
+async def run():
 
-    try:
-        # 创建服务客户端
-        cmd_long_service = rospy.ServiceProxy('/mavros/cmd/command', CommandLong)
+    drone = System()
+    await drone.connect(system_address="udp://192.168.147.215:14550")
 
-        # 定义要播放的音调字符串
-        tune_string = "MFT200e8a8a"
+    print("Waiting for drone to connect...")
+    async for state in drone.core.connection_state():
+        if state.is_connected:
+            print(f"-- Connected to drone!")
+            break
 
-        # 调用服务来发送MAV_CMD_DO_PLAY_TUNE命令
-        response = cmd_long_service(
-            False,  # broadcast
-            258,    # MAV_CMD_DO_PLAY_TUNE
-            0,      # confirmation
-            0,      # param1 (tune format: 0 for MML, 1 for ABC)
-            0.0, 0.0, 0.0, 0.0,  # unused parameters
-            0.0,  # param5 (tune string)
-            0.0 # param6 (tune string continuation)
-        )
+    song_elements = []
+    song_elements.append(SongElement.DURATION_4)
+    song_elements.append(SongElement.NOTE_G)
+    song_elements.append(SongElement.NOTE_A)
+    song_elements.append(SongElement.NOTE_B)
+    song_elements.append(SongElement.FLAT)
+    song_elements.append(SongElement.OCTAVE_UP)
+    song_elements.append(SongElement.DURATION_1)
+    song_elements.append(SongElement.NOTE_E)
+    song_elements.append(SongElement.FLAT)
+    song_elements.append(SongElement.OCTAVE_DOWN)
+    song_elements.append(SongElement.DURATION_4)
+    song_elements.append(SongElement.NOTE_PAUSE)
+    song_elements.append(SongElement.NOTE_F)
+    song_elements.append(SongElement.NOTE_G)
+    song_elements.append(SongElement.NOTE_A)
+    song_elements.append(SongElement.OCTAVE_UP)
+    song_elements.append(SongElement.DURATION_2)
+    song_elements.append(SongElement.NOTE_D)
+    song_elements.append(SongElement.NOTE_D)
+    song_elements.append(SongElement.OCTAVE_DOWN)
+    song_elements.append(SongElement.DURATION_4)
+    song_elements.append(SongElement.NOTE_PAUSE)
+    song_elements.append(SongElement.NOTE_E)
+    song_elements.append(SongElement.FLAT)
+    song_elements.append(SongElement.NOTE_F)
+    song_elements.append(SongElement.NOTE_G)
+    song_elements.append(SongElement.OCTAVE_UP)
+    song_elements.append(SongElement.DURATION_1)
+    song_elements.append(SongElement.NOTE_C)
+    song_elements.append(SongElement.OCTAVE_DOWN)
+    song_elements.append(SongElement.DURATION_4)
+    song_elements.append(SongElement.NOTE_PAUSE)
+    song_elements.append(SongElement.NOTE_A)
+    song_elements.append(SongElement.OCTAVE_UP)
+    song_elements.append(SongElement.NOTE_C)
+    song_elements.append(SongElement.OCTAVE_DOWN)
+    song_elements.append(SongElement.NOTE_B)
+    song_elements.append(SongElement.FLAT)
+    song_elements.append(SongElement.DURATION_2)
+    song_elements.append(SongElement.NOTE_G)
 
-        # 检查响应
-        if response.success:
-            rospy.loginfo("Tune command sent successfully")
-        else:
-            rospy.logerr("Failed to send tune command: %s", response.result)
+    tune_description = TuneDescription(song_elements, 200)
+    await drone.tune.play_tune(tune_description)
 
-    except rospy.ServiceException as e:
-        rospy.logerr("Service call failed: %s", e)
+    print("Tune played")
 
 if __name__ == "__main__":
-    play_tune()
+    # Run the asyncio loop
+    asyncio.run(run())

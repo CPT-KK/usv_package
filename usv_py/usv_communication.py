@@ -2,7 +2,7 @@
 
 import rospy, threading
 from geometry_msgs.msg import Pose2D, PoseStamped, PoseArray, Vector3Stamped
-from std_msgs.msg import Float64MultiArray, Int8
+from std_msgs.msg import Float64MultiArray, Int8, String
 from sensor_msgs.msg import Imu
 from numpy import arctan, deg2rad, zeros, abs, sqrt, rad2deg, arctan2
 from numpy.linalg import norm
@@ -36,7 +36,7 @@ class Communication():
         self.tvPosFromLidarPub = rospy.Publisher('/target_lidar_position', Pose2D, queue_size=2)
 
         # 创建发送无人船状态的话题
-        self.usvStatePub = rospy.Publisher('/usv/state', Int8, queue_size=2)
+        self.usvStatePub = rospy.Publisher('/usv/state', String, queue_size=2)
 
     def sendTakeOffFlag(self):
         self.uavTakeOffFlagPub.publish(Int8(data=1))
@@ -45,7 +45,7 @@ class Communication():
         self.tvPosFromLidarPub.publish(Pose2D(x=x, y=y, theta=arctan2(y, x)))
 
     def sendUSVState(self, theState):
-        self.usvStatePub.publish(Int8(data=theState))
+        self.usvStatePub.publish(String(data=theState))
 
     def tvOdomCallback(self, msg):
         self.tvEstPosX = msg.x

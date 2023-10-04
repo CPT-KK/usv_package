@@ -20,10 +20,14 @@ class Pose():
     v = 0.0
     axb = 0.0
     ayb = 0.0
+    azb = 0.0
 
     psi = 0.0
     beta = 0.0
     r = 0.0
+
+    roll = 0.0
+    pitch = 0.0
     
     isGPSValid = False
     isImuValid = False
@@ -32,6 +36,8 @@ class Pose():
     isLidarValid = False
 
     # Dvl-A125 变量
+    xDVL = 0
+    yDVL = 0
     uDVL = 0
     vDVL = 0
     betaDVL = 0
@@ -52,7 +58,7 @@ class Pose():
     tvAnglePod = 0
 
     # 容忍误差
-    angleTol = deg2rad(10.0)
+    angleTol = deg2rad(15.0)
     distTol = 5.0
 
     def __init__(self):
@@ -63,6 +69,7 @@ class Pose():
         self.px4IMUSub = rospy.Subscriber('/mavros/imu/data', Imu, self.imuCallback, queue_size=1) 
 
         # For DVL
+        self.dvlPosSub = rospy.Subscriber('/usv/dvl/position', PoseStamped, self.dvlPosCallback)
         self.dvlVelSub = rospy.Subscriber('/usv/dvl/velocity', Vector3Stamped, self.dvlCallback)
 
         # For Pod
@@ -89,10 +96,15 @@ class Pose():
     def imuCallback(self, imuMsg):
         self.axb = imuMsg.linear_acceleration.x
         self.ayb = imuMsg.linear_acceleration.y
+        self.azb = imuMsg.linear_acceleration.z
         self.r = imuMsg.angular_velocity.z
-        [_, _, self.psi] = euler_from_quaternion([imuMsg.orientation.x, imuMsg.orientation.y, imuMsg.orientation.z, imuMsg.orientation.w])
+        [self.roll, self.pitch, self.psi] = euler_from_quaternion([imuMsg.orientation.x, imuMsg.orientation.y, imuMsg.orientation.z, imuMsg.orientation.w])
 
         self.isImuValid = True
+    
+    def dvlPosCallback(self, dvlMsg):
+        self.xDVL = dvlMsg.pose.position.x
+        self.yDVL = dvlMsg.pose.position.y
     
     def dvlCallback(self, dvlMsg):
         self.uDVL = dvlMsg.vector.x
@@ -119,11 +131,8 @@ class Pose():
         self.objectNum = len(msg.poses)
         self.isLidarValid = True
 
-        # 通过两个 if 确保：
-        # self.objectNum > 0 的 for 循环一定会执行
-        # self.isPodFindTV 和 self.isLidarFindTV 有一个为 true
+        # 确保：self.objectNum > 0 的 for 循环一定会执行
         if (self.objectNum <= 0):
-            self.isLidarFindTV == False
             return
 
         if (self.isPodFindTV == False) & (self.isLidarFindTV == False):
@@ -169,12 +178,10 @@ class Pose():
             dt = msg.header.stamp - self.tLidar
 
             # 如果时间差太大，则认为无法通过激光雷达上一时刻的值来预测（船不再走直线）
-            if (dt.to_sec() > 3.0):
+            if (dt.to_sec() > 5.0):
+                rospy.logerr("Lidar loses target vessel for 5 seconds! Flag [isLidarFindTV] is set to FALSE.")
                 self.isLidarFindTV = False
                 return
-
-            # 记录此刻的时间戳
-            self.tLidar = msg.header.stamp
 
             # 根据无人船上一时刻的位置坐标 [xLidar, yLidar] 预测这一时刻的坐标 [xLidarEst, yLidarEst]
             [vx, vy] = rotationZ(self.uDVL, self.vDVL, -self.psi)
@@ -197,8 +204,13 @@ class Pose():
                 self.tvDist = objectDist[dDistIndex, 0]
 
                 self.xLidar = xLidarPossible[dDistIndex, 0]
-                self.yLidar = yLidarPossible[dDistIndex, 0]            
-
+                self.yLidar = yLidarPossible[dDistIndex, 0]     
+                
+                # 成功才记录此刻的时间戳
+                self.tLidar = msg.header.stamp       
+            else:
+                rospy.logwarn("Pod and lidar lose detection for %.2fs", dt.to_sec())
+                
 if __name__ == '__main__':
     # 以下代码为测试代码
     rospy.init_node('usv_pos_test_node')
@@ -219,7 +231,7 @@ if __name__ == '__main__':
                 print("吊舱未扫描到目标船")
             
             if (usvPose.isLidarFindTV):
-                print("激光雷达扫描到目标船 [%.2f, %.2f]m" % (usvPose.tvX, usvPose.tvY))
+                print("激光雷达扫描到目标船 [%.2f, %.2f]m，方位 %.2f deg " % (usvPose.tvX, usvPose.tvY, rad2deg(arctan2(usvPose.tvY, usvPose.tvX))))
                 print("无人船的位置 [%.2f, %.2f]m" % (usvPose.xLidar, usvPose.yLidar))
             elif (usvPose.objectNum > 0):
                 print("激光雷达扫描到 %d 个物体，但不认为它们是目标船" % usvPose.objectNum)
