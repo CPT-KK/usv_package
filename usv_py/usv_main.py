@@ -48,7 +48,7 @@ ROSRATE = 10
 
 @atexit.register 
 def clean():
-    print(">>>>>>> Program has exited.")
+    print(">>>>>>> USV program has exited.")
 
 def interuptFunc(signum, frame):
     console = Console()
@@ -60,12 +60,15 @@ def main(args=None):
     signal.signal(signal.SIGINT, interuptFunc)
     signal.signal(signal.SIGTERM, interuptFunc)
 
-    # 添加主节点
-    rospy.init_node('usv_main_node')
+    # 控制台输出初始化
+    console = Console()
+    latestMsg = "Waiting USV self-check to complete..."
 
+    # 添加主节点
+    rospy.init_node('usv_main_node', anonymous=True)
     rosRate = rospy.Rate(ROSRATE)
 
-    # 添加功能节点
+    # 添加功能类
     usvPose = Pose()
     usvComm = Communication()
     usvPathPlanner = PathPlanner()
@@ -98,21 +101,20 @@ def main(args=None):
     # t0
     t0 = rospy.Time.now().to_sec()
 
-    # 控制台输出初始化
-    console = Console()
-    latestMsg = "Waiting USV self-check to complete..."
-
     # Set point 
     uSP = float("nan")
     vSP = float("nan")
     psiSP = float("nan")
-
-    # 试一下
     
+    # 试一下  
     while not rospy.is_shutdown():
         try:
             if usvState == "STARTUP":
-                if (usvPose.isGPSValid) & (usvPose.isImuValid) & (usvPose.isDvlValid) & (usvPose.isPodValid):
+                pubTopicList = rospy.get_published_topics()
+                pubTopicList = sum(pubTopicList, [])
+                usvPose.isLidarValid = ('/filter/target' in pubTopicList)
+                    
+                if (usvPose.isGPSValid) & (usvPose.isImuValid) & (usvPose.isDvlValid) & (usvPose.isPodValid) & (usvPose.isLidarValid):
                     latestMsg = "Waiting sUAV to send heading..."
                     usvState = "STANDBY"
 
@@ -326,15 +328,15 @@ def main(args=None):
             usvComm.sendUSVState(usvState)
 
             rosRate.sleep()
- 
+            
         except Exception as e:
-            console.print("\n[red] >>>>>>> Unexpected exception caught. Check code")
+            console.print("\n")
             console.print_exception(show_locals=True)
+            console.print("[red]>>>>>>> Unexpected exception caught. Check code.")
             break
     
     # 程序不应该执行到这里
-    console.print("\n[red]Program jumped out from the main loop.")
-    console.print(locals())     
+    console.print("[red]>>>>>>> USV program jumped out from the main loop.")
     return
 
 if __name__ == '__main__':

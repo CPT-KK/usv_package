@@ -36,31 +36,31 @@ def genTable(usvState, latestMsg, usvPose, usvComm, dt, uSP):
     theTable.add_column("Input command", justify="left")
     theTable.add_column("Other", justify="left")
     theTable.add_row(
-        "t: %.3f s" % dt,
+        "GPS: %d" % usvPose.isGPSValid, 
         "",
         "uSP: %.2f m/s" % uSP,
         "",
     )
     theTable.add_row(
-        "GPS: %d" % usvPose.isGPSValid, 
+        "Imu: %d" % usvPose.isImuValid, 
         "u: %.2f m/s" % usvPose.uDVL,
         "sUAV yaw: %.2f deg" % sUAVOutput,
         "x(GPS): %.2f m" % usvPose.x,
     )
     theTable.add_row(
-        "Imu: %d" % usvPose.isImuValid, 
+        "Dvl: %d" % usvPose.isDvlValid, 
         "v: %.2f m/s" % usvPose.vDVL,
         "pod yaw: %.2f deg" % podOutput,
         "y(GPS): %.2f m" % usvPose.y,
     )
     theTable.add_row(
-        "Dvl: %d" % usvPose.isDvlValid, 
+        "Pod: %d" % usvPose.isPodValid, 
         "psi: %.2f deg" % rad2deg(usvPose.psi),
         "Lidar yaw: %.2f deg" % lidarOutPutAngle,
         "x(Lidar): %.2f m" % xLidarOutput,
     )
     theTable.add_row(
-        "Pod: %d" % usvPose.isPodValid, 
+        "Lidar: %d" % usvPose.isLidarValid,
         "r: %.2f deg/s" % rad2deg(usvPose.r),
         "Lidar dist: %.2f m" % lidarOutPutDist,
         "y(Lidar): %.2f m" % yLidarOutput,
