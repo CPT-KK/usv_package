@@ -2,10 +2,9 @@
 import time
 
 from numpy import zeros, rad2deg, median, deg2rad, sin, cos, pi, abs, min, argmin
-from numpy.linalg import norm
 
-from rich.console import Console
 from rich.table import Column, Table
+from rich import box
 
 def genTable(usvState, latestMsg, usvPose, usvComm, dt, uSP):    
     if (usvComm.isSearchFindTV):
@@ -29,12 +28,13 @@ def genTable(usvState, latestMsg, usvPose, usvComm, dt, uSP):
         xLidarOutput = float("nan")
         yLidarOutput = float("nan")
 
-    theTable = Table(show_header=True, header_style="bold", title_justify="left", title_style="bold magenta", caption_justify="left")
-    theTable.caption = "Latest msg: " + latestMsg
-    theTable.add_column("State: [underline]%s" % usvState)
-    theTable.add_column("Current motion", justify="right")
-    theTable.add_column("External input", justify="right")
-    theTable.add_column("Aux vars", justify="right")
+    theTable = Table(show_header=True, header_style="bold", title_justify="center", title_style="bold magenta", caption_justify="left", box=box.HORIZONTALS)
+    theTable.title = "USV Info @ t = %.3f s" % dt
+    theTable.caption = " Message: " + latestMsg + "\n"
+    theTable.add_column("Stage: [reverse]%s" % usvState, justify="left")
+    theTable.add_column("Current state", justify="left")
+    theTable.add_column("Input command", justify="left")
+    theTable.add_column("Other", justify="left")
     theTable.add_row(
         "t: %.3f s" % dt,
         "",

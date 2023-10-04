@@ -4,6 +4,7 @@ import rospy
 import threading
 import atexit
 import traceback
+import signal
 
 from numpy import zeros, rad2deg, median, deg2rad, sin, cos, pi, abs, min, argmin
 from numpy.linalg import norm
@@ -47,10 +48,18 @@ ROSRATE = 10
 
 @atexit.register 
 def clean():
-    print("\n程序退出...")
-    # rospy.signal_shutdown("End of USV main node.")
+    print(">>>>>>> Program has exited.")
+
+def interuptFunc(signum, frame):
+    console = Console()
+    console.print("\n[red]>>>>>>> Ctrl + C pressed! Exiting...")
+    exit()
 
 def main(args=None):
+    # 注册 Ctrl + C
+    signal.signal(signal.SIGINT, interuptFunc)
+    signal.signal(signal.SIGTERM, interuptFunc)
+
     # 添加主节点
     rospy.init_node('usv_main_node')
 
@@ -91,7 +100,7 @@ def main(args=None):
 
     # 控制台输出初始化
     console = Console()
-    latestMsg = "Waiting USV self-check."
+    latestMsg = "Waiting USV self-check to complete..."
 
     # Set point 
     uSP = float("nan")
@@ -99,13 +108,14 @@ def main(args=None):
     psiSP = float("nan")
 
     # 试一下
-    try:
-        while not rospy.is_shutdown():
+    
+    while not rospy.is_shutdown():
+        try:
             if usvState == "STARTUP":
                 if (usvPose.isGPSValid) & (usvPose.isImuValid) & (usvPose.isDvlValid) & (usvPose.isPodValid):
-                    latestMsg = "Waiting sUAV to send heading."
+                    latestMsg = "Waiting sUAV to send heading..."
                     usvState = "STANDBY"
- 
+
             elif usvState == "STANDBY":
                 if (isTestEnable):
                     usvState = TEST_MODE
@@ -117,7 +127,7 @@ def main(args=None):
             elif usvState == "PURSUE":
                 # 如果吊舱找到目标船，则进入 DOCK
                 if (usvPose.isPodFindTV):
-                    latestMsg = "Pod finds target vessel."
+                    latestMsg = "Pod finds target vessel!"
                     usvState = "DOCK_APPROACH"
                     continue 
 
@@ -142,6 +152,7 @@ def main(args=None):
 
                 # 根据吊舱、激光雷达状态，生成控制指令
                 if (usvPose.isLidarFindTV):
+                    latestMsg = "Lidar finds target vessel!"
                     if (usvPose.tvDist < 15.0):
                         uSP = 0.15
                     elif (usvPose.tvDist > 100.0):
@@ -156,7 +167,7 @@ def main(args=None):
                     psiSP = usvPose.psi + usvPose.tvAnglePod
 
                 else:
-                    latestMsg = "Pod & LIDAR lose target vessel, back to pursue."
+                    latestMsg = "Pod & Lidar lose target vessel, fall back to pursue."
                     usvState = "PURSUE"
                     continue
                 
@@ -165,7 +176,7 @@ def main(args=None):
 
                 # 如果接近段结束了，则 DOCK_FINAL（10月7、8、9日），或 DOCK_MEASURE（真正比赛）
                 if (usvPose.isLidarFindTV) & (usvPose.tvDist < 12.0):
-                    latestMsg = "Approach finished. Start to stablize the USV."
+                    latestMsg = "Approach finished. Start to stablize the USV..."
                     usvState = "DOCK_FINAL"
                     # usvState = "DOCK_MEASURE"
                     continue
@@ -206,7 +217,7 @@ def main(args=None):
                 if (usvGuidance.currentIdx >= usvGuidance.endIdx):
                     # print("\n变轨完成")
                     usvState = "DOCK_ADJUST"
-             
+                
             elif usvState == "DOCK_ADJUST":
                 # 在 ADJUST 段，读取大物体方位角，在大物体侧停下来
                 usvState = "DOCK_FINAL"
@@ -214,7 +225,7 @@ def main(args=None):
             elif usvState == "DOCK_FINAL":
                 # 等待船接近静止再发送起飞指令
                 if (usvStationTimer >= 5 * ROSRATE):
-                    latestMsg = "Stablization finished. Start to send take-off flag."
+                    latestMsg = "Stablization finished. Sending the take-off flag..."
                     usvComm.sendTakeOffFlag()
                     usvComm.sendTVPosFromLidar(-usvPose.xLidar, -usvPose.yLidar)
                 elif (abs(usvPose.uDVL) <= 0.2):
@@ -300,9 +311,9 @@ def main(args=None):
 
             else:
                 # 程序不应该执行到这里
-                print("\n变量 [usvState] 取到异常值 %d，请检查程序." % (usvState))
+                console.print("\n[red] >>>>>>> USV state: %s invalid. Check code." % (usvState))
                 break
-            
+        
             # 打印当前状态
             dt = rospy.Time.now().to_sec() - t0
             theTable = genTable(usvState, latestMsg, usvPose, usvComm, dt, uSP) 
@@ -315,18 +326,15 @@ def main(args=None):
             usvComm.sendUSVState(usvState)
 
             rosRate.sleep()
-
-        # 程序不应该执行到这里
-        console.print("\n[red]程序跳出主循环.")
-        console.print(locals())
-
-    except KeyboardInterrupt:
-        console.print("\n[red]检测到 Ctrl + C，退出 ...")
-        
-    except Exception as e:
-        console.print("\n[red]程序异常，请检查.")
-        console.print_exception(show_locals=True)
-         
+ 
+        except Exception as e:
+            console.print("\n[red] >>>>>>> Unexpected exception caught. Check code")
+            console.print_exception(show_locals=True)
+            break
+    
+    # 程序不应该执行到这里
+    console.print("\n[red]Program jumped out from the main loop.")
+    console.print(locals())     
     return
 
 if __name__ == '__main__':
