@@ -122,7 +122,7 @@ class Pose():
             self.tvAnglePod = msg.data[2]
         else:
             self.isPodFindTV = False
-            self.tvAnglePod = None
+            self.tvAnglePod = float("nan")
 
         self.isPodValid = True
 

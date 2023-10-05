@@ -105,7 +105,9 @@ def main(args=None):
     uSP = float("nan")
     vSP = float("nan")
     psiSP = float("nan")
-    
+    xSP = float("nan")
+    ySP = float("nan")
+
     # 试一下  
     while not rospy.is_shutdown():
         try:
@@ -177,10 +179,14 @@ def main(args=None):
                 usvControl.moveUSV(uSP, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
 
                 # 如果接近段结束了，则 DOCK_FINAL（10月7、8、9日），或 DOCK_MEASURE（真正比赛）
-                if (usvPose.isLidarFindTV) & (usvPose.tvDist < 12.0):
-                    latestMsg = "Approach finished. Start to stablize the USV..."
-                    usvState = "DOCK_FINAL"
-                    # usvState = "DOCK_MEASURE"
+                # if (usvPose.isLidarFindTV) & (usvPose.tvDist < 12.0):
+                #     latestMsg = "Approach finished. Start to stablize the USV..."
+                #     usvState = "DOCK_FINAL"
+                #     continue
+
+                if (usvPose.isLidarFindTV) & (usvPose.tvDist < 40.0):
+                    latestMsg = "Approach finished. Start to measure the USV..."
+                    usvState = "DOCK_MEASURE"
                     continue
 
             elif usvState == "DOCK_MEASURE":             
@@ -191,7 +197,7 @@ def main(args=None):
                     isDockMeasurePlan = True
 
                 # 读取激光雷达信息（这个时候应该能保证读到目标船吧？），生成控制指令
-                [uSP, psiSP] = usvGuidance.guidance(2.0, 20.0, usvPose.xLidar, usvPose.yLidar, usvPose.psi, usvPose.betaDVL)
+                [uSP, psiSP, xSP, ySP] = usvGuidance.guidance(2.0, 11.5, usvPose.xLidar, usvPose.yLidar, usvPose.psi, usvPose.betaDVL)
 
                 # 控制无人船
                 usvControl.moveUSV(uSP, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
@@ -201,7 +207,8 @@ def main(args=None):
 
                 # 如果测量段结束了，打印出测量段测量结果，进入变轨段
                 if (usvGuidance.currentIdx >= usvGuidance.endIdx):
-                    usvState = "DOCK_TRANSFER"
+                    #usvState = "DOCK_TRANSFER"
+                    return
 
             elif usvState == "DOCK_TRANSFER":
                 # 使用激光雷达读取的位置信息，规划变轨路径
@@ -253,7 +260,7 @@ def main(args=None):
                     latestMsg = "USV 测试-直线结束."
                     break
 
-                [uSP, psiSP] = usvGuidance.guidance(3.5, 20.0, usvPose.x, usvPose.y, usvPose.psi, usvPose.beta)
+                [uSP, psiSP, xSP, ySP] = usvGuidance.guidance(3.5, 20.0, usvPose.x, usvPose.y, usvPose.psi, usvPose.beta)
                 usvControl.moveUSV(uSP, psiSP, usvPose.u, usvPose.axb, usvPose.psi, usvPose.r)
             
             elif usvState == "TEST_CIRCLE":
@@ -273,7 +280,7 @@ def main(args=None):
                 
                 # R = 30m, dist2Next = 15m, uSP = 3m/s
                 # R = 15m, dist2Next = 7m, uSP = 2.6m/s
-                [uSP, psiSP] = usvGuidance.guidance(2.6, 7, usvPose.x, usvPose.y, usvPose.psi, usvPose.beta)
+                [uSP, psiSP, xSP, ySP] = usvGuidance.guidance(2.6, 7, usvPose.x, usvPose.y, usvPose.psi, usvPose.beta)
                 usvControl.moveUSV(uSP, psiSP, usvPose.u, usvPose.axb, usvPose.psi, usvPose.r)
 
             elif usvState == "TEST_BOTH": 
@@ -318,11 +325,11 @@ def main(args=None):
         
             # 打印当前状态
             dt = rospy.Time.now().to_sec() - t0
-            theTable = genTable(usvState, latestMsg, usvPose, usvComm, dt, uSP) 
+            theTable = genTable(usvState, latestMsg, usvPose, usvComm, dt, uSP, vSP, psiSP, xSP, ySP) 
             console.print(theTable)
 
             # 写入当前状态到文件
-            usvData.saveData(dt, usvPose, usvComm, uSP, vSP, psiSP)
+            usvData.saveData(dt, usvPose, usvComm, uSP, vSP, psiSP, xSP, ySP)
 
             # 发送无人船的东西 
             usvComm.sendUSVState(usvState)

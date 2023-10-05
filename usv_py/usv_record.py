@@ -6,7 +6,7 @@ from numpy import zeros, rad2deg, median, deg2rad, sin, cos, pi, abs, min, argmi
 from rich.table import Column, Table
 from rich import box
 
-def genTable(usvState, latestMsg, usvPose, usvComm, dt, uSP):    
+def genTable(usvState, latestMsg, usvPose, usvComm, dt, uSP, vSP, psiSP, xSP, ySP):    
     if (usvComm.isSearchFindTV):
         sUAVOutput = rad2deg(usvComm.tvAngleEst)
     else:
@@ -33,43 +33,49 @@ def genTable(usvState, latestMsg, usvPose, usvComm, dt, uSP):
     theTable.caption = " Message: " + latestMsg + "\n"
     theTable.add_column("Stage: [reverse]%s" % usvState, justify="left")
     theTable.add_column("Current state", justify="left")
-    theTable.add_column("Input command", justify="left")
-    theTable.add_column("Other", justify="left")
+    theTable.add_column("Setpoints", justify="left")
+    theTable.add_column("Sensors", justify="left")
+    theTable.add_column("Sensors", justify="left")
     theTable.add_row(
         "GPS: %d" % usvPose.isGPSValid, 
-        "",
+        "u: %.2f m/s" % usvPose.uDVL,
         "uSP: %.2f m/s" % uSP,
+        "",
         "",
     )
     theTable.add_row(
         "Imu: %d" % usvPose.isImuValid, 
-        "u: %.2f m/s" % usvPose.uDVL,
-        "sUAV yaw: %.2f deg" % sUAVOutput,
+        "v: %.2f m/s" % usvPose.vDVL,
+        "vSP: %.2f m/s" % vSP,
         "x(GPS): %.2f m" % usvPose.x,
+        "sUAV yaw: %.2f deg" % sUAVOutput,
     )
     theTable.add_row(
         "Dvl: %d" % usvPose.isDvlValid, 
-        "v: %.2f m/s" % usvPose.vDVL,
-        "pod yaw: %.2f deg" % podOutput,
+        "psi: %.2f deg" % rad2deg(usvPose.psi),        
+        "psiSP: %.2f deg" % rad2deg(psiSP),
         "y(GPS): %.2f m" % usvPose.y,
+        "pod yaw: %.2f deg" % podOutput,
     )
     theTable.add_row(
         "Pod: %d" % usvPose.isPodValid, 
-        "psi: %.2f deg" % rad2deg(usvPose.psi),
-        "Lidar yaw: %.2f deg" % lidarOutPutAngle,
+        "r: %.2f deg/s" % rad2deg(usvPose.r),
+        "xSP: %.2f m" % xSP,
         "x(Lidar): %.2f m" % xLidarOutput,
+        "Lidar yaw: %.2f deg" % lidarOutPutAngle,
     )
     theTable.add_row(
         "Lidar: %d" % usvPose.isLidarValid,
-        "r: %.2f deg/s" % rad2deg(usvPose.r),
-        "Lidar dist: %.2f m" % lidarOutPutDist,
+        "",
+        "ySP: %.2f m" % ySP,     
         "y(Lidar): %.2f m" % yLidarOutput,
+        "Lidar dist: %.2f m" % lidarOutPutDist,
     )
 
     return theTable
 
 class USVData():
-    element = ["t", "x_GPS", "y_GPS", "psi", "u", "v", "r", "uSP", "vSP", "psiSP","x_DVL", "y_DVL", "u_DVL", "v_DVL", "ax", "ay", "az", "roll", "pitch", "x_Lidar", "y_Lidar","search_angle", "pod_angle", "lidar_angle"]
+    element = ["t", "x_GPS", "y_GPS", "psi", "u", "v", "r", "uSP", "vSP", "psiSP", "xSP", "ySP", "x_DVL", "y_DVL", "u_DVL", "v_DVL", "ax", "ay", "az", "roll", "pitch", "x_Lidar", "y_Lidar","search_angle", "pod_angle", "lidar_angle"]
     elementStr = " ".join(element)
     elementTemplate = "%.5f " * (len(element) - 1) + "%.5f"
 
@@ -82,10 +88,10 @@ class USVData():
         self.saveDataTimer = 1
         self.recordRate = rate
 
-    def saveData(self, dt, usvPose, usvComm, uSP, vSP, psiSP):       
+    def saveData(self, dt, usvPose, usvComm, uSP, vSP, psiSP, xSP, ySP):       
         with open(self.fileNameStr, 'a') as f:          
             if (self.saveDataTimer >= 0.5 * self.recordRate):
-                f.write(self.elementTemplate % (dt, usvPose.x, usvPose.y, usvPose.psi, usvPose.u, usvPose.v, usvPose.r, uSP, vSP, psiSP, usvPose.xDVL, usvPose.yDVL, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.azb, usvPose.roll, usvPose.pitch, usvPose.xLidar, usvPose.yLidar, usvComm.tvAngleEst, usvPose.tvAnglePod, usvPose.tvAngleLidar) + '\n')
+                f.write(self.elementTemplate % (dt, usvPose.x, usvPose.y, usvPose.psi, usvPose.u, usvPose.v, usvPose.r, uSP, vSP, psiSP, xSP, ySP, usvPose.xDVL, usvPose.yDVL, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.azb, usvPose.roll, usvPose.pitch, usvPose.xLidar, usvPose.yLidar, usvComm.tvAngleEst, usvPose.tvAnglePod, usvPose.tvAngleLidar) + '\n')
 
                 self.saveDataTimer = 1
             else:

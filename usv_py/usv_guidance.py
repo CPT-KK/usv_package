@@ -82,10 +82,10 @@ class Guidance():
         # print("theta: %5.2f, beta: %5.2f, yErr: %5.2f" % (tanAngle, beta, yErr))
 
         # ROS2 内发送制导指令
-        self.pubSetpoints(xSP, ySP, psiSP)
+        # self.pubSetpoints(xSP, ySP, psiSP)
 
         # 返回制导指令
-        return [uSP, psiSP]
+        return [uSP, psiSP, xSP, ySP]
 
     def guidanceVec(self, dist2Next, vel2Next, x, y):
         if (self.isPathInit == False):
