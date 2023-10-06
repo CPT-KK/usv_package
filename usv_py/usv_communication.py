@@ -15,7 +15,7 @@ class Communication():
     vDVL = 0
     r = 0
 
-    isSearchFindTV = True
+    isSearchFindTV = False
     tvEstPosX = 0
     tvEstPosY = 0
     tvAngleEst = deg2rad(178)

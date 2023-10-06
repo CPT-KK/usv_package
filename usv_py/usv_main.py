@@ -9,7 +9,6 @@ import signal
 from numpy import zeros, rad2deg, median, deg2rad, sin, cos, pi, abs, min, argmin
 from numpy.linalg import norm
 
-from usv_lidar import Lidar
 from usv_pose import Pose
 from usv_path_planner import PathPlanner, planCirclePath
 from usv_guidance import Guidance
