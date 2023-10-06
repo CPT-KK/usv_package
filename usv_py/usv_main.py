@@ -20,6 +20,8 @@ from usv_record import genTable, USVData
 from rich.console import Console
 from rich.table import Column, Table
 
+from mavros_msgs.srv import CommandBool, CommandBoolRequest, SetMode, SetModeRequest
+
 # 无人船状态定义
     # STARTUP
     # STANDBY
@@ -74,6 +76,17 @@ def main(args=None):
     usvGuidance = Guidance()
     usvControl = Control(ROSRATE)
     usvData = USVData(ROSRATE)
+
+    # 添加节点
+    rospy.wait_for_service("/mavros/cmd/arming")
+    mavrosArmClient = rospy.ServiceProxy("mavros/cmd/arming", CommandBool)
+    armCmd = CommandBoolRequest()
+    armCmd.value = True
+    disarmCmd = CommandBoolRequest(alue=True)
+    disarmCmd.value = False
+
+    rospy.wait_for_service("/mavros/set_mode")
+    mavrosSetModeClient = rospy.ServiceProxy("mavros/set_mode", SetMode)
  
     # 开一个线程用于处理 rospy.spin()
     # 确保 daemon=True，这样主进程结束后，这个线程也会被结束
@@ -94,11 +107,9 @@ def main(args=None):
     # 无人船当前正在使用的路径
     currPath = zeros((2000, 2))
 
-    # 计数器
-    usvStationTimer = 1
-
-    # t0
+    # 计数器 
     t0 = rospy.Time.now().to_sec()
+    t1 = rospy.Time.now().to_sec()
 
     # Set point 
     uSP = float("nan")
@@ -125,8 +136,9 @@ def main(args=None):
 
                 if (usvComm.isSearchFindTV):
                     latestMsg = "Receive heading %d deg from sUAV." % rad2deg(usvComm.tvAngleEst)
-                    usvState = "PURSUE"
-                    
+                    if (not usvPose.state.armed) & (mavrosArmClient.call(armCmd).success):
+                        usvState = "PURSUE"
+
             elif usvState == "PURSUE":
                 # 如果吊舱找到目标船，则进入 DOCK
                 if (usvPose.isPodFindTV):
@@ -136,7 +148,8 @@ def main(args=None):
 
                 # 如果没有找到目标船，则继续跟随追踪路径
                 uSP = 3.25
-                usvControl.moveUSV(uSP, usvComm.tvAngleEst, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
+                psiSP = usvComm.tvAngleEst
+                usvControl.moveUSV(uSP, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
 
             elif usvState == "PURSUE_DETECT_OBS":
                 # 读取激光雷达信息 
@@ -177,16 +190,18 @@ def main(args=None):
                 # 控制无人船
                 usvControl.moveUSV(uSP, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
 
-                # 如果接近段结束了，则 DOCK_FINAL（10月7、8、9日），或 DOCK_MEASURE（真正比赛）
-                # if (usvPose.isLidarFindTV) & (usvPose.tvDist < 12.0):
-                #     latestMsg = "Approach finished. Start to stablize the USV..."
-                #     usvState = "DOCK_FINAL"
-                #     continue
-
-                if (usvPose.isLidarFindTV) & (usvPose.tvDist < 40.0):
-                    latestMsg = "Approach finished. Start to measure the USV..."
-                    usvState = "DOCK_MEASURE"
+                # 如果接近段结束了，则 DOCK_FINAL（10月7、8、9日）
+                if (usvPose.isLidarFindTV) & (usvPose.tvDist < 12.0):
+                    latestMsg = "Approach finished. Start to stablize the USV..."
+                    usvState = "DOCK_FINAL"
+                    t1 = rospy.Time.now().to_sec()
                     continue
+                
+                # 或 DOCK_MEASURE（真正比赛）
+                # if (usvPose.isLidarFindTV) & (usvPose.tvDist < 40.0):
+                #     latestMsg = "Approach finished. Start to measure the USV..."
+                #     usvState = "DOCK_MEASURE"
+                #     continue
 
             elif usvState == "DOCK_MEASURE":             
                 # 使用激光雷达读取的位置信息，规划测量路径
@@ -232,18 +247,22 @@ def main(args=None):
 
             elif usvState == "DOCK_FINAL":
                 # 等待船接近静止再发送起飞指令
-                if (usvStationTimer >= 5 * ROSRATE):
+                if (usvPose.state.armed):
+                    mavrosArmClient.call(disarmCmd)
+                    
+                if (rospy.Time.now().to_sec() - t1 >= 5.0):
                     latestMsg = "Stablization finished. Sending the take-off flag..."
                     usvComm.sendTakeOffFlag()
                     usvComm.sendTVPosFromLidar(-usvPose.xLidar, -usvPose.yLidar)
                 elif (abs(usvPose.uDVL) <= 0.2):
-                    usvStationTimer = usvStationTimer + 1 
+                    pass
                 else:
-                    usvStationTimer = 0
+                    t1 = rospy.Time.now().to_sec()
 
                 # 保持静止
+                uSP = 0
                 psiSP = usvPose.psi + usvPose.tvAngleLidar
-                usvControl.moveUSV(0, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
+                usvControl.moveUSV(uSP, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
 
             # 测试部分
             elif usvState == "TEST_LINE":

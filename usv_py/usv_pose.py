@@ -10,6 +10,7 @@ from geometry_msgs.msg import PoseStamped, TwistStamped, Vector3Stamped, PoseArr
 from nav_msgs.msg import Odometry
 from sensor_msgs.msg import Imu
 from tf.transformations import quaternion_from_euler, euler_from_quaternion
+from mavros_msgs.msg import State
 
 class Pose():
     x = 0.0
@@ -25,9 +26,12 @@ class Pose():
     psi = 0.0
     beta = 0.0
     r = 0.0
+    psiOffset = deg2rad(-10)
 
     roll = 0.0
     pitch = 0.0
+
+    state = State()
     
     isGPSValid = False
     isImuValid = False
@@ -56,6 +60,7 @@ class Pose():
     # Pod 变量
     isPodFindTV = False
     tvAnglePod = 0
+    podTimer = 0
 
     # 容忍误差
     angleTol = deg2rad(15.0)
@@ -78,6 +83,12 @@ class Pose():
         # For Lidar
         self.lidarSub = rospy.Subscriber('/filter/target', PoseArray, self.lidarCallback, queue_size=1)
 
+        # For MAVROS state
+        self.stateSub = rospy.Subscriber("mavros/state", State, self.stateCallback)
+
+    def stateCallback(self, stateMsg):
+        self.state = stateMsg
+
     def poseCallback(self, odomMsg):
         self.x = odomMsg.pose.pose.position.x
         self.y = odomMsg.pose.pose.position.y
@@ -98,8 +109,9 @@ class Pose():
         self.ayb = imuMsg.linear_acceleration.y
         self.azb = imuMsg.linear_acceleration.z
         self.r = imuMsg.angular_velocity.z
-        [self.roll, self.pitch, self.psi] = euler_from_quaternion([imuMsg.orientation.x, imuMsg.orientation.y, imuMsg.orientation.z, imuMsg.orientation.w])
+        [self.roll, self.pitch, psiRaw] = euler_from_quaternion([imuMsg.orientation.x, imuMsg.orientation.y, imuMsg.orientation.z, imuMsg.orientation.w])
 
+        self.psi = psiRaw + self.psiOffset
         self.isImuValid = True
     
     def dvlPosCallback(self, dvlMsg):
@@ -117,12 +129,15 @@ class Pose():
         self.isDvlValid = True
    
     def podCallback(self, msg):
-        if (msg.data[0] == 1):
+        if (msg.data[0] == 1) & (rospy.Time.now().to_sec() - self.podTimer >= 5.0):
             self.isPodFindTV = True
             self.tvAnglePod = msg.data[2]
+        elif (msg.data[0] == 1):
+            pass
         else:
             self.isPodFindTV = False
             self.tvAnglePod = float("nan")
+            self.podTimer = rospy.Time.now().to_sec()
 
         self.isPodValid = True
 
