@@ -13,23 +13,22 @@ from tf.transformations import quaternion_from_euler, euler_from_quaternion
 from mavros_msgs.msg import State
 
 class Pose():
-    x = 0.0
-    y = 0.0
-    vx = 0.0
-    vy = 0.0
-    u = 0.0
-    v = 0.0
-    axb = 0.0
-    ayb = 0.0
-    azb = 0.0
+    x = float("nan")
+    y = float("nan")
+    vx = float("nan")
+    vy = float("nan")
+    u = float("nan")
+    v = float("nan")
+    axb = float("nan")
+    ayb = float("nan")
+    azb = float("nan")
 
-    psi = 0.0
-    beta = 0.0
-    r = 0.0
-    psiOffset = deg2rad(-10)
-
-    roll = 0.0
-    pitch = 0.0
+    roll = float("nan")
+    pitch = float("nan")
+    psi = float("nan")
+    beta = float("nan")
+    r = float("nan")
+    psiOffset = deg2rad(0)
 
     state = State()
     
@@ -56,11 +55,15 @@ class Pose():
     tvDist = 0
     xLidar = 0
     yLidar = 0
+    obsX = 0
+    obsY = 0
+    obsAngleLidar = 0
 
     # Pod 变量
     isPodFindTV = False
     tvAnglePod = 0
     podTimer = 0
+    podTolSec = 0.01
 
     # 容忍误差
     angleTol = deg2rad(15.0)
@@ -129,15 +132,12 @@ class Pose():
         self.isDvlValid = True
    
     def podCallback(self, msg):
-        if (msg.data[0] == 1) & (rospy.Time.now().to_sec() - self.podTimer >= 5.0):
+        if (msg.data[0] == 1):
             self.isPodFindTV = True
             self.tvAnglePod = msg.data[2]
-        elif (msg.data[0] == 1):
-            pass
         else:
             self.isPodFindTV = False
             self.tvAnglePod = float("nan")
-            self.podTimer = rospy.Time.now().to_sec()
 
         self.isPodValid = True
 
@@ -221,9 +221,12 @@ class Pose():
                 
                 # 成功才记录此刻的时间戳
                 self.tLidar = msg.header.stamp       
-            else:
-                rospy.logwarn("Pod and lidar lose detection for %.2fs", dt.to_sec())
-                
+        else:
+            rospy.logwarn("Pod and lidar lose detection for %.2fs", dt.to_sec())
+
+        # 判断激光雷达扫描到的物体是否为障碍物
+        
+
 if __name__ == '__main__':
     # 以下代码为测试代码
     rospy.init_node('usv_pos_test_node')

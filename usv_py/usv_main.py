@@ -77,17 +77,16 @@ def main(args=None):
     usvControl = Control(ROSRATE)
     usvData = USVData(ROSRATE)
 
-    # 添加节点
+    # 添加服务节点
     rospy.wait_for_service("/mavros/cmd/arming")
     mavrosArmClient = rospy.ServiceProxy("mavros/cmd/arming", CommandBool)
-    armCmd = CommandBoolRequest()
-    armCmd.value = True
-    disarmCmd = CommandBoolRequest(alue=True)
-    disarmCmd.value = False
+    armCmd = CommandBoolRequest(value=True)
+    disarmCmd = CommandBoolRequest(value=False)
 
     rospy.wait_for_service("/mavros/set_mode")
     mavrosSetModeClient = rospy.ServiceProxy("mavros/set_mode", SetMode)
- 
+    holdSetMode = SetModeRequest(custom_mode='AUTO.LOITER')
+    
     # 开一个线程用于处理 rospy.spin()
     # 确保 daemon=True，这样主进程结束后，这个线程也会被结束
     # 不然，线程会一直运行，即便主进程结束
@@ -126,7 +125,7 @@ def main(args=None):
                 pubTopicList = sum(rospy.get_published_topics(), [])
                 usvPose.isLidarValid = ('/filter/target' in pubTopicList)
                     
-                if (usvPose.isGPSValid) & (usvPose.isImuValid) & (usvPose.isDvlValid) & (usvPose.isPodValid) & (usvPose.isLidarValid):
+                if (usvPose.isImuValid) & (usvPose.isDvlValid) & (usvPose.isPodValid) & (usvPose.isLidarValid):
                     latestMsg = "Waiting sUAV to send heading..."
                     usvState = "STANDBY"
 
@@ -136,6 +135,7 @@ def main(args=None):
 
                 if (usvComm.isSearchFindTV):
                     latestMsg = "Receive heading %d deg from sUAV." % rad2deg(usvComm.tvAngleEst)
+
                     if (not usvPose.state.armed) & (mavrosArmClient.call(armCmd).success):
                         usvState = "PURSUE"
 
@@ -156,8 +156,14 @@ def main(args=None):
                 pass
                 
                 # 判断是否还需要避障
-                if (True):       
+                if (True):    
                     pass
+                    # 计算避障方向角信息
+                    # distOBS = norm([obsX,obsY])
+
+                    # 求无人船的期望朝向角
+                    # psiSP = - beta - arctan2(self.usvSafeR,distOBS) + lineSightOBS + psi   
+                    # pass
                 else:
                     print("USV 避障完成，恢复追踪目标船.")
                     isPursuePlan = False
@@ -170,11 +176,11 @@ def main(args=None):
                 if (usvPose.isLidarFindTV):
                     latestMsg = "Lidar finds target vessel!"
                     if (usvPose.tvDist < 15.0):
-                        uSP = 0.15
+                        uSP = 0.3
                     elif (usvPose.tvDist > 100.0):
                         uSP = 3.0
                     else:
-                        uSP = 0.15 + (3.0 - 0.15) * (usvPose.tvDist - 15.0) / (100.0 - 15.0)
+                        uSP = 0.3 + (3.0 - 0.3) * (usvPose.tvDist - 15.0) / (100.0 - 15.0)
 
                     psiSP = usvPose.psi + usvPose.tvAngleLidar
 
@@ -191,7 +197,7 @@ def main(args=None):
                 usvControl.moveUSV(uSP, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
 
                 # 如果接近段结束了，则 DOCK_FINAL（10月7、8、9日）
-                if (usvPose.isLidarFindTV) & (usvPose.tvDist < 12.0):
+                if (usvPose.isLidarFindTV) & (usvPose.tvDist < 10.0):
                     latestMsg = "Approach finished. Start to stablize the USV..."
                     usvState = "DOCK_FINAL"
                     t1 = rospy.Time.now().to_sec()
