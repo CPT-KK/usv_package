@@ -15,10 +15,6 @@ find_package(catkin REQUIRED COMPONENTS
   sensor_msgs
   nav_msgs
   message_filters
-#   threading
-#   numpy
-#   open3d
-#   itertools
 )
 
 ## System dependencies are found with CMake's conventions

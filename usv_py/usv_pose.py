@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 import rospy, threading
 import message_filters
+import can, cantools
+
 from numpy import arctan2, rad2deg, arctan, sqrt, deg2rad, zeros, argmax, argmin, array, abs
 from numpy.linalg import norm
 from usv_math import rotationZ
@@ -13,6 +15,7 @@ from tf.transformations import quaternion_from_euler, euler_from_quaternion
 from mavros_msgs.msg import State
 
 class Pose():
+    # USV 状态量
     x = float("nan")
     y = float("nan")
     vx = float("nan")
@@ -38,14 +41,14 @@ class Pose():
     isPodValid = False
     isLidarValid = False
 
-    # Dvl-A125 变量
+    # Dvl-A125 状态量
     xDVL = 0
     yDVL = 0
     uDVL = 0
     vDVL = 0
     betaDVL = 0
 
-    # Lidar 变量
+    # Lidar 状态量
     isLidarFindTV = False
     objectNum = 0
     tLidar = 0
@@ -69,6 +72,12 @@ class Pose():
     angleTol = deg2rad(15.0)
     distTol = 5.0
 
+    # CAN 状态量
+    canInterface = 'vcan0'
+    canBusType = 'socketcan'
+    dbcPath = '/home/kk/battery_can.dbc'
+    canSub = can.Listener()
+    
     def __init__(self):
         # For PX4 MAVROS local position and velocity (Velocity is in USV body frame)
         self.px4OdomSub = rospy.Subscriber('/mavros/local_position/odom', Odometry, self.poseCallback, queue_size=1) 
@@ -89,6 +98,22 @@ class Pose():
         # For MAVROS state
         self.stateSub = rospy.Subscriber("mavros/state", State, self.stateCallback)
 
+        # For USV CANBUS
+        # 加载 DBC 文件
+        self.db = cantools.database.load_file(self.dbcPath)
+
+        # 提取 DBC 文件所有的 CAN ID
+        canIDs = [msg.frame_id for msg in self.db.messages]
+
+        # 创建过滤器
+        self.canFilters = [{'can_id': canID, 'can_mask': 0x1FFFFFFF if canID > 0x7FF else 0x7FF} for canID in canIDs]
+        
+        # 创建一个 CAN 总线实例
+        self.bus = can.interface.Bus(channel=self.canInterface, bustype=self.canBusType, can_filters=self.canFilters)
+
+    def __del__(self):
+        self.bus.shutdown()
+    
     def stateCallback(self, stateMsg):
         self.state = stateMsg
 
@@ -224,8 +249,19 @@ class Pose():
         else:
             rospy.logwarn("Pod and lidar lose detection for %.2fs", dt.to_sec())
 
-        # 判断激光雷达扫描到的物体是否为障碍物
+        # TODO: 判断激光雷达扫描到的物体是否为障碍物
         
+    def canRecv(self):
+        # 接收 CAN 消息
+        message = self.bus.recv()
+
+        if message:
+            # 使用 DBC 文件解码 CAN 帧
+            decoded_message = self.db.decode_message(message.arbitration_id, message.data)
+            
+            # 打印解码后的消息
+            print(f"Received message: {decoded_message}")
+
 
 if __name__ == '__main__':
     # 以下代码为测试代码
