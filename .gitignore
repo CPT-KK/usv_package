@@ -1,3 +1,4 @@
+**/__pycache__
 usv_py/__pycache__/convertCloudFromRosToOpen3d.cpython-38.pyc
 usv_py/__pycache__/lib_cloud_conversion_between_Open3D_and_ROS.cpython-38.pyc
 usv_py/__pycache__/pctype.cpython-38.pyc
@@ -11,8 +12,8 @@ usv_py/__pycache__/usv_math.cpython-38.pyc
 usv_py/__pycache__/usv_node.cpython-38.pyc
 usv_py/__pycache__/usv_path_planner.cpython-38.pyc
 usv_py/__pycache__/usv_pose.cpython-38.pyc
+usv_py/__init__.py
 .vscode/c_cpp_properties.json
 .vscode/launch.json
 .vscode/settings.json
 resource/usv_py
-usv_py/__init__.py
