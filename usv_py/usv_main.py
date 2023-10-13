@@ -9,6 +9,7 @@ import signal
 from numpy import zeros, rad2deg, median, deg2rad, sin, cos, pi, abs, min, argmin
 from numpy.linalg import norm
 
+from usv_can import CAN
 from usv_pose import Pose
 from usv_path_planner import PathPlanner, planCirclePath
 from usv_guidance import Guidance
@@ -45,7 +46,7 @@ from mavros_msgs.srv import CommandBool, CommandBoolRequest, SetMode, SetModeReq
 TEST_MODE = "TEST_LINE"
 
 # ROS 定频
-ROSRATE = 10
+ROS_RATE = 10
 
 @atexit.register 
 def clean():
@@ -57,27 +58,33 @@ def interuptFunc(signum, frame):
     exit()
 
 def main(args=None):
-    # 注册 Ctrl + C
-    signal.signal(signal.SIGINT, interuptFunc)
-    signal.signal(signal.SIGTERM, interuptFunc)
-
     # 控制台输出初始化
     console = Console()
     latestMsg = "Waiting USV self-check to complete..."
+    console.print("[green]>>>>>>> Console initialized.")
+
+    # 注册 Ctrl + C
+    signal.signal(signal.SIGINT, interuptFunc)
+    signal.signal(signal.SIGTERM, interuptFunc)
+    console.print("[green]>>>>>>> Interrupt function initialized.")
 
     # 添加主节点
     rospy.init_node('usv_main_node', anonymous=True)
-    rosRate = rospy.Rate(ROSRATE)
+    rosRate = rospy.Rate(ROS_RATE)
+    console.print("[green]>>>>>>> ROS node initialized.")
 
     # 添加功能类
+    usvCAN = CAN()
     usvPose = Pose()
     usvComm = Communication()
     usvPathPlanner = PathPlanner()
     usvGuidance = Guidance()
-    usvControl = Control(ROSRATE)
-    usvData = USVData(ROSRATE)
+    usvControl = Control(ROS_RATE)
+    usvData = USVData(ROS_RATE)
+    console.print("[green]>>>>>>> Function classes initialized.")
 
     # 添加服务节点
+    console.print("[green]>>>>>>> Waiting MAVROS services...")
     rospy.wait_for_service("/mavros/cmd/arming")
     mavrosArmClient = rospy.ServiceProxy("mavros/cmd/arming", CommandBool)
     armCmd = CommandBoolRequest(value=True)
@@ -86,12 +93,14 @@ def main(args=None):
     rospy.wait_for_service("/mavros/set_mode")
     mavrosSetModeClient = rospy.ServiceProxy("mavros/set_mode", SetMode)
     holdSetMode = SetModeRequest(custom_mode='AUTO.LOITER')
-    
+    console.print("[green]>>>>>>> Connect to MAVROS services.")
+
     # 开一个线程用于处理 rospy.spin()
     # 确保 daemon=True，这样主进程结束后，这个线程也会被结束
     # 不然，线程会一直运行，即便主进程结束
     spinThread = threading.Thread(target=rospy.spin, daemon=True)
     spinThread.start()
+    console.print("[green]>>>>>>> ROS spin started.")
     
     # 初始化标志位
     isDockMeasurePlan = False
@@ -110,7 +119,7 @@ def main(args=None):
     t0 = rospy.Time.now().to_sec()
     t1 = rospy.Time.now().to_sec()
 
-    # Set point 
+    # Set point 量
     uSP = float("nan")
     vSP = float("nan")
     psiSP = float("nan")
@@ -238,12 +247,12 @@ def main(args=None):
                     isDockTransferPlan = True
 
                 # 读取激光雷达信息（这个时候应该能保证读到目标船吧？），生成控制指令
-                [xSP, ySP, psiSP] = usvGuidance.guidanceVec(12.0, 3.0, usvPose.xLidar, usvPose.yLidar)
+                [uSP, psiSP, xSP, ySP] = usvGuidance.guidance(1.5, 9.0, usvPose.xLidar, usvPose.yLidar, usvPose.psi, usvPose.betaDVL)
 
-                # 控制无人船（矢量）
-                usvControl.moveUSVVec(xSP, ySP, psiSP, usvPose.xLidar, usvPose.yLidar, usvPose.vx, usvPose.vy, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
+                # 控制无人船
+                usvControl.moveUSV(uSP, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
 
-                if (usvGuidance.currentIdx >= usvGuidance.endIdx):
+                if (usvGuidance.currentIdx >= usvGuidance.endIdx) | (abs(usvPose.tvX) < 1.0):
                     # print("\n变轨完成")
                     usvState = "DOCK_ADJUST"
                 
@@ -349,11 +358,11 @@ def main(args=None):
         
             # 打印当前状态
             dt = rospy.Time.now().to_sec() - t0
-            theTable = genTable(usvState, latestMsg, usvPose, usvComm, dt, uSP, vSP, psiSP, xSP, ySP) 
+            theTable = genTable(usvState, latestMsg, usvCAN, usvPose, usvComm, dt, uSP, vSP, psiSP, xSP, ySP) 
             console.print(theTable)
 
             # 写入当前状态到文件
-            usvData.saveData(dt, usvPose, usvComm, uSP, vSP, psiSP, xSP, ySP)
+            usvData.saveData(usvCAN, usvPose, usvComm, dt, uSP, vSP, psiSP, xSP, ySP)
 
             # 发送无人船的东西 
             usvComm.sendUSVState(usvState)
