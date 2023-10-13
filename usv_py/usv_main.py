@@ -275,7 +275,7 @@ def main(args=None):
                     t1 = rospy.Time.now().to_sec()
 
                 # 保持静止
-                uSP = 0
+                uSP = 0.0
                 psiSP = usvPose.psi + usvPose.tvAngleLidar
                 usvControl.moveUSV(uSP, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
 
@@ -344,12 +344,13 @@ def main(args=None):
                     latestMsg ="USV 测试-直线+圆结束."
                     break
                 
-                [uSP, psiSP] = usvGuidance.guidance(theSpeed, theDist2Next, usvPose.x, usvPose.y, usvPose.psi, usvPose.beta)
+                [uSP, psiSP, xSP, ySP] = usvGuidance.guidance(theSpeed, theDist2Next, usvPose.x, usvPose.y, usvPose.psi, usvPose.beta)
                 usvControl.moveUSV(uSP, psiSP, usvPose.u, usvPose.axb, usvPose.psi, usvPose.r)
 
             elif usvState == "STABLE":
+                uSP = 0.0
                 psiSP = usvPose.psi + usvPose.tvAngleLidar
-                usvControl.moveUSV(0, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
+                usvControl.moveUSV(uSP, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
 
             else:
                 # 程序不应该执行到这里

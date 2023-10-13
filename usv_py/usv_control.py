@@ -18,7 +18,7 @@ class Control():
     yErrMax = 10.0
 
     uSPMax = 4.0
-    vSPMax = 1.0
+    vSPMax = 1.25
     rSPMax = deg2rad(45)
     
     # USV motor from 50RPM to 1300RPM
@@ -34,13 +34,6 @@ class Control():
     usvWidth = 2.4
     usvThrust2Center = 1.1
 
-    XU = 0.0
-    XUU = 0.0
-    YU = 0.0
-    YUU = 0.0
-    NU = 0.0
-    NUU = 0.0
-
     def __init__(self, control_frequency):
         self.lThrustPublisher_ = rospy.Publisher("/workshop_setup/pods/left", Int16, queue_size=10)
         self.rThrustPublisher_ = rospy.Publisher("/workshop_setup/pods/right", Int16, queue_size=10)
@@ -50,6 +43,7 @@ class Control():
 
         # PID 初始化
         self.uPID = PID(0.8, 0.075, 0.02, control_frequency)
+        self.vPID = PID(1, 0.05, 0.005, control_frequency)
         self.psiPID = PID(1.2, 0.01, 0.00, control_frequency)
         self.rPID = PID(2.1, 0.0325, 0.005, control_frequency)
 
@@ -71,7 +65,7 @@ class Control():
         # 根据 psiErr 的值，计算可行的 uSP (避免速度太大转不过弯)
         uSP = uSP * (0.15 + 0.85*(1-abs(psiErr / pi)))  
 
-        # 限幅
+        # 轴向速度限幅
         uSP = clip(uSP, -self.uSPMax, self.uSPMax)
 
         # 计算轴向速度误差
@@ -79,7 +73,6 @@ class Control():
 
         # 计算推力大小
         axbSP = self.uPID.compute(uErr, axb)
-        aybSP = 0.0   
 
         # 计算期望朝向角速度
         rSP = self.psiPID.compute(psiErr, r)
@@ -94,49 +87,101 @@ class Control():
         etaSP = self.rPID.compute(rErr)
 
         # 混控计算
-        [rpmL, rpmR, angleL, angleR] = self.mixer(axbSP, aybSP, etaSP)
+        [rpmL, rpmR, angleL, angleR] = self.mixer(axbSP, 0, etaSP)
 
         # 发布推力
         self.thrustPub(rpmL, rpmR, angleL, angleR)
-        self.pubSetpoints(uSP, 0, psiSP)
-
-        # print("=============================================================================")
-        # print("Control 输出: ")
-        # print("USV 位置：[%.2f, %.2f]m | USV 速度：[%.2f, %.2f]m/s" % (x, y, vx, vy))
-        # print("u 速度误差：%.2fm/s, 角度误差：%.2f, 角速度误差: %.2f," % (uErr, psiErr, rErr))
-        # print("左右转速 Setpoint：[%.2f, %.2f] rpm" % (rpmL, rpmR))
 
         return
-    
-    def mixer(self, axSP, aySP, etaSP):
-        # 计算推力偏角
-        angleL = arctan(aySP / axSP)
-        angleR = arctan(aySP / axSP)
 
-        # 推力偏角限幅
-        angleL = clip(angleL, -self.angleMax, self.angleMax)
-        angleR = clip(angleR, -self.angleMax, self.angleMax)
+    def moveUSV2(self, vSP, psiSP, v, ayb, psi, r):
+        # 计算朝向角误差
+        psiErr = psiSP - psi
+
+        # 朝向角误差限幅
+        psiErr = wrapToPi(psiErr)
+
+        # 侧向速度限幅
+        vSP = clip(vSP, -self.vSPMax, self.vSPMax)
+
+        # 计算侧向速度误差
+        vErr = vSP - v
 
         # 计算推力大小
-        rpmL = self.usvMass * sign(axSP) * norm([axSP, aySP]) / 2.0 - self.usvInerZ * etaSP / (2.0 * self.usvThrust2Center * cos(angleL))
-        rpmR = self.usvMass * sign(axSP) * norm([axSP, aySP]) / 2.0 + self.usvInerZ * etaSP / (2.0 * self.usvThrust2Center * cos(angleR))
+        aybSP = self.vPID.compute(vErr, ayb)
 
-        # 推力大小限幅
-        rpmL = clip(rpmL, -self.rpmMax, self.rpmMax)
-        rpmR = clip(rpmR, -self.rpmMax, self.rpmMax)
+        # 计算期望朝向角速度
+        rSP = self.psiPID.compute(psiErr, r)
 
-        if (abs(rpmL) <= self.rpmMin) & (abs(rpmL) >= self.rpmThreshold):
-            rpmL = sign(rpmL) * self.rpmMin
-        if (abs(rpmL) <= self.rpmMin) & (abs(rpmL) < self.rpmThreshold):
-            rpmL = 0
+        # 期望朝向角速度限幅
+        rSP = clip(rSP, -self.rSPMax, self.rSPMax)
 
-        if (abs(rpmR) <= self.rpmMin) & (abs(rpmR) >= self.rpmThreshold):
-            rpmR = sign(rpmR) * self.rpmMin
-        if (abs(rpmR) <= self.rpmMin) & (abs(rpmR) < self.rpmThreshold):
-            rpmR = 0  
+        # 计算期望角速度误差
+        rErr = rSP - r
+
+        # 计算所需角加速度大小
+        etaSP = self.rPID.compute(rErr)
+
+        # 混控计算
+        [rpmL, rpmR, angleL, angleR] = self.mixer(0, aybSP, etaSP)
+
+        # 发布推力
+        self.thrustPub(rpmL, rpmR, angleL, angleR)
+
+        return
+
+    def mixer(self, axSP, aySP, etaSP):
+        if (aySP == 0):
+            # 计算推力偏角
+            angleL = arctan(aySP / axSP)
+            angleR = arctan(aySP / axSP)
+
+            # 推力偏角限幅
+            angleL = clip(angleL, -self.angleMax, self.angleMax)
+            angleR = clip(angleR, -self.angleMax, self.angleMax)
+
+            # 计算推力大小
+            rpmL = self.usvMass * sign(axSP) * norm([axSP, aySP]) / 2.0 - self.usvInerZ * etaSP / (2.0 * self.usvThrust2Center * cos(angleL))
+            rpmR = self.usvMass * sign(axSP) * norm([axSP, aySP]) / 2.0 + self.usvInerZ * etaSP / (2.0 * self.usvThrust2Center * cos(angleR))
+
+            # 推力大小限幅
+            rpmL = clip(rpmL, -self.rpmMax, self.rpmMax)
+            rpmR = clip(rpmR, -self.rpmMax, self.rpmMax)
+
+            if (abs(rpmL) <= self.rpmMin) & (abs(rpmL) >= self.rpmThreshold):
+                rpmL = sign(rpmL) * self.rpmMin
+            if (abs(rpmL) <= self.rpmMin) & (abs(rpmL) < self.rpmThreshold):
+                rpmL = 0
+
+            if (abs(rpmR) <= self.rpmMin) & (abs(rpmR) >= self.rpmThreshold):
+                rpmR = sign(rpmR) * self.rpmMin
+            if (abs(rpmR) <= self.rpmMin) & (abs(rpmR) < self.rpmThreshold):
+                rpmR = 0  
+        else:
+            # 计算推力偏角
+            angleL = 0.499 * pi     # 接近 90 deg
+            angleR = 0
+
+            # 计算推力大小
+            rpmL = self.usvMass * aySP
+            rpmR = self.usvInerZ * etaSP / self.usvThrust2Center
+
+            # 推力大小限幅
+            rpmL = clip(rpmL, -self.rpmMax, self.rpmMax)
+            rpmR = clip(rpmR, -self.rpmMax, self.rpmMax)
+
+            if (abs(rpmL) <= self.rpmMin) & (abs(rpmL) >= self.rpmThreshold):
+                rpmL = sign(rpmL) * self.rpmMin
+            if (abs(rpmL) <= self.rpmMin) & (abs(rpmL) < self.rpmThreshold):
+                rpmL = 0
+
+            if (abs(rpmR) <= self.rpmMin) & (abs(rpmR) >= self.rpmThreshold):
+                rpmR = sign(rpmR) * self.rpmMin
+            if (abs(rpmR) <= self.rpmMin) & (abs(rpmR) < self.rpmThreshold):
+                rpmR = 0  
 
         return [rpmL, rpmR, angleL, angleR]
-    
+
     def thrustPub(self, rpmL, rpmR, angleL, angleR):
         lT = Int16(data=int(rpmL))
         rT = Int16(data=int(rpmR))
