@@ -28,7 +28,7 @@ from mavros_msgs.srv import CommandBool, CommandBoolRequest, SetMode, SetModeReq
     # STANDBY
     # STABLE
     # PURSUE
-    # PURSUE_DETECT_OBS
+    # PURSUE_OBS
     # DOCK_PREPARE
     # DOCK_APPROACH
     # DOCK_MEASURE
@@ -155,29 +155,35 @@ def main(args=None):
                     usvState = "DOCK_APPROACH"
                     continue 
 
+                # 如果障碍物，进入 PURSUE_OBS
+                if (usvPose.isLidarFindObs):
+                    latestMsg = "Obstacle detected!"
+                    usvState = "PURSUE_OBS"
+                    continue 
+                
                 # 如果没有找到目标船，则继续跟随追踪路径
                 uSP = 3.25
                 psiSP = usvComm.tvAngleEst
                 usvControl.moveUSV(uSP, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
 
-            elif usvState == "PURSUE_DETECT_OBS":
+            elif usvState == "PURSUE_OBS":
                 # 读取激光雷达信息 
                 pass
                 
                 # 判断是否还需要避障
-                if (True):    
-                    pass
-                    # 计算避障方向角信息
-                    # distOBS = norm([obsX,obsY])
-
-                    # 求无人船的期望朝向角
-                    # psiSP = - beta - arctan2(self.usvSafeR,distOBS) + lineSightOBS + psi   
-                    # pass
-                else:
-                    print("USV 避障完成，恢复追踪目标船.")
-                    isPursuePlan = False
+                if (usvPose.isLidarFindObs):    
+                    # 计算避障所需航向角
+                    if (usvPose.obsAngleLidar >= 0):
+                        psiSP = usvPose.obsAngleLidar + usvPose.psi - deg2rad(12.0)
+                    else:
+                        psiSP = usvPose.obsAngleLidar + usvPose.psi + deg2rad(12.0)
                     
+                    uSP = 3.25
+                    usvControl.moveUSV(uSP, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
+                else:
+                    latestMsg = "Back to follow heading %d deg from sUAV." % rad2deg(usvComm.tvAngleEst)     
                     usvState = "PURSUE"
+                    continue
             
             elif usvState == "DOCK_APPROACH":
 

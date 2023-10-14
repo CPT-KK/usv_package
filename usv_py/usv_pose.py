@@ -57,9 +57,14 @@ class Pose():
     tvDist = 0
     xLidar = 0
     yLidar = 0
+
+    isLidarFindObs = False
     obsX = 0
     obsY = 0
+    obsDist = 0
     obsAngleLidar = 0
+    obsDistTol = 50.0
+    obsAngleTol = deg2rad(15.0)
 
     # Pod 变量
     isPodFindTV = False
@@ -154,9 +159,6 @@ class Pose():
         if (self.objectNum <= 0):
             return
 
-        if (self.isPodFindTV == False) & (self.isLidarFindTV == False):
-            return
-
         # 记录激光雷达扫描到物体的 x y（船体系下）、船-物体方位角和距离
         objectX = zeros([self.objectNum, 1])
         objectY = zeros([self.objectNum, 1])
@@ -176,14 +178,19 @@ class Pose():
             dAnglePodLidar = abs(objectAngle - self.tvAnglePod)
             tvIndex = argmin(dAnglePodLidar)
             if (dAnglePodLidar[tvIndex, 0] <= self.angleTol):
-                self.isLidarFindTV = True
+                # 记录目标船信息
                 self.tvX = objectX[tvIndex, 0]
                 self.tvY = objectY[tvIndex, 0]
+                self.tvAngleLidar = objectAngle[tvIndex, 0]
+                self.tvDist = objectDist[tvIndex, 0]   
+
+                # 根据目标船坐标计算无人船坐标
                 [self.xLidar, self.yLidar] = rotationZ(self.tvX, self.tvY, -self.psi)
                 self.xLidar = -self.xLidar
-                self.yLidar = -self.yLidar
-                self.tvAngleLidar = objectAngle[tvIndex, 0]
-                self.tvDist = objectDist[tvIndex, 0]       
+                self.yLidar = -self.yLidar       
+
+                # 将找到目标船标志位置为真
+                self.isLidarFindTV = True    
 
         elif (self.isLidarFindTV):
             # 如果此时吊舱*未*扫描到目标船，则激光雷达必须先前锁定过目标船才能识别目标船
@@ -215,22 +222,40 @@ class Pose():
             # 判断：如果预测位置与真实位置接近，则认为此物体是目标船
             dDist = sqrt((xLidarEst - xLidarPossible) ** 2 + (yLidarEst - yLidarPossible) ** 2)
             dDistIndex = argmin(dDist)
-            if (dDist[dDistIndex, 0] < self.distTol):
-                self.isLidarFindTV = True
+            if (dDist[dDistIndex, 0] < self.distTol):  
+                # 记录目标船信息
                 self.tvX = objectX[dDistIndex, 0]
                 self.tvY = objectY[dDistIndex, 0]
                 self.tvAngleLidar = objectAngle[dDistIndex, 0]
                 self.tvDist = objectDist[dDistIndex, 0]
 
+                # 记录无人船坐标
                 self.xLidar = xLidarPossible[dDistIndex, 0]
                 self.yLidar = yLidarPossible[dDistIndex, 0]     
                 
                 # 成功才记录此刻的时间戳
-                self.tLidar = msg.header.stamp       
-        else:
-            rospy.logwarn("Pod and lidar lose detection for %.2fs", dt.to_sec())
+                self.tLidar = msg.header.stamp   
 
-        # TODO: 判断激光雷达扫描到的物体是否为障碍物
+                # 将找到目标船标志位置为真
+                self.isLidarFindTV = True    
+            else:
+                rospy.logwarn("Pod and lidar lose detection for %.2fs", dt.to_sec())
+        
+        else:
+            # 此时 isPodFindTV 和 isLidarFindTV 均 false
+            # 判断激光雷达扫描到的物体是否为障碍物
+            # 没有扫描到目标船才进行障碍物判断
+            distMinIdx = argmin(objectDist)
+
+            # 使用距离 obsDistTol 和角度 obsAngleTol 判断最近的那个 object 是否为障碍物
+            if (objectDist[distMinIdx, 0] < self.obsDistTol) & (abs(objectAngle[distMinIdx, 0]) < self.obsAngleTol):
+                self.obsX = objectX[distMinIdx, 0]
+                self.obsY = objectY[distMinIdx, 0]
+                self.obsDist = objectDist[distMinIdx, 0]
+                self.obsAngleLidar = objectAngle[distMinIdx, 0]
+                self.isLidarFindObs = True
+            else:
+                self.isLidarFindObs = False
 
 
 if __name__ == '__main__':
