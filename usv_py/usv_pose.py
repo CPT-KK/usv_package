@@ -55,6 +55,7 @@ class Pose():
     tvY = 0
     tvAngleLidar = 0
     tvDist = 0
+    tvHeading = 0
     xLidar = 0
     yLidar = 0
 
