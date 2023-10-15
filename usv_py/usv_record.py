@@ -37,61 +37,33 @@ def genTable(usvState, latestMsg, usvCAN, usvPose, usvComm, dt, uSP, vSP, psiSP,
     else:
         obsOutPut = float("nan")
 
+    # 构造表格数据
+    tableData = {
+        "Stage: [reverse]%s" % usvState: ["GPS: %d" % usvPose.isGPSValid, "Imu: %d" % usvPose.isImuValid, "Dvl: %d" % usvPose.isDvlValid, "Pod: %d" % usvPose.isPodValid, "Lidar: %d" % usvPose.isLidarValid],
+        "Motions": ["u: %.2f m/s" % usvPose.uDVL, "v: %.2f m/s" % usvPose.vDVL, "psi: %.2f deg" % rad2deg(usvPose.psi), "r: %.2f deg/s" % rad2deg(usvPose.r)],
+        "Setpoints": ["uSP: %.2f m/s" % uSP, "vSP: %.2f m/s" % vSP, "psiSP: %.2f deg" % rad2deg(psiSP), "xSP: %.2f m" % xSP, "ySP: %.2f m" % ySP],
+        "Sensors": ["x(GPS): %.2f m" % usvPose.x, "y(GPS): %.2f m" % usvPose.y, "psi(GPS): %.2f deg" % rad2deg(usvPose.psi), "x(Lidar): %.2f m" % xLidarOutput, "y(Lidar): %.2f m" % yLidarOutput],
+        "Sensors": ["sUAV yaw: %.2f deg" % sUAVOutput, "Pod yaw: %.2f deg" % podOutput, "Lidar yaw: %.2f deg" % lidarOutPutAngle, "TV Heading: %.2f deg" % rad2deg(usvPose.tvHeading), "Obs yaw: %.2f deg" % obsOutPut],
+        "Batteries": ["1: %.1f %% | ↓%.2f v" % (usvCAN.battSOC[0], usvCAN.battCellVoltMin[0]), "2: %.1f %% | ↓%.2f v" % (usvCAN.battSOC[1], usvCAN.battCellVoltMin[1]), "3: %.1f %% | ↓%.2f v" % (usvCAN.battSOC[2], usvCAN.battCellVoltMin[2]), "4: %.1f %% | ↓%.2f v" % (usvCAN.battSOC[3], usvCAN.battCellVoltMin[3])],
+        "Motors": ["L: %d RPM | %.2f deg" % (usvCAN.motorRPM[0], rad2deg(usvCAN.motorAngle[0])), "R: %d RPM | %.2f deg" % (usvCAN.motorRPM[1], rad2deg(usvCAN.motorAngle[1]))]
+    }
+
     theTable = Table(show_header=True, header_style="bold", title_justify="center", title_style="bold magenta", caption_justify="left", box=box.HORIZONTALS)
     theTable.title = "USV Info @ t = %.3f s" % dt
     theTable.caption = " Message: " + latestMsg + "\n"
-    theTable.add_column("Stage: [reverse]%s" % usvState, justify="left")
-    theTable.add_column("Motions", justify="left")
-    theTable.add_column("Setpoints", justify="left")
-    theTable.add_column("Sensors", justify="left")
-    theTable.add_column("Sensors", justify="left")
-    theTable.add_column("Batteries", justify="left")
-    theTable.add_column("Motors", justify="left")
-    theTable.add_row(
-        "GPS: %d" % usvPose.isGPSValid, 
-        "u: %.2f m/s" % usvPose.uDVL,
-        "uSP: %.2f m/s" % uSP,
-        "x(GPS): %.2f m" % usvPose.x,
-        "sUAV yaw: %.2f deg" % sUAVOutput,
-        "1: %.1f %% | ↓%.2f v" % (usvCAN.battSOC[0], usvCAN.battCellVoltMin[0]),
-        "L: %d RPM | %.2f deg" % (usvCAN.motorRPM[0], rad2deg(usvCAN.motorAngle[0])),
-    )
-    theTable.add_row(
-        "Imu: %d" % usvPose.isImuValid, 
-        "v: %.2f m/s" % usvPose.vDVL,
-        "vSP: %.2f m/s" % vSP,
-        "y(GPS): %.2f m" % usvPose.y,
-        "Pod yaw: %.2f deg" % podOutput,
-        "2: %.1f %% | ↓%.2f v" % (usvCAN.battSOC[1], usvCAN.battCellVoltMin[1]),
-        "R: %d RPM | %.2f deg" % (usvCAN.motorRPM[1], rad2deg(usvCAN.motorAngle[1])),
-    )
-    theTable.add_row(
-        "Dvl: %d" % usvPose.isDvlValid, 
-        "psi: %.2f deg" % rad2deg(usvPose.psi),        
-        "psiSP: %.2f deg" % rad2deg(psiSP),
-        "x(Lidar): %.2f m" % xLidarOutput,
-        "Lidar yaw: %.2f deg" % lidarOutPutAngle,
-        "3: %.1f %% | ↓%.2f v" % (usvCAN.battSOC[2], usvCAN.battCellVoltMin[2]),
-        "",
-    )
-    theTable.add_row(
-        "Pod: %d" % usvPose.isPodValid, 
-        "r: %.2f deg/s" % rad2deg(usvPose.r),
-        "xSP: %.2f m" % xSP,
-        "y(Lidar): %.2f m" % yLidarOutput,
-        "Lidar dist: %.2f m" % lidarOutPutDist,
-        "4: %.1f %% | ↓%.2f v" % (usvCAN.battSOC[3], usvCAN.battCellVoltMin[3]),
-        "",
-    )
-    theTable.add_row(
-        "Lidar: %d" % usvPose.isLidarValid,
-        "",
-        "ySP: %.2f m" % ySP,     
-        "TV Heading: %.2f deg" % rad2deg(usvPose.tvHeading),
-        "Obs yaw: %.2f deg" % obsOutPut,
-        "",
-        "",
-    )
+
+    maxRows = max(len(columnData) for columnData in tableData.values())
+
+    # 添加列头
+    for i in tableData.keys():
+        theTable.add_column(i)
+
+    # 对于每一行
+    for i in range(maxRows):
+        # 使用列表推导快速生成行数据
+        rowData = [columnData[i] if i < len(columnData) else "" for columnData in tableData.values()]
+        theTable.add_row(*rowData)
+
 
     return theTable
 
@@ -124,7 +96,7 @@ if __name__ == '__main__':
     latestMsg = "Waiting USV self-check to complete..."
 
     rospy.init_node('usv_record_test_node')
-    rosRate = rospy.Rate(2)
+    rosRate = rospy.Rate(10)
     t0 = rospy.Time.now().to_sec()
 
     usvCAN = CAN()
