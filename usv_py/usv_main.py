@@ -242,13 +242,14 @@ def main(args=None):
 
                 # 如果测量段结束了，打印出测量段测量结果，进入变轨段
                 if (usvGuidance.currentIdx >= usvGuidance.endIdx):
-                    #usvState = "DOCK_TRANSFER"
-                    return
+                    latestMsg = "Measure finished with heading %.2f deg. Transfer to the target vessel..." % usvPose.tvHeading
+                    usvState = "DOCK_TRANSFER"
+                    continue
 
             elif usvState == "DOCK_TRANSFER":
                 # 使用激光雷达读取的位置信息，规划变轨路径
                 if (isDockTransferPlan == False):
-                    currPath = usvPathPlanner.planDockTransfer(usvPose.xLidar, usvPose.yLidar, 0, 0, tvAngle)
+                    currPath = usvPathPlanner.planDockTransfer(usvPose.xLidar, usvPose.yLidar, 0, 0, usvPose.tvHeading)
                     usvGuidance.setPath(currPath) 
                     isDockTransferPlan = True
 
@@ -258,9 +259,10 @@ def main(args=None):
                 # 控制无人船
                 usvControl.moveUSV(uSP, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
 
-                if (usvGuidance.currentIdx >= usvGuidance.endIdx) | (abs(usvPose.tvX) < 1.0):
-                    # print("\n变轨完成")
+                if (usvGuidance.currentIdx >= usvGuidance.endIdx) | (usvPose.tvDist < 3.0):
+                    latestMsg = "Transfer finished. Final adjusting..."
                     usvState = "DOCK_ADJUST"
+                    continue
                 
             elif usvState == "DOCK_ADJUST":
                 # 在 ADJUST 段，读取大物体方位角，在大物体侧停下来
