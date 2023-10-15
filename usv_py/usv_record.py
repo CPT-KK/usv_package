@@ -96,7 +96,7 @@ def genTable(usvState, latestMsg, usvCAN, usvPose, usvComm, dt, uSP, vSP, psiSP,
     return theTable
 
 class USVData():
-    element = ["t", "x_GPS", "y_GPS", "psi", "u", "v", "r", "uSP", "vSP", "psiSP", "xSP", "ySP", "x_DVL", "y_DVL", "u_DVL", "v_DVL", "ax", "ay", "az", "roll", "pitch", "x_Lidar", "y_Lidar","search_angle", "pod_angle", "lidar_angle", "obs_x", "obs_y", "obs_angle", "rpm_left", "rpm_right", "angle_left", "angle_right", "battery_1_SOC", "battery_2_SOC", "battery_3_SOC", "battery_4_SOC", "battery_1_cell_volt_min", "battery_2_cell_volt_min", "battery_3_cell_volt_min", "battery_4_cell_volt_min"]
+    element = ["t", "x_GPS", "y_GPS", "psi", "u", "v", "r", "uSP", "vSP", "psiSP", "xSP", "ySP", "x_DVL", "y_DVL", "u_DVL", "v_DVL", "ax", "ay", "az", "roll", "pitch", "x_Lidar", "y_Lidar","search_angle", "pod_angle", "lidar_angle", "target_vessel_heading", "obs_x", "obs_y", "obs_angle", "rpm_left", "rpm_right", "angle_left", "angle_right", "battery_1_SOC", "battery_2_SOC", "battery_3_SOC", "battery_4_SOC", "battery_1_cell_volt_min", "battery_2_cell_volt_min", "battery_3_cell_volt_min", "battery_4_cell_volt_min"]
     elementStr = " ".join(element)
     elementTemplate = "%.5f " * (len(element) - 1) + "%.5f"
 
@@ -112,7 +112,7 @@ class USVData():
     def saveData(self, usvCAN, usvPose, usvComm, dt, uSP, vSP, psiSP, xSP, ySP):       
         with open(self.fileNameStr, 'a') as f:          
             if (self.saveDataTimer >= 0.5 * self.recordRate):
-                f.write(self.elementTemplate % (dt, usvPose.x, usvPose.y, usvPose.psi, usvPose.u, usvPose.v, usvPose.r, uSP, vSP, psiSP, xSP, ySP, usvPose.xDVL, usvPose.yDVL, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.azb, usvPose.roll, usvPose.pitch, usvPose.xLidar, usvPose.yLidar, usvComm.tvAngleEst, usvPose.tvAnglePod, usvPose.tvAngleLidar, usvPose.obsX, usvPose.obsY, usvPose.obsAngleLidar, usvCAN.motorRPM[0], usvCAN.motorRPM[1], usvCAN.motorAngle[0], usvCAN.motorAngle[1], usvCAN.battSOC[0], usvCAN.battSOC[1], usvCAN.battSOC[2], usvCAN.battSOC[3], usvCAN.battCellVoltMin[0], usvCAN.battCellVoltMin[1], usvCAN.battCellVoltMin[2], usvCAN.battCellVoltMin[3]) + '\n')
+                f.write(self.elementTemplate % (dt, usvPose.x, usvPose.y, usvPose.psi, usvPose.u, usvPose.v, usvPose.r, uSP, vSP, psiSP, xSP, ySP, usvPose.xDVL, usvPose.yDVL, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.azb, usvPose.roll, usvPose.pitch, usvPose.xLidar, usvPose.yLidar, usvComm.tvAngleEst, usvPose.tvAnglePod, usvPose.tvAngleLidar, usvPose.tvHeading, usvPose.obsX, usvPose.obsY, usvPose.obsAngleLidar, usvCAN.motorRPM[0], usvCAN.motorRPM[1], usvCAN.motorAngle[0], usvCAN.motorAngle[1], usvCAN.battSOC[0], usvCAN.battSOC[1], usvCAN.battSOC[2], usvCAN.battSOC[3], usvCAN.battCellVoltMin[0], usvCAN.battCellVoltMin[1], usvCAN.battCellVoltMin[2], usvCAN.battCellVoltMin[3]) + '\n')
 
                 self.saveDataTimer = 1
             else:
