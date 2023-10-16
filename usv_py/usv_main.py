@@ -224,7 +224,7 @@ def main(args=None):
                 #     continue
                 
                 # 或 DOCK_MEASURE（真正比赛）
-                if (usvPose.isLidarFindTV) & (usvPose.tvDist < 40.0):
+                if (usvPose.isLidarFindTV) & (usvPose.tvDist < 30.0):
                     latestMsg = "Approach finished. Start to measure the USV..."
                     usvState = "DOCK_MEASURE"
                     continue
@@ -237,13 +237,15 @@ def main(args=None):
                     isDockMeasurePlan = True
 
                 # 读取激光雷达信息（这个时候应该能保证读到目标船吧？），生成控制指令
-                [uSP, psiSP, xSP, ySP] = usvGuidance.guidance(1.5, 9.0, usvPose.xLidar, usvPose.yLidar, usvPose.psi, usvPose.betaDVL)
+                [uSP, psiSP, xSP, ySP] = usvGuidance.guidance(1.75, 9.5, usvPose.xLidar, usvPose.yLidar, usvPose.psi, usvPose.betaDVL)
 
                 # 控制无人船
                 usvControl.moveUSV(uSP, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
 
                 # 读取目标船的测量信息，若满足要求，则读取并保存目标船朝向角（ENU下）
                 thisTVAngle = arctan(tan(wrapToPi(usvPose.tvHeading + usvPose.psi)))
+                if abs(thisTVAngle) > deg2rad(80):
+                    thisTVAngle = deg2rad(90)
                 tvAngle[0, tvAngleIdx] = thisTVAngle
                 tvAngleIdx = tvAngleIdx + 1
                 latestMsg = "Estimating target vessel heading: %.2f deg." % rad2deg(thisTVAngle)
@@ -257,12 +259,11 @@ def main(args=None):
                     
                     latestMsg = "Estimating finished with average heading %.2f deg. Transfer to the target vessel..." % rad2deg(tvAngleMean)
                     usvState = "DOCK_TRANSFER"
-                    continue
 
             elif usvState == "DOCK_TRANSFER":
                 # 使用激光雷达读取的位置信息，规划变轨路径
                 if (isDockTransferPlan == False):
-                    currPath = usvPathPlanner.planDockTransfer(usvPose.xLidar, usvPose.yLidar, 0, 0, tvAngle)
+                    currPath = usvPathPlanner.planDockTransfer(usvPose.xLidar, usvPose.yLidar, 0, 0, tvAngleMean)
                     usvGuidance.setPath(currPath) 
                     isDockTransferPlan = True
 
@@ -275,11 +276,11 @@ def main(args=None):
                 if (usvGuidance.currentIdx >= usvGuidance.endIdx) | (usvPose.tvDist < 8.0):
                     latestMsg = "Transfer finished. Final adjusting..."
                     usvState = "DOCK_ADJUST"
-                    continue
                 
             elif usvState == "DOCK_ADJUST":
                 # 在 ADJUST 段，读取大物体方位角，在大物体侧停下来
                 usvState = "DOCK_FINAL"
+                t1 = rospy.Time.now().to_sec()
 
             elif usvState == "DOCK_FINAL":
                 # 等待船接近静止再发送起飞指令
@@ -297,7 +298,7 @@ def main(args=None):
 
                 # 保持静止
                 uSP = 0.0
-                psiSP = usvPose.psi + usvPose.tvAngleLidar
+                psiSP = tvAngleMean
                 usvControl.moveUSV(uSP, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
 
             # 测试部分

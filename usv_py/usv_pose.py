@@ -211,8 +211,6 @@ class Pose():
                 self.tvAngleLidar = objectAngle[dDistIndex, 0]
                 self.tvDist = objectDist[dDistIndex, 0]
                 self.tvHeading = objectHeading[dDistIndex, 0]
-                if abs(self.tvHeading) > deg2rad(85):
-                    self.tvHeading = deg2rad(90)
                   
                 # 记录无人船坐标
                 self.xLidar = xLidarPossible[dDistIndex, 0]
@@ -240,8 +238,6 @@ class Pose():
                 self.tvAngleLidar = objectAngle[tvIndex, 0]
                 self.tvDist = objectDist[tvIndex, 0]   
                 self.tvHeading = objectHeading[tvIndex, 0]
-                if abs(self.tvHeading) > deg2rad(85):
-                    self.tvHeading = deg2rad(90)
 
                 # 根据目标船坐标计算无人船坐标
                 [self.xLidar, self.yLidar] = rotationZ(self.tvX, self.tvY, -self.psi)
@@ -288,8 +284,10 @@ if __name__ == '__main__':
                 print("吊舱未扫描到目标船")
             
             if (usvPose.isLidarFindTV):
-                print("激光雷达扫描到目标船 [%.2f, %.2f]m，方位 %.2f deg " % (usvPose.tvX, usvPose.tvY, rad2deg(arctan2(usvPose.tvY, usvPose.tvX))))
+                thisTVAngle = arctan(tan(wrapToPi(usvPose.tvHeading + usvPose.psi)))
+                print("激光雷达扫描到目标船 [%.2f, %.2f]m，方位 %.2f deg，朝向 %.2f deg " % (usvPose.tvX, usvPose.tvY, rad2deg(arctan2(usvPose.tvY, usvPose.tvX)), thisTVAngle))
                 print("无人船的位置 [%.2f, %.2f]m" % (usvPose.xLidar, usvPose.yLidar))
+
             elif (usvPose.objectNum > 0):
                 print("激光雷达扫描到 %d 个物体，但不认为它们是目标船" % usvPose.objectNum)
             else:
