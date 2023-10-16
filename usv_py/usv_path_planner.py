@@ -30,20 +30,20 @@ def planCirclePath(cirX, cirY, cirR, startAngle, endAngle, ds):
     if (ds < 0):
         raise ValueError("Input distance between points is less or equal zero.")
     else:
-        pNum = round(abs(endAngle - startAngle) * cirR / ds)
+        pNum = int(round(abs(endAngle - startAngle) * cirR / ds))
     
     if (pNum <= 4):
         pNum = 4
     
-    angle = linspace(startAngle, endAngle, pNum.astype(int))
+    angle = linspace(startAngle, endAngle, pNum)
     path = vstack((cirX + cirR * cos(angle), cirY + cirR * sin(angle))).T
 
     return path
 
 class PathPlanner:
-    r = 8
-    l = 12
-    d = 6
+    r = 6
+    l = 9
+    d = 4
     R = 0
     theta = 0
 

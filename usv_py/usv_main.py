@@ -110,7 +110,7 @@ def main(args=None):
     isTestEnable = False
 
     # 无人船状态
-    usvState = "STARTUP"
+    usvState = "STANDBY"
 
     # 无人船当前正在使用的路径
     currPath = zeros((2000, 2))
@@ -118,6 +118,9 @@ def main(args=None):
     # 计数器 
     t0 = rospy.Time.now().to_sec()
     t1 = rospy.Time.now().to_sec()
+
+    tvAngle = 0
+    tvHeadingTimes = 0
 
     # Set point 量
     uSP = float("nan")
@@ -145,8 +148,10 @@ def main(args=None):
                 if (usvComm.isSearchFindTV):
                     latestMsg = "Receive heading %d deg from sUAV." % rad2deg(usvComm.tvAngleEst)
 
+                    usvState = "PURSUE"
+
                     if (not usvPose.state.armed) & (mavrosArmClient.call(armCmd).success):
-                        usvState = "PURSUE"
+                        pass
 
             elif usvState == "PURSUE":
                 # 如果吊舱找到目标船，则进入 DOCK
@@ -212,17 +217,17 @@ def main(args=None):
                 usvControl.moveUSV(uSP, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
 
                 # 如果接近段结束了，则 DOCK_FINAL（10月7、8、9日）
-                if (usvPose.isLidarFindTV) & (usvPose.tvDist < 10.0):
-                    latestMsg = "Approach finished. Start to stablize the USV..."
-                    usvState = "DOCK_FINAL"
-                    t1 = rospy.Time.now().to_sec()
-                    continue
+                # if (usvPose.isLidarFindTV) & (usvPose.tvDist < 10.0):
+                #     latestMsg = "Approach finished. Start to stablize the USV..."
+                #     usvState = "DOCK_FINAL"
+                #     t1 = rospy.Time.now().to_sec()
+                #     continue
                 
                 # 或 DOCK_MEASURE（真正比赛）
-                # if (usvPose.isLidarFindTV) & (usvPose.tvDist < 40.0):
-                #     latestMsg = "Approach finished. Start to measure the USV..."
-                #     usvState = "DOCK_MEASURE"
-                #     continue
+                if (usvPose.isLidarFindTV) & (usvPose.tvDist < 40.0):
+                    latestMsg = "Approach finished. Start to measure the USV..."
+                    usvState = "DOCK_MEASURE"
+                    continue
 
             elif usvState == "DOCK_MEASURE":             
                 # 使用激光雷达读取的位置信息，规划测量路径
@@ -238,23 +243,26 @@ def main(args=None):
                 usvControl.moveUSV(uSP, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
 
                 # 读取目标船的测量信息，若满足要求，则读取并保存目标船朝向角（ENU下）
-                tvAngle = 0
+                latestMsg = "Measured target vessel %.2f deg." % rad2deg(usvPose.tvHeading)
+                tvAngle = tvAngle + usvPose.tvHeading
+                tvHeadingTimes = tvHeadingTimes + 1
 
                 # 如果测量段结束了，打印出测量段测量结果，进入变轨段
                 if (usvGuidance.currentIdx >= usvGuidance.endIdx):
-                    latestMsg = "Measure finished with heading %.2f deg. Transfer to the target vessel..." % usvPose.tvHeading
+                    tvAngle = tvAngle / tvHeadingTimes
+                    latestMsg = "Measure finished with heading %.2f deg. Transfer to the target vessel..." % rad2deg(tvAngle)
                     usvState = "DOCK_TRANSFER"
                     continue
 
             elif usvState == "DOCK_TRANSFER":
                 # 使用激光雷达读取的位置信息，规划变轨路径
                 if (isDockTransferPlan == False):
-                    currPath = usvPathPlanner.planDockTransfer(usvPose.xLidar, usvPose.yLidar, 0, 0, usvPose.tvHeading)
+                    currPath = usvPathPlanner.planDockTransfer(usvPose.xLidar, usvPose.yLidar, 0, 0, tvAngle)
                     usvGuidance.setPath(currPath) 
                     isDockTransferPlan = True
 
                 # 读取激光雷达信息（这个时候应该能保证读到目标船吧？），生成控制指令
-                [uSP, psiSP, xSP, ySP] = usvGuidance.guidance(1.5, 9.0, usvPose.xLidar, usvPose.yLidar, usvPose.psi, usvPose.betaDVL)
+                [uSP, psiSP, xSP, ySP] = usvGuidance.guidance(1.0, 9.0, usvPose.xLidar, usvPose.yLidar, usvPose.psi, usvPose.betaDVL)
 
                 # 控制无人船
                 usvControl.moveUSV(uSP, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)

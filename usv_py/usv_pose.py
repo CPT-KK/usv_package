@@ -2,9 +2,9 @@
 import rospy, threading
 import message_filters
 
-from numpy import arctan2, rad2deg, arctan, sqrt, deg2rad, zeros, argmax, argmin, array, abs
+from numpy import arctan2, rad2deg, arctan, sqrt, deg2rad, zeros, argmax, argmin, array, abs, tan, arctan
 from numpy.linalg import norm
-from usv_math import rotationZ
+from usv_math import rotationZ, wrapToPi
 
 from std_msgs.msg import Float64MultiArray
 from geometry_msgs.msg import PoseStamped, TwistStamped, Vector3Stamped, PoseArray
@@ -165,42 +165,23 @@ class Pose():
         objectY = zeros([self.objectNum, 1])
         objectAngle = zeros([self.objectNum, 1])
         objectDist = zeros([self.objectNum, 1])
+        objectHeading = zeros([self.objectNum, 1])
         for i in range(self.objectNum):
             objectX[i, 0] = msg.poses[i].position.x
             objectY[i, 0] = msg.poses[i].position.y
             objectAngle[i, 0] = arctan2(objectY[i, 0], objectX[i, 0])
             objectDist[i, 0] = sqrt(objectX[i, 0]**2 + objectY[i, 0]**2)
+            [_, _, objectHeading[i, 0]] = euler_from_quaternion([msg.poses[i].orientation.x, msg.poses[i].orientation.y, msg.poses[i].orientation.z, msg.poses[i].orientation.w])
 
         # 判断激光雷达扫描到的物体是否为目标船
-        if (self.isPodFindTV):
-            # 如果此时吊舱扫描到目标船，则比对吊舱偏航角和船-物体方位角
-            # 若在角度容许范围内，则认为此物体是目标船，否则，进入激光雷达位置预测判断
-            self.tLidar = msg.header.stamp
-            dAnglePodLidar = abs(objectAngle - self.tvAnglePod)
-            tvIndex = argmin(dAnglePodLidar)
-            if (dAnglePodLidar[tvIndex, 0] <= self.angleTol):
-                # 记录目标船信息
-                self.tvX = objectX[tvIndex, 0]
-                self.tvY = objectY[tvIndex, 0]
-                self.tvAngleLidar = objectAngle[tvIndex, 0]
-                self.tvDist = objectDist[tvIndex, 0]   
-
-                # 根据目标船坐标计算无人船坐标
-                [self.xLidar, self.yLidar] = rotationZ(self.tvX, self.tvY, -self.psi)
-                self.xLidar = -self.xLidar
-                self.yLidar = -self.yLidar       
-
-                # 将找到目标船标志位置为真
-                self.isLidarFindTV = True    
-
-        elif (self.isLidarFindTV):
+        if (self.isLidarFindTV):
             # 如果此时吊舱*未*扫描到目标船，则激光雷达必须先前锁定过目标船才能识别目标船
-            # 否则，直接认为未识别到目标船，不会进入此 elif 段
+            # 否则，直接认为未识别到目标船，不会进入此 if 段
             # 首先，通过上一时刻目标船位置和 USV 速度计算目标船这一时刻的预测位置
             # 然后，读取激光雷达这一时刻扫描到物体的真实位置
             # 随后，比对真实位置和预测位置的误差
             # 若在位置容许范围内，则识别到目标船；否则，认为未识别到目标船
-            
+
             # 计算时间差
             dt = msg.header.stamp - self.tLidar
 
@@ -229,7 +210,8 @@ class Pose():
                 self.tvY = objectY[dDistIndex, 0]
                 self.tvAngleLidar = objectAngle[dDistIndex, 0]
                 self.tvDist = objectDist[dDistIndex, 0]
-
+                self.tvHeading = arctan(tan(wrapToPi(objectHeading[dDistIndex, 0] + self.psi)))
+                  
                 # 记录无人船坐标
                 self.xLidar = xLidarPossible[dDistIndex, 0]
                 self.yLidar = yLidarPossible[dDistIndex, 0]     
@@ -239,8 +221,31 @@ class Pose():
 
                 # 将找到目标船标志位置为真
                 self.isLidarFindTV = True    
+
             else:
                 rospy.logwarn("Pod and lidar lose detection for %.2fs", dt.to_sec())
+
+        elif (self.isPodFindTV):
+            # 如果此时吊舱扫描到目标船，则比对吊舱偏航角和船-物体方位角
+            # 若在角度容许范围内，则认为此物体是目标船，否则，进入激光雷达位置预测判断
+            self.tLidar = msg.header.stamp
+            dAnglePodLidar = abs(objectAngle - self.tvAnglePod)
+            tvIndex = argmin(dAnglePodLidar)
+            if (dAnglePodLidar[tvIndex, 0] <= self.angleTol):
+                # 记录目标船信息
+                self.tvX = objectX[tvIndex, 0]
+                self.tvY = objectY[tvIndex, 0]
+                self.tvAngleLidar = objectAngle[tvIndex, 0]
+                self.tvDist = objectDist[tvIndex, 0]   
+                self.tvHeading = arctan(tan(wrapToPi(objectHeading[tvIndex, 0] + self.psi))) 
+
+                # 根据目标船坐标计算无人船坐标
+                [self.xLidar, self.yLidar] = rotationZ(self.tvX, self.tvY, -self.psi)
+                self.xLidar = -self.xLidar
+                self.yLidar = -self.yLidar       
+
+                # 将找到目标船标志位置为真
+                self.isLidarFindTV = True    
         
         else:
             # 此时 isPodFindTV 和 isLidarFindTV 均 false

@@ -3,9 +3,9 @@ import cantools
 
 class CAN(can.Listener):
     # CAN 总线设置
-    canInterface = 'vcan0'
+    canInterface = 'slcan0'
     canBusType = 'socketcan'
-    dbcPath = '/home/kk/battery_can.dbc'
+    dbcPath = '/home/coca/can.dbc'
 
     # CAN 可监听到的 USV 状态量
     battCumuVolt = [float("nan")] * 4
@@ -46,17 +46,17 @@ class CAN(can.Listener):
         # 分类信息来源
         if ("_overall_status" in message_obj.name):
             # 电池设备 CAN ID （eg: 0x18904101）与掩码 0x00000F00 取并，所得结果在二进制形式下向右移动 8 位，减去 1，得到是第几个电池
-            battIdx = ((msg.arbitration_id & 0x00000F00)>>8) - 1
-            self.battCumuVolt[battIdx] = decoded_msg.get('cumulative_voltage', None) * 0.1
-            self.battCollVolt[battIdx] = decoded_msg.get('collecting_voltage', None) * 0.1
-            self.battCurrent[battIdx] = decoded_msg.get('current', None) * 0.1
-            self.battSOC[battIdx] = decoded_msg.get('soc', None) * 0.1
+            battIdx = ((msg.arbitration_id & 0x0000000F)) - 1
+            self.battCumuVolt[battIdx] = decoded_msg.get('cumulative_voltage', None)
+            self.battCollVolt[battIdx] = decoded_msg.get('collecting_voltage', None)
+            self.battCurrent[battIdx] = decoded_msg.get('current', None)
+            self.battSOC[battIdx] = decoded_msg.get('soc', None)
 
         elif ("_cell_status" in message_obj.name):
-            battIdx = ((msg.arbitration_id & 0x00000F00)>>8) - 1
-            self.battCellVoltMax[battIdx] = decoded_msg.get('max_volt', None) * 1e-3
+            battIdx = ((msg.arbitration_id & 0x0000000F)) - 1
+            self.battCellVoltMax[battIdx] = decoded_msg.get('max_volt', None)
             self.battCellVoltMaxID[battIdx] = decoded_msg.get('max_volt_id', None)
-            self.battCellVoltMin[battIdx] = decoded_msg.get('min_volt', None) * 1e-3
+            self.battCellVoltMin[battIdx] = decoded_msg.get('min_volt', None)
             self.battCellVoltMinID[battIdx] = decoded_msg.get('min_volt_id', None)
         else:
             pass

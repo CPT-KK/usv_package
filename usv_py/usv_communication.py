@@ -18,7 +18,7 @@ class Communication():
     isSearchFindTV = False
     tvEstPosX = 0
     tvEstPosY = 0
-    tvAngleEst = deg2rad(0)
+    tvAngleEst = deg2rad(120)
 
     isArmFindBigObj = False
     bigObjAngle = 0
