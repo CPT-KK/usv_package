@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import rospy, time, threading
 
-from usv_can import CAN
+from usv_can import USVCAN
 from usv_pose import Pose
 from usv_communication import Communication
 
@@ -99,7 +99,7 @@ if __name__ == '__main__':
     rosRate = rospy.Rate(10)
     t0 = rospy.Time.now().to_sec()
 
-    usvCAN = CAN()
+    usvCAN = USVCAN()
     usvPose = Pose()
     usvComm = Communication()
 

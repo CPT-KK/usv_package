@@ -1,7 +1,7 @@
 import can
 import cantools
 
-class CAN(can.Listener):
+class USVCAN(can.Listener):
     # CAN 总线设置
     canInterface = 'slcan0'
     canBusType = 'socketcan'
@@ -62,7 +62,7 @@ class CAN(can.Listener):
             pass
 
 if __name__ == "__main__":
-    usvCANBUS = CAN()
+    usvCANBUS = USVCAN()
     try:
         # 主循环
         while True:

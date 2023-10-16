@@ -210,7 +210,7 @@ class Pose():
                 self.tvY = objectY[dDistIndex, 0]
                 self.tvAngleLidar = objectAngle[dDistIndex, 0]
                 self.tvDist = objectDist[dDistIndex, 0]
-                self.tvHeading = arctan(tan(wrapToPi(objectHeading[dDistIndex, 0] + self.psi)))
+                self.tvHeading = objectHeading[dDistIndex, 0]
                 if abs(self.tvHeading) > deg2rad(85):
                     self.tvHeading = deg2rad(90)
                   
@@ -239,7 +239,7 @@ class Pose():
                 self.tvY = objectY[tvIndex, 0]
                 self.tvAngleLidar = objectAngle[tvIndex, 0]
                 self.tvDist = objectDist[tvIndex, 0]   
-                self.tvHeading = arctan(tan(wrapToPi(objectHeading[tvIndex, 0] + self.psi))) 
+                self.tvHeading = objectHeading[tvIndex, 0]
                 if abs(self.tvHeading) > deg2rad(85):
                     self.tvHeading = deg2rad(90)
 

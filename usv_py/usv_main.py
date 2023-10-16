@@ -6,16 +6,16 @@ import atexit
 import traceback
 import signal
 
-from numpy import zeros, rad2deg, median, deg2rad, sin, cos, pi, abs, min, argmin, mean
+from numpy import zeros, rad2deg, median, deg2rad, sin, cos, pi, abs, min, argmin, mean, tan, arctan
 from numpy.linalg import norm
 
-from usv_can import CAN
+from usv_can import USVCAN
 from usv_pose import Pose
 from usv_path_planner import PathPlanner, planCirclePath
 from usv_guidance import Guidance
 from usv_control import Control
 from usv_communication import Communication
-from usv_math import removeOutliers
+from usv_math import removeOutliers, wrapToPi
 from usv_record import genTable, USVData
 
 from rich.console import Console
@@ -74,7 +74,7 @@ def main(args=None):
     console.print("[green]>>>>>>> ROS node initialized.")
 
     # 添加功能类
-    usvCAN = CAN()
+    usvCAN = USVCAN()
     usvPose = Pose()
     usvComm = Communication()
     usvPathPlanner = PathPlanner()
@@ -243,14 +243,18 @@ def main(args=None):
                 usvControl.moveUSV(uSP, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
 
                 # 读取目标船的测量信息，若满足要求，则读取并保存目标船朝向角（ENU下）
-                latestMsg = "Estimating target vessel heading: %.2f deg." % rad2deg(usvPose.tvHeading)
-                tvAngle[0, tvAngleIdx] = usvPose.tvHeading
+                thisTVAngle = arctan(tan(wrapToPi(usvPose.tvHeading + usvPose.psi)))
+                tvAngle[0, tvAngleIdx] = thisTVAngle
                 tvAngleIdx = tvAngleIdx + 1
+                latestMsg = "Estimating target vessel heading: %.2f deg." % rad2deg(thisTVAngle)
 
                 # 如果测量段结束了，打印出测量段测量结果，进入变轨段
                 if (usvGuidance.currentIdx >= usvGuidance.endIdx):
+                    # 去除离群点
                     tvAngle = removeOutliers(tvAngle[0, 0:tvAngleIdx-1])
+                    # 计算平均值
                     tvAngleMean = mean(tvAngle)
+                    
                     latestMsg = "Estimating finished with average heading %.2f deg. Transfer to the target vessel..." % rad2deg(tvAngleMean)
                     usvState = "DOCK_TRANSFER"
                     continue
