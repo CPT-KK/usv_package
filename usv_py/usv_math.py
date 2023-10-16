@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from numpy import pi, sign, arctan2, sin, cos, abs, array, sqrt
+from numpy import pi, sign, arctan2, sin, cos, abs, array, sqrt, percentile
 
 def wrapToPi(x):
     x = arctan2(sin(x), cos(x))
@@ -33,6 +33,15 @@ def rotationZ(x, y, angle):
     yNew = -x * sin(angle) + y * cos(angle)
 
     return [xNew, yNew]
+
+def removeOutliers(data):
+    Q1 = percentile(data, 25)
+    Q3 = percentile(data, 75)
+    IQR = Q3 - Q1
+    lb = Q1 - 1.5 * IQR
+    ub = Q3 + 1.5 * IQR
+    
+    return data[(data >= lb) & (data <= ub)]
 
 # checklist = deg2rad(array([10, 20, 30, 45, 60, 89, 90, 91, 135, 150, 179, 181, 200, 215, 260, 270, 359, 361]))
 # print(rad2deg(wrapToPi(checklist)))

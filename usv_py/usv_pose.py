@@ -211,6 +211,8 @@ class Pose():
                 self.tvAngleLidar = objectAngle[dDistIndex, 0]
                 self.tvDist = objectDist[dDistIndex, 0]
                 self.tvHeading = arctan(tan(wrapToPi(objectHeading[dDistIndex, 0] + self.psi)))
+                if abs(self.tvHeading) > deg2rad(85):
+                    self.tvHeading = deg2rad(90)
                   
                 # 记录无人船坐标
                 self.xLidar = xLidarPossible[dDistIndex, 0]
@@ -238,6 +240,8 @@ class Pose():
                 self.tvAngleLidar = objectAngle[tvIndex, 0]
                 self.tvDist = objectDist[tvIndex, 0]   
                 self.tvHeading = arctan(tan(wrapToPi(objectHeading[tvIndex, 0] + self.psi))) 
+                if abs(self.tvHeading) > deg2rad(85):
+                    self.tvHeading = deg2rad(90)
 
                 # 根据目标船坐标计算无人船坐标
                 [self.xLidar, self.yLidar] = rotationZ(self.tvX, self.tvY, -self.psi)

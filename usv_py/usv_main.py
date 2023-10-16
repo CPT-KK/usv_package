@@ -6,7 +6,7 @@ import atexit
 import traceback
 import signal
 
-from numpy import zeros, rad2deg, median, deg2rad, sin, cos, pi, abs, min, argmin
+from numpy import zeros, rad2deg, median, deg2rad, sin, cos, pi, abs, min, argmin, mean
 from numpy.linalg import norm
 
 from usv_can import CAN
@@ -15,7 +15,7 @@ from usv_path_planner import PathPlanner, planCirclePath
 from usv_guidance import Guidance
 from usv_control import Control
 from usv_communication import Communication
-from usv_math import rotationZ
+from usv_math import removeOutliers
 from usv_record import genTable, USVData
 
 from rich.console import Console
@@ -119,8 +119,8 @@ def main(args=None):
     t0 = rospy.Time.now().to_sec()
     t1 = rospy.Time.now().to_sec()
 
-    tvAngle = 0
-    tvHeadingTimes = 0
+    tvAngle = zeros((1, 5000))
+    tvAngleIdx = 0
 
     # Set point 量
     uSP = float("nan")
@@ -237,20 +237,21 @@ def main(args=None):
                     isDockMeasurePlan = True
 
                 # 读取激光雷达信息（这个时候应该能保证读到目标船吧？），生成控制指令
-                [uSP, psiSP, xSP, ySP] = usvGuidance.guidance(2.0, 11.5, usvPose.xLidar, usvPose.yLidar, usvPose.psi, usvPose.betaDVL)
+                [uSP, psiSP, xSP, ySP] = usvGuidance.guidance(1.5, 9.0, usvPose.xLidar, usvPose.yLidar, usvPose.psi, usvPose.betaDVL)
 
                 # 控制无人船
                 usvControl.moveUSV(uSP, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
 
                 # 读取目标船的测量信息，若满足要求，则读取并保存目标船朝向角（ENU下）
-                latestMsg = "Measured target vessel %.2f deg." % rad2deg(usvPose.tvHeading)
-                tvAngle = tvAngle + usvPose.tvHeading
-                tvHeadingTimes = tvHeadingTimes + 1
+                latestMsg = "Estimating target vessel heading: %.2f deg." % rad2deg(usvPose.tvHeading)
+                tvAngle[0, tvAngleIdx] = usvPose.tvHeading
+                tvAngleIdx = tvAngleIdx + 1
 
                 # 如果测量段结束了，打印出测量段测量结果，进入变轨段
                 if (usvGuidance.currentIdx >= usvGuidance.endIdx):
-                    tvAngle = tvAngle / tvHeadingTimes
-                    latestMsg = "Measure finished with heading %.2f deg. Transfer to the target vessel..." % rad2deg(tvAngle)
+                    tvAngle = removeOutliers(tvAngle[0, 0:tvAngleIdx-1])
+                    tvAngleMean = mean(tvAngle)
+                    latestMsg = "Estimating finished with average heading %.2f deg. Transfer to the target vessel..." % rad2deg(tvAngleMean)
                     usvState = "DOCK_TRANSFER"
                     continue
 
@@ -262,12 +263,12 @@ def main(args=None):
                     isDockTransferPlan = True
 
                 # 读取激光雷达信息（这个时候应该能保证读到目标船吧？），生成控制指令
-                [uSP, psiSP, xSP, ySP] = usvGuidance.guidance(1.0, 9.0, usvPose.xLidar, usvPose.yLidar, usvPose.psi, usvPose.betaDVL)
+                [uSP, psiSP, xSP, ySP] = usvGuidance.guidance(1.2, 7.5, usvPose.xLidar, usvPose.yLidar, usvPose.psi, usvPose.betaDVL)
 
                 # 控制无人船
                 usvControl.moveUSV(uSP, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
 
-                if (usvGuidance.currentIdx >= usvGuidance.endIdx) | (usvPose.tvDist < 3.0):
+                if (usvGuidance.currentIdx >= usvGuidance.endIdx) | (usvPose.tvDist < 8.0):
                     latestMsg = "Transfer finished. Final adjusting..."
                     usvState = "DOCK_ADJUST"
                     continue
