@@ -42,7 +42,7 @@ def genTable(usvState, latestMsg, usvCAN, usvPose, usvComm, dt, uSP, vSP, psiSP,
         "[reverse]%s" % usvState: ["GPS: %d" % usvPose.isGPSValid, "Imu: %d" % usvPose.isImuValid, "Dvl: %d" % usvPose.isDvlValid, "Pod: %d" % usvPose.isPodValid, "Lidar: %d" % usvPose.isLidarValid],
         "Motions": ["u: %.2f m/s" % usvPose.uDVL, "v: %.2f m/s" % usvPose.vDVL, "psi: %.2f deg" % rad2deg(usvPose.psi), "r: %.2f deg/s" % rad2deg(usvPose.r)],
         "Setpoints": ["uSP: %.2f m/s" % uSP, "vSP: %.2f m/s" % vSP, "psiSP: %.2f deg" % rad2deg(psiSP), "xSP: %.2f m" % xSP, "ySP: %.2f m" % ySP],
-        "Sensors (dist)": ["x(GPS): %.2f m" % usvPose.x, "y(GPS): %.2f m" % usvPose.y, "x(Lidar): %.2f m" % xLidarOutput, "y(Lidar): %.2f m" % yLidarOutput, "Lidar dist: %.2f m" % lidarOutPutDist],
+        "Sensors (dist)": ["x(GPS): %.2f m" % usvPose.x, "y(GPS): %.2f m" % usvPose.y, "Lidar dist: %.2f m" % lidarOutPutDist, "x(Lidar): %.2f m" % xLidarOutput, "y(Lidar): %.2f m" % yLidarOutput],
         "Sensors (angle)": ["sUAV yaw: %.2f deg" % sUAVOutput, "Pod yaw: %.2f deg" % podOutput, "Lidar yaw: %.2f deg" % lidarOutPutAngle, "TV Heading: %.2f deg" % rad2deg(usvPose.tvHeading), "Obs yaw: %.2f deg" % obsOutPut],
         "Batteries": ["1: %.1f %% | ↓%.3f v" % (usvCAN.battSOC[0], usvCAN.battCellVoltMin[0]), "2: %.1f %% | ↓%.3f v" % (usvCAN.battSOC[1], usvCAN.battCellVoltMin[1]), "3: %.1f %% | ↓%.3f v" % (usvCAN.battSOC[2], usvCAN.battCellVoltMin[2]), "4: %.1f %% | ↓%.3f v" % (usvCAN.battSOC[3], usvCAN.battCellVoltMin[3])],
         "Motors": ["L: %d RPM | %.2f deg" % (usvCAN.motorRPM[0], rad2deg(usvCAN.motorAngle[0])), "R: %d RPM | %.2f deg" % (usvCAN.motorRPM[1], rad2deg(usvCAN.motorAngle[1]))]

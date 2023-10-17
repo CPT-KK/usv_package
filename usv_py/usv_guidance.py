@@ -10,7 +10,7 @@ from usv_math import rotationZ, wrapToPi
 class Guidance():
     uSPMax = 4.0
     dist2NextMax = 30
-    dist2NextMin = 8
+    dist2NextMin = 5
     vel2NextMax = 1.5
     vel2NextMin = 0.1
 
@@ -20,7 +20,7 @@ class Guidance():
     psiSP = 0.0
     uSP = 0.0
     vSP = 0.0
-    delta = 2.5 * 6.0
+    delta = 9.0
 
     path = zeros((2000, 2))
     currentIdx = 0
@@ -55,7 +55,6 @@ class Guidance():
         
         # 限幅
         dist2Next = clip(dist2Next, self.dist2NextMin, self.dist2NextMax)
-       # uSP = clip(uSP, - self.uSPMax, self.uSPMax)
 
         # 更新当前的跟踪点
         while (norm(self.path[self.currentIdx, :] - [x, y]) <= dist2Next) & (self.currentIdx < self.endIdx):

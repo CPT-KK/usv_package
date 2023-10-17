@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 
 import rospy, threading
-from geometry_msgs.msg import Pose2D, PoseStamped, PoseArray, Vector3Stamped
-from std_msgs.msg import Float64MultiArray, Int8, String
+from geometry_msgs.msg import Pose2D, PoseStamped, PoseArray, Vector3Stamped, Vector3
+from std_msgs.msg import Float64MultiArray, Int8, String, Float64
 from sensor_msgs.msg import Imu
 from numpy import arctan, deg2rad, zeros, abs, sqrt, rad2deg, arctan2
 from numpy.linalg import norm
@@ -10,19 +10,22 @@ from tf.transformations import quaternion_from_euler, euler_from_quaternion
 
 from usv_math import rotationZ
 
+import socket
+import json
+import re
+
 class Communication():
     uDVL = 0
     vDVL = 0
     r = 0
 
-    isSearchFindTV = False
+    isSearchFindTV = True
     tvEstPosX = 0
     tvEstPosY = 0
     tvAngleEst = deg2rad(110)
 
     isArmFindBigObj = False
     bigObjAngle = 0
-
 
     def __init__(self):
         # 订阅搜索无人机提供目标船的话题
@@ -38,6 +41,12 @@ class Communication():
         # 创建发送无人船状态的话题
         self.usvStatePub = rospy.Publisher('/usv/state', String, queue_size=2)
 
+        # 创建发送数据链距离的话题
+        self.usvDatalinkPub = rospy.Publisher('/usv/data_link/distance', Vector3Stamped, queue_size=2)
+
+    def __del__(self):
+        self.client_socket.close()
+    
     def sendTakeOffFlag(self):
         self.uavTakeOffFlagPub.publish(Int8(data=1))
     
@@ -57,6 +66,39 @@ class Communication():
         self.bigObjAngle = arctan(msg.pose.position.y, msg.pose.position.x)
         self.isArmFindBigObj = True
 
+    def datalinkPub(self):
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+            request_json = json.dumps({"get":"radioinfo"}).encode('utf-8')
+            s.sendto(request_json,('192.168.147.50', 9999))
+            s.settimeout(1.0)
+            
+            try:
+                responce, _ = s.recvfrom(1024)
+                responce_str = responce.decode('utf-8')
+
+                match = re.search(r'{.*}',responce_str)
+
+                if match:
+                    valid_json = match.group(0)
+                    try:
+                        responce_data = json.loads(valid_json)
+
+                    except json.JSONDecodeError as e:
+                        print(f"JSON decoding error: {e}")
+
+                for sender in responce_data["senders"]:
+                    dist = sender["dist"]
+                    ipAddr = sender["ipAddr"]
+                    print("dist:", dist, "ipAddr:", ipAddr)
+
+                out = Vector3Stamped()
+                out.header.stamp = rospy.Time.now()
+                out.vector.x = dist
+                self.usvDatalinkPub.publish(out)
+
+            except socket.timeout:
+                print("Timed out waiting for a Datalink packet.")
+        
 if __name__ == '__main__':
     # 以下代码为测试代码
     rospy.init_node('usv_comm_test_node')
@@ -75,6 +117,7 @@ if __name__ == '__main__':
             else:
                 rospy.loginfo("sUAV 未发现目标船")
 
+            usvComm.datalinkPub()
             rosRate.sleep()
         except KeyboardInterrupt:
             break

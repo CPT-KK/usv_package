@@ -15,8 +15,8 @@ def planLinePath(startX, startY, endX, endY, ds):
     else:
         pNum = int(round(norm([startX - endX, startY - endY]) / ds))
 
-    if (pNum <= 2) :
-        pNum = 2
+    if (pNum <= 10) :
+        pNum = 10
 
     path = vstack((linspace(startX, endX, pNum), linspace(startY, endY, pNum))).T
 
@@ -32,8 +32,8 @@ def planCirclePath(cirX, cirY, cirR, startAngle, endAngle, ds):
     else:
         pNum = int(round(abs(endAngle - startAngle) * cirR / ds))
     
-    if (pNum <= 4):
-        pNum = 4
+    if (pNum <= 16):
+        pNum = 16
     
     angle = linspace(startAngle, endAngle, pNum)
     path = vstack((cirX + cirR * cos(angle), cirY + cirR * sin(angle))).T
@@ -41,13 +41,13 @@ def planCirclePath(cirX, cirY, cirR, startAngle, endAngle, ds):
     return path
 
 class PathPlanner:
-    r = 6
-    l = 9
-    d = 4
+    r = 12
+    l = 12
+    d = 5
     R = 0
     theta = 0
 
-    ds = 4
+    ds = 1.0
 
     def __init__(self):
         self.R = self.r + norm([self.r - self.d, self.l])

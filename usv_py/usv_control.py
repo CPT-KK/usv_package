@@ -63,7 +63,7 @@ class Control():
         psiErr = wrapToPi(psiErr)
 
         # 根据 psiErr 的值，计算可行的 uSP (避免速度太大转不过弯)
-        uSP = uSP * (0.15 + 0.85*(1-abs(psiErr / pi)))  
+        uSP = uSP * (0.1 + 0.9 * (1 - abs(psiErr) / pi))  
 
         # 轴向速度限幅
         uSP = clip(uSP, -self.uSPMax, self.uSPMax)

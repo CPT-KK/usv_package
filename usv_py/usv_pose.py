@@ -53,7 +53,7 @@ class Pose():
     tLidar = 0
     tvX = 0
     tvY = 0
-    tvAngleLidar = 0
+    tvAngleLidar = 0    # ENU 系下的激光雷达角
     tvDist = 0
     tvHeading = 0
     xLidar = 0
@@ -68,8 +68,8 @@ class Pose():
     obsAngleTol = deg2rad(15.0)
 
     # Pod 变量
-    isPodFindTV = False
-    tvAnglePod = 0
+    isPodFindTV = True
+    tvAnglePod = deg2rad(143)  # ENU 系下的吊舱角
     podTimer = 0
     podTolSec = 0.01
 
@@ -105,6 +105,7 @@ class Pose():
         self.state = stateMsg
 
     def poseCallback(self, odomMsg):
+
         self.x = odomMsg.pose.pose.position.x
         self.y = odomMsg.pose.pose.position.y
         self.u = odomMsg.twist.twist.linear.x
@@ -146,7 +147,7 @@ class Pose():
     def podCallback(self, msg):
         if (msg.data[0] == 1):
             self.isPodFindTV = True
-            self.tvAnglePod = msg.data[2]
+            self.tvAnglePod = usvPose.psi + msg.data[2]
         else:
             self.isPodFindTV = False
             self.tvAnglePod = float("nan")
@@ -160,12 +161,13 @@ class Pose():
         if (self.objectNum <= 0):
             return
 
-        # 记录激光雷达扫描到物体的 x y（船体系下）、船-物体方位角和距离
+        # 记录激光雷达扫描到物体的 x y（船体为圆心的ENU系下）、船-物体方位角和距离
         objectX = zeros([self.objectNum, 1])
         objectY = zeros([self.objectNum, 1])
         objectAngle = zeros([self.objectNum, 1])
         objectDist = zeros([self.objectNum, 1])
         objectHeading = zeros([self.objectNum, 1])
+        
         for i in range(self.objectNum):
             objectX[i, 0] = msg.poses[i].position.x
             objectY[i, 0] = msg.poses[i].position.y
@@ -197,9 +199,9 @@ class Pose():
             yLidarEst = self.yLidar + dt.to_sec() * vy
 
             # 根据这一时刻的所有物体位置，计算无人船相对于以物体为原点的 ENU 的坐标
-            [xLidarPossible, yLidarPossible] = rotationZ(objectX, objectY, -self.psi)
-            xLidarPossible = -xLidarPossible
-            yLidarPossible = -yLidarPossible
+            # [xLidarPossible, yLidarPossible] = rotationZ(objectX, objectY, 0.0)
+            xLidarPossible = -objectX
+            yLidarPossible = -objectY
 
             # 判断：如果预测位置与真实位置接近，则认为此物体是目标船
             dDist = sqrt((xLidarEst - xLidarPossible) ** 2 + (yLidarEst - yLidarPossible) ** 2)
@@ -217,10 +219,11 @@ class Pose():
                 self.yLidar = yLidarPossible[dDistIndex, 0]     
                 
                 # 成功才记录此刻的时间戳
-                self.tLidar = msg.header.stamp   
+                self.tLidar = msg.header.stamp
 
                 # 将找到目标船标志位置为真
-                self.isLidarFindTV = True    
+                self.isLidarFindTV = True   
+                self.isPodFindTV = False 
 
             else:
                 rospy.logwarn("Pod and lidar lose detection for %.2fs", dt.to_sec())
@@ -240,9 +243,9 @@ class Pose():
                 self.tvHeading = objectHeading[tvIndex, 0]
 
                 # 根据目标船坐标计算无人船坐标
-                [self.xLidar, self.yLidar] = rotationZ(self.tvX, self.tvY, -self.psi)
-                self.xLidar = -self.xLidar
-                self.yLidar = -self.yLidar       
+                # [self.xLidar, self.yLidar] = rotationZ(self.tvX, self.tvY, -self.psi)
+                self.xLidar = -self.tvX
+                self.yLidar = -self.tvY
 
                 # 将找到目标船标志位置为真
                 self.isLidarFindTV = True    
@@ -254,7 +257,7 @@ class Pose():
             distMinIdx = argmin(objectDist)
 
             # 使用距离 obsDistTol 和角度 obsAngleTol 判断最近的那个 object 是否为障碍物
-            if (objectDist[distMinIdx, 0] < self.obsDistTol) & (abs(objectAngle[distMinIdx, 0]) < self.obsAngleTol):
+            if (objectDist[distMinIdx, 0] < self.obsDistTol) & (abs(objectAngle[distMinIdx, 0] - self.psi) < self.obsAngleTol):
                 self.obsX = objectX[distMinIdx, 0]
                 self.obsY = objectY[distMinIdx, 0]
                 self.obsDist = objectDist[distMinIdx, 0]
@@ -287,7 +290,6 @@ if __name__ == '__main__':
                 thisTVAngle = arctan(tan(wrapToPi(usvPose.tvHeading + usvPose.psi)))
                 print("激光雷达扫描到目标船 [%.2f, %.2f]m，方位 %.2f deg，朝向 %.2f deg " % (usvPose.tvX, usvPose.tvY, rad2deg(arctan2(usvPose.tvY, usvPose.tvX)), thisTVAngle))
                 print("无人船的位置 [%.2f, %.2f]m" % (usvPose.xLidar, usvPose.yLidar))
-
             elif (usvPose.objectNum > 0):
                 print("激光雷达扫描到 %d 个物体，但不认为它们是目标船" % usvPose.objectNum)
             else:
