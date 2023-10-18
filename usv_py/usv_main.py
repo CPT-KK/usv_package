@@ -271,7 +271,25 @@ def main(args=None):
                 if (usvGuidance.currentIdx >= usvGuidance.endIdx):
                     latestMsg = "Transfer finished. Stablizing USV pose..."
                     usvState = "DOCK_ADJUST"
-                
+          
+            elif usvState == "DOCK_TRANSFER2":
+                # 使用激光雷达读取的位置信息，规划变轨路径
+                if (isDockTransferPlan == False):
+                    currPath = usvPathPlanner.planDockTransfer2(usvPose.xLidar, usvPose.yLidar, 0, 0, tvHeadingMean)
+                    usvGuidance.setPath(currPath) 
+                    isDockTransferPlan = True
+
+                # 读取激光雷达信息（这个时候应该能保证读到目标船吧？），生成控制指令
+                uSP = 1.5 - 1.0 * (usvGuidance.currentIdx / usvGuidance.endIdx)
+                [uSP, psiSP, xSP, ySP] = usvGuidance.guidance(uSP, 8.0, usvPose.xLidar, usvPose.yLidar, usvPose.psi, usvPose.betaDVL)
+
+                # 控制无人船
+                usvControl.moveUSV(uSP, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
+
+                if (usvGuidance.currentIdx >= usvGuidance.endIdx):
+                    latestMsg = "Transfer finished. Stablizing USV pose..."
+                    usvState = "DOCK_ADJUST"
+            
             elif usvState == "DOCK_ADJUST":
                 # 使用上一段路径的最后一个点作为期望点
                 if (isDockAdjustPlan == False):
@@ -286,7 +304,7 @@ def main(args=None):
                 # 等待船接近静止，进入 FINAL
                 if (abs(usvPose.psi - psiSP) < deg2rad(5.0)) & (abs(usvPose.xLidar - xSP) < 1.0) & (abs(usvPose.yLidar - ySP) < 1.0) & (abs(usvPose.uDVL) < 0.5) & (abs(usvPose.vDVL) < 0.5):
                     usvState = "DOCK_FINAL"
-
+            
             elif usvState == "DOCK_FINAL":
                 # DOCK_FINAL 是一个死循环
                 if (usvPose.state.armed):
