@@ -118,3 +118,49 @@ class PathPlanner:
 
         # 返回时，去除 path0 和 path1 最后一个点，避免造成路径点重复
         return vstack((path0[:-1], path1[:-1], path2))
+
+    def planDockTransfer2(self, usvX, usvY, tvX, tvY, tvAngle):
+        usvTVAngle = wrapTo2Pi(arctan2(usvY - tvY, usvX - tvX))
+        phi1 = wrapTo2Pi(tvAngle - self.theta)
+        phi2 = wrapTo2Pi(wrapTo2Pi(tvAngle - self.theta) + pi)
+
+        flag = 0
+        if (phi1 < phi2) & (usvTVAngle > phi1) & (usvTVAngle <= phi2):
+            flag = 2
+        elif (phi1 < phi2):
+            flag = 1
+        elif (phi1 > phi2) & (usvTVAngle > phi2) & (usvTVAngle <= phi1):
+            flag = 1
+        else:
+            flag = 2
+        
+        if (flag == 2):
+            # 走第二个变轨点，方位角 tvAngle - theta + pi
+            path0 = planCirclePath(tvX, tvY, self.R, usvTVAngle, phi2, self.ds)
+
+            cirXTransfer = tvX + (self.R - self.r) * cos(tvAngle - self.theta + pi)
+            cirYTransfer = tvY + (self.R - self.r) * sin(tvAngle - self.theta + pi)
+            path1 = planCirclePath(cirXTransfer, cirYTransfer, self.r, tvAngle - self.theta + pi, tvAngle + 1.5*pi, self.ds)
+            
+            l1X = cirXTransfer + self.r * cos(tvAngle + 1.5*pi)
+            l1Y = cirYTransfer + self.r * sin(tvAngle + 1.5*pi)
+            l2X = l1X - 2.0 * self.l * cos(tvAngle + 1.5*pi - 0.5*pi)
+            l2Y = l1Y - 2.0 * self.l * sin(tvAngle + 1.5*pi - 0.5*pi)
+            path2 = planLinePath(l1X, l1Y, l2X, l2Y, self.ds)
+
+        else:
+            # 走第一个变轨点，方位角 tvAngle - theta
+            path0 = planCirclePath(tvX, tvY, self.R, usvTVAngle, phi1, self.ds)
+
+            cirXTransfer = tvX + (self.R - self.r) * cos(tvAngle - self.theta)
+            cirYTransfer = tvY + (self.R - self.r) * sin(tvAngle - self.theta)
+            path1 = planCirclePath(cirXTransfer, cirYTransfer, self.r, tvAngle - self.theta, tvAngle + 0.5*pi, self.ds)
+        
+            l1X = cirXTransfer + self.r * cos(tvAngle + 0.5*pi)
+            l1Y = cirYTransfer + self.r * sin(tvAngle + 0.5*pi)
+            l2X = l1X - 2.0 * self.l * cos(tvAngle + 0.5*pi - 0.5*pi)
+            l2Y = l1Y - 2.0 * self.l * sin(tvAngle + 0.5*pi - 0.5*pi)
+            path2 = planLinePath(l1X, l1Y, l2X, l2Y, self.ds)
+
+        # 返回时，去除 path0 和 path1 最后一个点，避免造成路径点重复
+        return vstack((path0[:-1], path1[:-1], path2))

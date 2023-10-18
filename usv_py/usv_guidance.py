@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import rospy
+from PID import PID
 from geometry_msgs.msg import PointStamped
 from numpy import sin, cos, tan, arcsin, arccos, arctan, arctan2, rad2deg, deg2rad, sign, pi
 from numpy import clip, size, zeros, array
@@ -20,7 +21,7 @@ class Guidance():
     psiSP = 0.0
     uSP = 0.0
     vSP = 0.0
-    delta = 9.0
+    delta = 2.5 * 6.0
 
     path = zeros((2000, 2))
     currentIdx = 0
@@ -28,8 +29,9 @@ class Guidance():
     pathSize = 2000
     isPathInit = False
 
-    def __init__(self):
+    def __init__(self, control_frequency):
         # self.publisher_ = rospy.Publisher('/usv/guidance/guidanceSP', PointStamped, queue_size=10)
+        self.yErrPID = PID(1.0, 0.005, 0.0, control_frequency)
         pass
 
     def setPath(self, inPath, inEndIdx=0):
@@ -68,11 +70,14 @@ class Guidance():
         else :
             tanAngle = arctan2(self.path[self.currentIdx + 1, 1] - ySP, self.path[self.currentIdx + 1, 0] - xSP)
 
-        # 计算无人船相对于当前跟踪点切线的垂直方向的误差
+        # 计算无人船相对于当前跟踪点切线的侧向误差
         yErr = -(x - xSP) * sin(tanAngle) + (y - ySP) * cos(tanAngle)
 
-        # 计算期望的朝向角
-        psiSP = tanAngle - beta + arctan2(-yErr, self.delta)
+        # 计算为了修正侧向误差的航向补偿角
+        yErrAngle = self.yErrPID.compute(arctan2(-yErr, self.delta))
+
+        # 计算期望的朝向角：路径方向角 - 侧滑角 + 修正侧向误差的航向补偿角
+        psiSP = tanAngle - beta + yErrAngle 
 
         # Debug 用输出
         # print("=============================================================================")

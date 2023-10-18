@@ -78,7 +78,7 @@ def main(args=None):
     usvPose = Pose()
     usvComm = Communication()
     usvPathPlanner = PathPlanner()
-    usvGuidance = Guidance()
+    usvGuidance = Guidance(ROS_RATE)
     usvControl = Control(ROS_RATE)
     usvData = USVData(ROS_RATE)
     console.print("[green]>>>>>>> Function classes initialized.")
