@@ -214,7 +214,8 @@ def main(args=None):
                     isDockApproachPlan = True       
                 
                 # 读取激光雷达信息（这个时候应该能保证读到目标船吧？），生成控制指令
-                [uSP, psiSP, xSP, ySP] = usvGuidance.guidance(1.7, 15.0, usvPose.xLidar, usvPose.yLidar, usvPose.psi, usvPose.betaDVL)
+                uSP = 1.75
+                [uSP, psiSP, xSP, ySP] = usvGuidance.guidance(uSP, 15.0, usvPose.xLidar, usvPose.yLidar, usvPose.psi, usvPose.betaDVL)
 
                 # 控制无人船
                 usvControl.moveUSV(uSP, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
@@ -230,7 +231,8 @@ def main(args=None):
                     isDockMeasurePlan = True
 
                 # 读取激光雷达信息（这个时候应该能保证读到目标船吧？），生成控制指令
-                [uSP, psiSP, xSP, ySP] = usvGuidance.guidance(1.5, 8.0, usvPose.xLidar, usvPose.yLidar, usvPose.psi, usvPose.betaDVL)
+                uSP = 1.5
+                [uSP, psiSP, xSP, ySP] = usvGuidance.guidance(uSP, 8.0, usvPose.xLidar, usvPose.yLidar, usvPose.psi, usvPose.betaDVL)
 
                 # 控制无人船
                 usvControl.moveUSV(uSP, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
