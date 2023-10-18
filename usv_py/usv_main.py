@@ -26,10 +26,8 @@ from mavros_msgs.srv import CommandBool, CommandBoolRequest, SetMode, SetModeReq
 # 无人船状态定义
     # STARTUP
     # STANDBY
-    # STABLE
     # PURSUE
     # PURSUE_OBS
-    # DOCK_PREPARE
     # DOCK_APPROACH
     # DOCK_MEASURE
     # DOCK_TRANSFER
@@ -41,7 +39,6 @@ from mavros_msgs.srv import CommandBool, CommandBoolRequest, SetMode, SetModeReq
     # TEST_LINE
     # TEST_CIRCLE
     # TEST_BOTH
-    # TEST_VEC_STABLE
 
 TEST_MODE = "TEST_LINE"
 
@@ -103,9 +100,11 @@ def main(args=None):
     console.print("[green]>>>>>>> ROS spin started.")
     
     # 初始化标志位
+    isObsAvoidEnable = True
     isDockApproachPlan = False
     isDockMeasurePlan = False
     isDockTransferPlan = False
+    isDockAdjustPlan = False
     isTestLinePlan = False
     isTestCirclePlan = False
     isTestEnable = False
@@ -120,8 +119,8 @@ def main(args=None):
     t0 = rospy.Time.now().to_sec()
     t1 = rospy.Time.now().to_sec()
 
-    tvAngle = zeros((1, 5000))
-    tvAngleIdx = 0
+    tvHeadings = zeros((1, 5000))
+    tvHeadingIdx = 0
 
     # Set point 量
     uSP = float("nan")
@@ -148,36 +147,51 @@ def main(args=None):
 
                 if (usvComm.isSearchFindTV):
                     latestMsg = "Receive heading %d deg from sUAV." % rad2deg(usvComm.tvAngleEst)
-
+                    mavrosArmClient.call(armCmd)
                     usvState = "PURSUE"
 
-                    if (not usvPose.state.armed) & (mavrosArmClient.call(armCmd).success):
-                        pass
-
-            elif usvState == "PURSUE":
-                # 如果吊舱找到目标船，则进入 DOCK
-                if (usvPose.isPodFindTV):
-                    latestMsg = "Pod finds target vessel!"
+            elif usvState == "PURSUE":   
+                # 如果距离小于给定值，则进入 Approach 段
+                if (usvPose.isLidarFindTV) & (usvPose.tvDist < 70.0):
                     usvState = "DOCK_APPROACH"
-                    continue 
+                    latestMsg = "Approaching to the measure circle..."
+                    continue        
+                 
+                if (usvPose.isLidarFindTV):
+                    # 如果激光雷达找到目标船，则使用激光雷达的信息
+                    latestMsg = "Lidar finds target vessel at %.2f deg in %.2f m!" % (rad2deg(usvPose.tvAngleLidar), usvPose.tvDist)
+                    if (usvPose.tvDist < 75.0):
+                        uSP = 1.7
+                    elif (usvPose.tvDist > 100.0):
+                        uSP = 3.0
+                    else:
+                        uSP = 1.7 + (3.0 - 1.7) * (usvPose.tvDist - 75.0) / (100.0 - 75.0)
 
-                # 如果障碍物，进入 PURSUE_OBS
-                if (usvPose.isLidarFindObs):
-                    latestMsg = "Obstacle detected!"
+                    psiSP = usvPose.tvAngleLidar
+
+                elif (usvPose.isPodFindTV):
+                    # 如果激光雷达没有找到目标船，则使用吊舱的信息
+                    latestMsg = "Pod finds target vessel at %.2f deg!" % rad2deg(usvPose.tvAnglePod)
+                    uSP = 3.25
+                    psiSP = usvPose.tvAnglePod
+
+                elif (usvPose.isLidarFindObs) & (isObsAvoidEnable):
+                    # 遇到障碍物，避障   
                     usvState = "PURSUE_OBS"
                     continue 
-                
-                # 如果没有找到目标船，则继续跟随追踪路径
-                uSP = 3.25
-                psiSP = usvComm.tvAngleEst
-                usvControl.moveUSV(uSP, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
 
-            elif usvState == "PURSUE_OBS":
-                # 读取激光雷达信息 
-                pass
+                else:
+                    # 如果没有找到目标船，则继续跟随追踪路径
+                    latestMsg = "Receive heading %d deg from sUAV." % rad2deg(usvComm.tvAngleEst)
+                    uSP = 3.25
+                    psiSP = usvComm.tvAngleEst          
                 
+                # 控制无人船
+                usvControl.moveUSV(uSP, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
+                
+            elif usvState == "PURSUE_OBS":             
                 # 判断是否还需要避障
-                if (usvPose.isLidarFindObs):    
+                if (usvPose.isLidarFindObs):       
                     # 计算避障所需航向角
                     if (usvPose.obsAngleLidar >= 0):
                         psiSP = usvPose.obsAngleLidar + usvPose.psi - deg2rad(12.0)
@@ -186,52 +200,21 @@ def main(args=None):
                     
                     uSP = 3.25
                     usvControl.moveUSV(uSP, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
+
+                    latestMsg = "Obstacle detected at %.2f deg!" % usvPose.obsAngleLidar
                 else:
                     latestMsg = "Back to follow heading %d deg from sUAV." % rad2deg(usvComm.tvAngleEst)     
                     usvState = "PURSUE"
                     continue
             
             elif usvState == "DOCK_APPROACH":
-
-                # 根据吊舱、激光雷达状态，生成控制指令
-                if (usvPose.isLidarFindTV):
-                    latestMsg = "Lidar finds target vessel!"
-                    if (usvPose.tvDist < 15.0):
-                        uSP = 1.0
-                    elif (usvPose.tvDist > 100.0):
-                        uSP = 3.0
-                    else:
-                        uSP = 1.0 + (3.0 - 1.0) * (usvPose.tvDist - 15.0) / (100.0 - 15.0)
-
-                    psiSP = usvPose.tvAngleLidar
-
-                elif (usvPose.isPodFindTV):
-                    uSP = 3.25
-                    psiSP = usvPose.tvAnglePod
-
-                else:
-                    latestMsg = "Pod & Lidar lose target vessel, fall back to pursue."
-                    usvState = "PURSUE"
-                    continue
-                
-                # 控制无人船
-                usvControl.moveUSV(uSP, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
-
-                # 如果接近段结束了，则 DOCK_MEASURE
-                if (usvPose.isLidarFindTV) & (usvPose.tvDist < 60.0):
-                    latestMsg = "Approach finished. Start to measure the USV..."
-                    usvState = "DOCK_ALIGN"
-                    continue
-
-            elif usvState == "DOCK_ALIGN":
                 if (isDockApproachPlan == False):
                     currPath = usvPathPlanner.planDockApproach(usvPose.xLidar, usvPose.yLidar, 0, 0)
                     usvGuidance.setPath(currPath)
-                    isDockApproachPlan = True
-                    latestMsg = "Start align with the measure circle ..."
+                    isDockApproachPlan = True       
                 
                 # 读取激光雷达信息（这个时候应该能保证读到目标船吧？），生成控制指令
-                [uSP, psiSP, xSP, ySP] = usvGuidance.guidance(1.7, 12.0, usvPose.xLidar, usvPose.yLidar, usvPose.psi, usvPose.betaDVL)
+                [uSP, psiSP, xSP, ySP] = usvGuidance.guidance(1.7, 15.0, usvPose.xLidar, usvPose.yLidar, usvPose.psi, usvPose.betaDVL)
 
                 # 控制无人船
                 usvControl.moveUSV(uSP, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
@@ -253,64 +236,68 @@ def main(args=None):
                 usvControl.moveUSV(uSP, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
 
                 # 读取目标船的测量信息，若满足要求，则读取并保存目标船朝向角（ENU下）
-                thisTVAngle = usvPose.tvHeading
-                if abs(thisTVAngle) > deg2rad(85):
-                    thisTVAngle = deg2rad(90)
-                tvAngle[0, tvAngleIdx] = thisTVAngle
-                tvAngleIdx = tvAngleIdx + 1
-                latestMsg = "Estimating target vessel heading: %.2f deg." % rad2deg(thisTVAngle)
+                thisHeading = usvPose.tvHeading
+                if abs(thisHeading) > deg2rad(85):
+                    thisHeading = deg2rad(90)
+                tvHeadings[0, tvHeadingIdx] = thisHeading
+                tvHeadingIdx = tvHeadingIdx + 1
+                latestMsg = "Estimating target vessel heading: %.2f deg." % rad2deg(thisHeading)
 
                 # 如果测量段结束了，打印出测量段测量结果，进入变轨段
                 if (usvGuidance.currentIdx >= usvGuidance.endIdx):
                     # 去除离群点
-                    tvAngle = removeOutliers(tvAngle[0, 0:tvAngleIdx-1])
+                    tvHeadings = removeOutliers(tvHeadings[0, 0:tvHeadingIdx-1])
+
                     # 计算平均值
-                    tvAngleMean = mean(tvAngle)
+                    tvHeadingMean = mean(tvHeadings)
                     
-                    latestMsg = "Estimating finished with average heading %.2f deg. Transfer to the target vessel..." % rad2deg(tvAngleMean)
+                    latestMsg = "Estimating finished with average heading %.2f deg. Aligning with the target vessel..." % rad2deg(tvHeadingMean)
                     usvState = "DOCK_TRANSFER"
 
             elif usvState == "DOCK_TRANSFER":
                 # 使用激光雷达读取的位置信息，规划变轨路径
                 if (isDockTransferPlan == False):
-                    currPath = usvPathPlanner.planDockTransfer(usvPose.xLidar, usvPose.yLidar, 0, 0, tvAngleMean)
+                    currPath = usvPathPlanner.planDockTransfer(usvPose.xLidar, usvPose.yLidar, 0, 0, tvHeadingMean)
                     usvGuidance.setPath(currPath) 
                     isDockTransferPlan = True
 
                 # 读取激光雷达信息（这个时候应该能保证读到目标船吧？），生成控制指令
-                uSP = 1.5 - 0.8 * (usvGuidance.currentIdx / usvGuidance.endIdx)
-                [uSP, psiSP, xSP, ySP] = usvGuidance.guidance(uSP, 5.0, usvPose.xLidar, usvPose.yLidar, usvPose.psi, usvPose.betaDVL)
+                uSP = 1.5 - 1.0 * (usvGuidance.currentIdx / usvGuidance.endIdx)
+                [uSP, psiSP, xSP, ySP] = usvGuidance.guidance(uSP, 8.0, usvPose.xLidar, usvPose.yLidar, usvPose.psi, usvPose.betaDVL)
 
                 # 控制无人船
                 usvControl.moveUSV(uSP, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
 
-                if (usvGuidance.currentIdx >= usvGuidance.endIdx) | (usvPose.tvDist < 5.0):
-                    latestMsg = "Transfer finished. Final adjusting..."
+                if (usvGuidance.currentIdx >= usvGuidance.endIdx):
+                    latestMsg = "Transfer finished. Stablizing USV pose..."
                     usvState = "DOCK_ADJUST"
                 
             elif usvState == "DOCK_ADJUST":
-                # 在 ADJUST 段，读取大物体方位角，在大物体侧停下来
-                usvState = "DOCK_FINAL"
-                t1 = rospy.Time.now().to_sec()
+                # 使用上一段路径的最后一个点作为期望点
+                if (isDockAdjustPlan == False):
+                    xSP = currPath[-1, 0]
+                    ySP = currPath[-1, 1]
+                    psiSP = tvHeadingMean
+                    isDockAdjustPlan = True
+
+                # 保持静止
+                usvControl.moveUSVVec(xSP, ySP, psiSP, usvPose.xLidar, usvPose.yLidar, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
+
+                # 等待船接近静止，进入 FINAL
+                if (abs(usvPose.psi - psiSP) < deg2rad(5.0)) & (abs(usvPose.xLidar - xSP) < 1.0) & (abs(usvPose.yLidar - ySP) < 1.0) & (abs(usvPose.uDVL) < 0.5) & (abs(usvPose.vDVL) < 0.5):
+                    usvState = "DOCK_FINAL"
 
             elif usvState == "DOCK_FINAL":
-                # 等待船接近静止再发送起飞指令
+                # DOCK_FINAL 是一个死循环
                 if (usvPose.state.armed):
                     mavrosArmClient.call(disarmCmd)
                     
-                if (rospy.Time.now().to_sec() - t1 >= 5.0):
-                    latestMsg = "Stablization finished. Sending the take-off flag..."
-                    usvComm.sendTakeOffFlag()
-                    usvComm.sendTVPosFromLidar(-usvPose.xLidar, -usvPose.yLidar)
-                elif (abs(usvPose.uDVL) <= 0.2):
-                    pass
-                else:
-                    t1 = rospy.Time.now().to_sec()
+                latestMsg = "USV has been stabilized. Sending tUAV take-off flag..."
+                usvComm.sendTakeOffFlag()
+                usvComm.sendTVPosFromLidar(-usvPose.xLidar, -usvPose.yLidar)
 
-                # 保持静止
-                uSP = 0.0
-                psiSP = tvAngleMean
-                usvControl.moveUSV(uSP, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
+                # 继续保持静止
+                usvControl.moveUSVVec(xSP, ySP, psiSP, usvPose.xLidar, usvPose.yLidar, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
 
             # 测试部分
             elif usvState == "TEST_LINE":
@@ -379,11 +366,6 @@ def main(args=None):
                 
                 [uSP, psiSP, xSP, ySP] = usvGuidance.guidance(theSpeed, theDist2Next, usvPose.x, usvPose.y, usvPose.psi, usvPose.beta)
                 usvControl.moveUSV(uSP, psiSP, usvPose.u, usvPose.axb, usvPose.psi, usvPose.r)
-
-            elif usvState == "STABLE":
-                uSP = 0.0
-                psiSP = usvPose.psi + usvPose.tvAngleLidar
-                usvControl.moveUSV(uSP, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
 
             else:
                 # 程序不应该执行到这里
