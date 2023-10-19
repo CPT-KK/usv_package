@@ -58,6 +58,12 @@ class USVCAN(can.Listener):
             self.battCellVoltMaxID[battIdx] = decoded_msg.get('max_volt_id', None)
             self.battCellVoltMin[battIdx] = decoded_msg.get('min_volt', None)
             self.battCellVoltMinID[battIdx] = decoded_msg.get('min_volt_id', None)
+        
+        elif ("motor_state" in message_obj.name):
+            motorIdx = decoded_msg.get('motor_index', None) - 1
+            self.motorRPM[motorIdx] = decoded_msg.get('engine_speed', None)
+            self.motorAngle[motorIdx] = decoded_msg.get('motor_torque', None)
+        
         else:
             pass
 

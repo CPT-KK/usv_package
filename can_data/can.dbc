@@ -84,6 +84,15 @@ BO_ 2559655940 batt_4_cell_status: 8 Vector__XXX
 	SG_ min_volt : 31|16@0+ (0.001,0) [0|60000] "V" Vector__XXX
 	SG_ min_volt_id : 47|8@0+ (1,0) [0|63] "" Vector__XXX
 
+BO_ 2147486213 motor_state: 8 Vector__XXX
+	SG_ motor_index : 7|8@0+ (1,0) [0|0] "" Vector__XXX
+	SG_ valid_check : 15|8@0+ (1,0) [0|0] "" Vector__XXX
+	SG_ motor_status : 23|8@0+ (1,0) [0|0] "" Vector__XXX
+	SG_ engine_speed : 31|16@0+ (0.25,0) [0|0] "RPM" Vector__XXX
+	SG_ motor_torque : 47|8@0+ (1,0) [0|0] "" Vector__XXX
+	SG_ motor_throttle : 55|8@0+ (1,0) [0|0] "" Vector__XXX
+	SG_ motor_gear : 63|8@0+ (1,0) [0|0] "" Vector__XXX
+
 CM_ BO_ 2559590401 "Battery 1 Overall Status";
 CM_ BO_ 2559590402 "Battery 2 Overall Status";
 CM_ BO_ 2559590403 "Battery 3 Overall Status";
@@ -92,6 +101,8 @@ CM_ BO_ 2559655937 "Battery 1 Cell Status";
 CM_ BO_ 2559655938 "Battery 2 Cell Status";
 CM_ BO_ 2559655939 "Battery 3 Cell Status";
 CM_ BO_ 2559655940 "Battery 4 Cell Status";
+CM_ BO_ 2147486213 "Motor state";
+CM_ SG_ 2147486213 valid_check "ASCII 'V' for valid and 'N' for not valid";
 BA_DEF_ SG_  "SPN" INT 0 524287;
 BA_DEF_ BO_  "VFrameFormat" ENUM  "StandardCAN","ExtendedCAN","reserved","J1939PG";
 BA_DEF_  "DatabaseVersion" STRING ;
