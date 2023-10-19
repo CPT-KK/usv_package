@@ -5,7 +5,7 @@ class USVCAN(can.Listener):
     # CAN 总线设置
     canInterface = 'slcan0'
     canBusType = 'socketcan'
-    dbcPath = '/home/coca/can.dbc'
+    dbcPath = '/home/coca/usv_ws/src/usv_package/can_data/can.dbc'
 
     # CAN 可监听到的 USV 状态量
     battCumuVolt = [float("nan")] * 4
