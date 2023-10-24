@@ -41,8 +41,8 @@ def planCirclePath(cirX, cirY, cirR, startAngle, endAngle, ds):
     return path
 
 class PathPlanner:
-    r = 12
-    l = 12
+    r = 8
+    l = 8
     d = 5
     R = 0
     theta = 0

@@ -69,7 +69,7 @@ class Pose():
 
     # Pod 变量
     isPodFindTV = True
-    tvAnglePod = deg2rad(143)  # ENU 系下的吊舱角
+    tvAnglePod = deg2rad(76)  # ENU 系下的吊舱角
     podTimer = 0
     podTolSec = 0.01
 
