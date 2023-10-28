@@ -91,7 +91,7 @@ class Control():
         # 发布推力
         self.thrustPub(rpmL, rpmR, angleL, angleR)
 
-        return
+        return uSP
 
     def moveUSVVec(self, xSP, ySP, psiSP, x, y, u, v, axb, ayb, psi, r):
         # 计算 x y 误差

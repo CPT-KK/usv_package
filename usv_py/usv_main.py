@@ -190,7 +190,7 @@ def main(args=None):
                     psiSP = usvComm.tvAngleEst          
                 
                 # 控制无人船
-                usvControl.moveUSV(uSP, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
+                uSP = usvControl.moveUSV(uSP, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
                 
             elif usvState == "PURSUE_OBS":             
                 # 判断是否还需要避障
@@ -202,7 +202,7 @@ def main(args=None):
                         psiSP = usvPose.obsAngleLidar + usvPose.psi + deg2rad(12.0)
                     
                     uSP = 3.25
-                    usvControl.moveUSV(uSP, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
+                    uSP = usvControl.moveUSV(uSP, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
 
                     latestMsg = "Obstacle detected at %.2f deg!" % usvPose.obsAngleLidar
                 else:
@@ -217,11 +217,11 @@ def main(args=None):
                     isDockNearbyPlan = True       
                 
                 # 读取激光雷达信息（这个时候应该能保证读到目标船吧？），生成控制指令
-                uSP = 1.75
+                uSP = 1.6
                 [uSP, psiSP, xSP, ySP] = usvGuidance.guidance(uSP, 12.0, usvPose.xLidar, usvPose.yLidar, usvPose.psi, usvPose.betaDVL)
 
                 # 控制无人船
-                usvControl.moveUSV(uSP, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
+                uSP = usvControl.moveUSV(uSP, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
 
                 if (usvGuidance.currentIdx >= usvGuidance.endIdx):
                     usvState = "DOCK_MEASURE"
@@ -238,7 +238,7 @@ def main(args=None):
                 [uSP, psiSP, xSP, ySP] = usvGuidance.guidance(uSP, 8.0, usvPose.xLidar, usvPose.yLidar, usvPose.psi, usvPose.betaDVL)
 
                 # 控制无人船
-                usvControl.moveUSV(uSP, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
+                uSP = usvControl.moveUSV(uSP, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
 
                 # 读取目标船的测量信息，若满足要求，则读取并保存目标船朝向角（ENU下）
                 thisHeading = usvPose.tvHeading
@@ -272,7 +272,7 @@ def main(args=None):
                 [uSP, psiSP, xSP, ySP] = usvGuidance.guidance(uSP, 5.0, usvPose.xLidar, usvPose.yLidar, usvPose.psi, usvPose.betaDVL)
 
                 # 控制无人船
-                usvControl.moveUSV(uSP, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
+                uSP = usvControl.moveUSV(uSP, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
 
                 if (usvGuidance.currentIdx >= usvGuidance.endIdx):
                     usvState = "DOCK_ADJUST"
@@ -334,7 +334,7 @@ def main(args=None):
                     break
 
                 [uSP, psiSP, xSP, ySP] = usvGuidance.guidance(3.5, 20.0, usvPose.x, usvPose.y, usvPose.psi, usvPose.beta)
-                usvControl.moveUSV(uSP, psiSP, usvPose.u, usvPose.axb, usvPose.psi, usvPose.r)
+                uSP = usvControl.moveUSV(uSP, psiSP, usvPose.u, usvPose.axb, usvPose.psi, usvPose.r)
             
             elif usvState == "TEST_CIRCLE":
                 if (isTestCirclePlan == False):
@@ -354,7 +354,7 @@ def main(args=None):
                 # R = 30m, dist2Next = 15m, uSP = 3m/s
                 # R = 15m, dist2Next = 7m, uSP = 2.6m/s
                 [uSP, psiSP, xSP, ySP] = usvGuidance.guidance(2.6, 7, usvPose.x, usvPose.y, usvPose.psi, usvPose.beta)
-                usvControl.moveUSV(uSP, psiSP, usvPose.u, usvPose.axb, usvPose.psi, usvPose.r)
+                uSP = usvControl.moveUSV(uSP, psiSP, usvPose.u, usvPose.axb, usvPose.psi, usvPose.r)
 
             elif usvState == "TEST_BOTH": 
                 if (isTestLinePlan == False) & (isTestCirclePlan == False):
@@ -385,7 +385,7 @@ def main(args=None):
                     break
                 
                 [uSP, psiSP, xSP, ySP] = usvGuidance.guidance(theSpeed, theDist2Next, usvPose.x, usvPose.y, usvPose.psi, usvPose.beta)
-                usvControl.moveUSV(uSP, psiSP, usvPose.u, usvPose.axb, usvPose.psi, usvPose.r)
+                uSP = usvControl.moveUSV(uSP, psiSP, usvPose.u, usvPose.axb, usvPose.psi, usvPose.r)
 
             else:
                 # 程序不应该执行到这里
