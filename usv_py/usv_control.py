@@ -47,10 +47,10 @@ class Control():
         self.psiPID = PID(1.2, 0.01, 0.00, control_frequency)
         self.rPID = PID(2.1, 0.0325, 0.005, control_frequency)
 
-        self.xPID = PID(0.12, 0.000, 0.000, control_frequency)
-        self.yPID = PID(0.15, 0.000, 0.000, control_frequency)
-        self.vxPID = PID(0.4, 0.00, 0.05, control_frequency)
-        self.vyPID = PID(0.5, 0.00, 0.05, control_frequency)
+        self.xPID = PID(0.3, 0.000, 0.000, control_frequency)
+        self.yPID = PID(0.2, 0.000, 0.000, control_frequency)
+        self.vxPID = PID(0.6, 0.00, 0.05, control_frequency)
+        self.vyPID = PID(0.4, 0.00, 0.05, control_frequency)
 
     def __del__(self):
         pass
