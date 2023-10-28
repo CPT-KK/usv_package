@@ -56,7 +56,7 @@ class PathPlanner:
     def planPursue(self, usvX, usvY, tvEstX, tvEstY):
         return planLinePath(usvX, usvY, tvEstX, tvEstY, self.ds)
     
-    def planDockApproach(self, usvX, usvY, tvX, tvY):
+    def planDockNearby(self, usvX, usvY, tvX, tvY):
         usvTVAngle = arctan2(usvY - tvY, usvX - tvX)
         usvTVDist = norm([usvX - tvX, usvY - tvY])
 
@@ -73,7 +73,7 @@ class PathPlanner:
         usvTVAngle = arctan2(usvY - tvY, usvX - tvX)
         return planCirclePath(tvX, tvY, self.R, usvTVAngle, usvTVAngle + 1.25 * pi, self.ds)
 
-    def planDockTransfer(self, usvX, usvY, tvX, tvY, tvHeading):
+    def planDockApproach(self, usvX, usvY, tvX, tvY, tvHeading):
         usvTVAngle = wrapTo2Pi(arctan2(usvY - tvY, usvX - tvX))
         phi1 = wrapTo2Pi(tvHeading - self.theta)
         phi2 = wrapTo2Pi(wrapTo2Pi(tvHeading - self.theta) + pi)
@@ -123,7 +123,7 @@ class PathPlanner:
         # 返回时，去除 path0 和 path1 最后一个点，避免造成路径点重复
         return vstack((path0[:-1], path1[:-1], path2))
 
-    def planDockTransfer2(self, usvX, usvY, tvX, tvY, tvHeading):
+    def planDockApproach2(self, usvX, usvY, tvX, tvY, tvHeading):
         usvTVAngle = wrapTo2Pi(arctan2(usvY - tvY, usvX - tvX))
         phi1 = wrapTo2Pi(tvHeading - self.theta)
         phi2 = wrapTo2Pi(wrapTo2Pi(tvHeading - self.theta) + pi)

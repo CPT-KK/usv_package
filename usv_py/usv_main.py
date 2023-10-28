@@ -28,9 +28,9 @@ from mavros_msgs.srv import CommandBool, CommandBoolRequest, SetMode, SetModeReq
     # STANDBY
     # PURSUE
     # PURSUE_OBS
-    # DOCK_APPROACH
+    # DOCK_NEARBY
     # DOCK_MEASURE
-    # DOCK_TRANSFER
+    # DOCK_APPROACH
     # DOCK_ADJUST
     # DOCK_FINAL
     # ATTACH
@@ -101,9 +101,9 @@ def main(args=None):
     
     # 初始化标志位
     isObsAvoidEnable = True
-    isDockApproachPlan = False
+    isDockNearbyPlan = False
     isDockMeasurePlan = False
-    isDockTransferPlan = False
+    isDockApproachPlan = False
     isDockAdjustPlan = False
     isTestLinePlan = False
     isTestCirclePlan = False
@@ -156,7 +156,7 @@ def main(args=None):
             elif usvState == "PURSUE":   
                 # 如果距离小于给定值，则进入 Approach 段
                 if (usvPose.isLidarFindTV) & (usvPose.tvDist < 70.0):
-                    usvState = "DOCK_APPROACH"
+                    usvState = "DOCK_NEARBY"
                     latestMsg = "Approaching to the measure circle..."
                     continue        
                  
@@ -210,11 +210,11 @@ def main(args=None):
                     usvState = "PURSUE"
                     continue
             
-            elif usvState == "DOCK_APPROACH":
-                if (isDockApproachPlan == False):
-                    currPath = usvPathPlanner.planDockApproach(usvPose.xLidar, usvPose.yLidar, 0, 0)
+            elif usvState == "DOCK_NEARBY":
+                if (isDockNearbyPlan == False):
+                    currPath = usvPathPlanner.planDockNearby(usvPose.xLidar, usvPose.yLidar, 0, 0)
                     usvGuidance.setPath(currPath)
-                    isDockApproachPlan = True       
+                    isDockNearbyPlan = True       
                 
                 # 读取激光雷达信息（这个时候应该能保证读到目标船吧？），生成控制指令
                 uSP = 1.75
@@ -257,15 +257,15 @@ def main(args=None):
                     tvHeadingMean = mean(tvHeadings)
                     
                     latestMsg = "Estimating finished with average heading %.2f deg. Begin final approach..." % rad2deg(tvHeadingMean)
-                    usvState = "DOCK_TRANSFER"
+                    usvState = "DOCK_APPROACH"
 
-            elif usvState == "DOCK_TRANSFER":
+            elif usvState == "DOCK_APPROACH":
                 # 使用激光雷达读取的位置信息，规划变轨路径
-                if (isDockTransferPlan == False):
-                    currPath = usvPathPlanner.planDockTransfer(usvPose.xLidar, usvPose.yLidar, 0, 0, tvHeadingMean)
-                    # currPath = usvPathPlanner.planDockTransfer2(usvPose.xLidar, usvPose.yLidar, 0, 0, tvHeadingMean)
+                if (isDockApproachPlan == False):
+                    currPath = usvPathPlanner.planDockApproach(usvPose.xLidar, usvPose.yLidar, 0, 0, tvHeadingMean)
+                    # currPath = usvPathPlanner.planDockApproach2(usvPose.xLidar, usvPose.yLidar, 0, 0, tvHeadingMean)
                     usvGuidance.setPath(currPath) 
-                    isDockTransferPlan = True
+                    isDockApproachPlan = True
 
                 # 读取激光雷达信息（这个时候应该能保证读到目标船吧？），生成控制指令
                 uSP = 1.5 - 0.75 * (usvGuidance.currentIdx / usvGuidance.endIdx)
@@ -293,7 +293,7 @@ def main(args=None):
                     psiSP = arctan2(ySP - currPath[-2, 1], xSP - currPath[-2, 0])
                     isDockAdjustPlan = True
 
-                    latestMsg = "Transfer finished. Stablizing USV pose at [%.2f, %.2f] @ %.2f deg..." % (xSP, ySP, rad2deg(psiSP))
+                    latestMsg = "Approach finished. Stablizing USV pose at [%.2f, %.2f] @ %.2f deg..." % (xSP, ySP, rad2deg(psiSP))
 
                 # 保持静止
                 usvControl.moveUSVVec(xSP, ySP, psiSP, usvPose.xLidar, usvPose.yLidar, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
