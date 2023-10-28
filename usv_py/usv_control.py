@@ -43,7 +43,6 @@ class Control():
 
         # PID 初始化
         self.uPID = PID(0.8, 0.075, 0.02, control_frequency)
-        self.vPID = PID(1, 0.05, 0.005, control_frequency)
         self.psiPID = PID(1.2, 0.01, 0.00, control_frequency)
         self.rPID = PID(2.1, 0.0325, 0.005, control_frequency)
 

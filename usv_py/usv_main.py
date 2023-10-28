@@ -6,7 +6,7 @@ import atexit
 import traceback
 import signal
 
-from numpy import zeros, rad2deg, median, deg2rad, sin, cos, pi, abs, min, argmin, mean, tan, arctan
+from numpy import zeros, rad2deg, median, deg2rad, sin, cos, pi, abs, min, argmin, mean, tan, arctan, arctan2
 from numpy.linalg import norm
 
 from usv_can import USVCAN
@@ -115,10 +115,13 @@ def main(args=None):
     # 无人船当前正在使用的路径
     currPath = zeros((2000, 2))
 
-    # 计数器 
+    # 记录程序启动时间
     t0 = rospy.Time.now().to_sec()
-    t1 = rospy.Time.now().to_sec()
 
+    # 设置计时器
+    timer1 = rospy.Time.now().to_sec()
+
+    # 保存目标船朝向角的数组
     tvHeadings = zeros((1, 5000))
     tvHeadingIdx = 0
 
@@ -215,7 +218,7 @@ def main(args=None):
                 
                 # 读取激光雷达信息（这个时候应该能保证读到目标船吧？），生成控制指令
                 uSP = 1.75
-                [uSP, psiSP, xSP, ySP] = usvGuidance.guidance(uSP, 15.0, usvPose.xLidar, usvPose.yLidar, usvPose.psi, usvPose.betaDVL)
+                [uSP, psiSP, xSP, ySP] = usvGuidance.guidance(uSP, 12.0, usvPose.xLidar, usvPose.yLidar, usvPose.psi, usvPose.betaDVL)
 
                 # 控制无人船
                 usvControl.moveUSV(uSP, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
@@ -265,37 +268,51 @@ def main(args=None):
                     isDockTransferPlan = True
 
                 # 读取激光雷达信息（这个时候应该能保证读到目标船吧？），生成控制指令
-                uSP = 1.5 - 1.0 * (usvGuidance.currentIdx / usvGuidance.endIdx)
-                [uSP, psiSP, xSP, ySP] = usvGuidance.guidance(uSP, 8.0, usvPose.xLidar, usvPose.yLidar, usvPose.psi, usvPose.betaDVL)
+                uSP = 1.5 - 0.75 * (usvGuidance.currentIdx / usvGuidance.endIdx)
+                [uSP, psiSP, xSP, ySP] = usvGuidance.guidance(uSP, 5.0, usvPose.xLidar, usvPose.yLidar, usvPose.psi, usvPose.betaDVL)
 
                 # 控制无人船
                 usvControl.moveUSV(uSP, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
 
                 if (usvGuidance.currentIdx >= usvGuidance.endIdx):
-                    latestMsg = "Transfer finished. Stablizing USV pose..."
                     usvState = "DOCK_ADJUST"
+                    
+                    # 重要：清除 LOS yErrPID 和差分控制器 PID 的积分项
+                    usvGuidance.yErrPID.clearIntResult()
+                    usvControl.uPID.clearIntResult()
 
             elif usvState == "DOCK_ADJUST":
-                # 使用上一段路径的最后一个点作为期望点
                 if (isDockAdjustPlan == False):
+                    # 将当前时间写入 t1 计时器
+                    timer1 = rospy.Time.now().to_sec()
+
+                    # 使用上一段路径的最后一个点作为自稳点
+                    # 使用上一段路径最后两个点的切线方向作为 USV 航向
                     xSP = currPath[-1, 0]
                     ySP = currPath[-1, 1]
-                    psiSP = tvHeadingMean
+                    psiSP = arctan2(ySP - currPath[-2, 1], xSP - currPath[-2, 0])
                     isDockAdjustPlan = True
+
+                    latestMsg = "Transfer finished. Stablizing USV pose at [%.2f, %.2f] @ %.2f deg..." % (xSP, ySP, rad2deg(psiSP))
 
                 # 保持静止
                 usvControl.moveUSVVec(xSP, ySP, psiSP, usvPose.xLidar, usvPose.yLidar, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
 
-                # 等待船接近静止，进入 FINAL
-                if (abs(usvPose.psi - psiSP) < deg2rad(5.0)) & (abs(usvPose.xLidar - xSP) < 1.0) & (abs(usvPose.yLidar - ySP) < 1.0) & (abs(usvPose.uDVL) < 0.5) & (abs(usvPose.vDVL) < 0.5):
+                # 等待船接近静止并保持 5.0s，进入 FINAL
+                if (rospy.Time.now().to_sec() - timer1 > 5.0):   
                     usvState = "DOCK_FINAL"
-            
+                elif (abs(usvPose.psi - psiSP) < deg2rad(2.0)) & (abs(usvPose.xLidar - xSP) < 1.0) & (abs(usvPose.yLidar - ySP) < 1.0) & (abs(usvPose.uDVL) < 0.25) & (abs(usvPose.vDVL) < 0.25):
+                    pass
+                else:
+                    # 如果不满足静止条件，需要重置 t1 计时器
+                    timer1 = rospy.Time.now().to_sec()
+
             elif usvState == "DOCK_FINAL":
                 # DOCK_FINAL 是一个死循环
                 if (usvPose.state.armed):
                     mavrosArmClient.call(disarmCmd)
                     
-                latestMsg = "USV has been stabilized. Sending tUAV take-off flag..."
+                latestMsg = "USV has been stabilized. Start to send tUAV take-off flag..."
                 usvComm.sendTakeOffFlag()
                 usvComm.sendTVPosFromLidar(-usvPose.xLidar, -usvPose.yLidar)
 

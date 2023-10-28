@@ -1,42 +1,45 @@
 #!/usr/bin/env python3
 
 class PID:
-    Kp = 1.0
-    Ki = 0.0
-    Kd = 0.0
 
-    controlFrequency = 0.0
-
-    t = 0.0
-    tLast = 0.0
-
-    errIntResult = 0.0
-    errLast = 0.0
-
-    def __init__(self, inP, inI, inD, inFreq):
-        self.Kp = inP
-        self.Ki = inI
-        self.Kd = inD
+    def __init__(self, kp, ki, kd, frequency, intMax=None, intMin=None):
+        self.kp = kp
+        self.ki = ki
+        self.kd = kd
         
-        if (inFreq <= 0.0):
+        if (frequency <= 0.0):
             raise ValueError("PID frequency must greater than zero")
         else:
-            self.controlFrequency = inFreq
+            self.frequency = frequency
 
-        
-    def compute(self, errValue, errDiffValue=None):
-        if errDiffValue == None:
-            out = self.Kp * errValue + self.Ki * (self.errIntResult + errValue / self.controlFrequency) + self.Kd * (errValue - self.errLast) * self.controlFrequency   
+        self.intMax = intMax
+        self.intMin = intMin      
+        self.errIntegral = 0.0
+        self.errPrevious = 0.0
+
+    def compute(self, err, errDiff=None):
+        # 计算误差积分项
+        self.errIntegral = self.errIntegral + err / self.frequency
+
+        # 防止积分项饱和
+        if (self.intMax is not None) & (self.errIntegral > self.intMax):
+            self.errIntegral = self.intMax
+        elif (self.intMin is not None) & (self.errIntegral < self.intMin):
+            self.errIntegral = self.intMin
+
+        # 如果有物理上的微分项输入，则使用物理上的微分项，否则使用数值微分项
+        if (errDiff is None):
+            output = self.kp * err + self.ki * (self.errIntegral + err / self.frequency) + self.kd * (err - self.errPrevious) * self.frequency   
         else:
-            out = self.Kp * errValue + self.Ki * (self.errIntResult + errValue / self.controlFrequency) + self.Kd * errDiffValue * self.controlFrequency
+            output = self.kp * err + self.ki * (self.errIntegral + err / self.frequency) + self.kd * errDiff * self.frequency
 
-        self.errIntResult = self.errIntResult + errValue / self.controlFrequency
-        self.errLast = errValue
+        # 保存这一时刻的误差
+        self.errPrevious = err
 
-        return out
+        return output
     
     def clearIntResult(self):
-        self.errIntResult = 0
+        self.errIntegral = 0
 
 # class PID:
 #     def __init__(self, P=0.2, I=0.0, D=0.0):
