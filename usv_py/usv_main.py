@@ -256,7 +256,7 @@ def main(args=None):
                     # 计算平均值
                     tvHeadingMean = mean(tvHeadings)
                     
-                    latestMsg = "Estimating finished with average heading %.2f deg. Aligning with the target vessel..." % rad2deg(tvHeadingMean)
+                    latestMsg = "Estimating finished with average heading %.2f deg. Begin final approach..." % rad2deg(tvHeadingMean)
                     usvState = "DOCK_TRANSFER"
 
             elif usvState == "DOCK_TRANSFER":
