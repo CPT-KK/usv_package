@@ -22,9 +22,9 @@ class PID:
         self.errIntegral = self.errIntegral + err / self.frequency
 
         # 防止积分项饱和
-        if (self.intMax is not None) & (self.errIntegral > self.intMax):
+        if (self.intMax is not None and self.errIntegral > self.intMax):
             self.errIntegral = self.intMax
-        elif (self.intMin is not None) & (self.errIntegral < self.intMin):
+        elif (self.intMin is not None and self.errIntegral < self.intMin):
             self.errIntegral = self.intMin
 
         # 如果有物理上的微分项输入，则使用物理上的微分项，否则使用数值微分项

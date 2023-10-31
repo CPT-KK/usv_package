@@ -242,7 +242,7 @@ def main(args=None):
 
                 # 读取目标船的测量信息，若满足要求，则读取并保存目标船朝向角（ENU下）
                 thisHeading = usvPose.tvHeading
-                if abs(thisHeading) > deg2rad(85):
+                if abs(thisHeading) > deg2rad(87.5):
                     thisHeading = deg2rad(90)
                 tvHeadings[0, tvHeadingIdx] = thisHeading
                 tvHeadingIdx = tvHeadingIdx + 1
@@ -262,14 +262,13 @@ def main(args=None):
             elif usvState == "DOCK_APPROACH":
                 # 使用激光雷达读取的位置信息，规划变轨路径
                 if (isDockApproachPlan == False):
-                    currPath = usvPathPlanner.planDockApproach(usvPose.xLidar, usvPose.yLidar, 0, 0, tvHeadingMean)
-                    # currPath = usvPathPlanner.planDockApproach2(usvPose.xLidar, usvPose.yLidar, 0, 0, tvHeadingMean)
+                    currPath = usvPathPlanner.planDockApproach2(usvPose.xLidar, usvPose.yLidar, 0, 0, tvHeadingMean)
                     usvGuidance.setPath(currPath) 
                     isDockApproachPlan = True
 
                 # 读取激光雷达信息（这个时候应该能保证读到目标船吧？），生成控制指令
-                uSP = 1.5 - 0.75 * (usvGuidance.currentIdx / usvGuidance.endIdx)
-                [uSP, psiSP, xSP, ySP] = usvGuidance.guidance(uSP, 5.0, usvPose.xLidar, usvPose.yLidar, usvPose.psi, usvPose.betaDVL)
+                uSP = 1.5 - 0.7 * (usvGuidance.currentIdx / usvGuidance.endIdx)
+                [uSP, psiSP, xSP, ySP] = usvGuidance.guidance(uSP, 7.0, usvPose.xLidar, usvPose.yLidar, usvPose.psi, usvPose.betaDVL)
 
                 # 控制无人船
                 uSP = usvControl.moveUSV(uSP, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)

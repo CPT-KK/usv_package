@@ -150,7 +150,7 @@ class PathPlanner:
             l2X = self.d * cos(tvHeading + 0.5*pi)
             l2Y = self.d * sin(tvHeading + 0.5*pi)
 
-        path1 = planLinePath(path0[-1, 0], path0[-1, 1], l2X, l2Y)
+        path1 = planLinePath(path0[-1, 0], path0[-1, 1], l2X, l2Y, self.ds)
         
         # 返回两段轨迹，一段是测量圆上的圆弧，另一端直线
         return vstack((path0[:-1], path1))
