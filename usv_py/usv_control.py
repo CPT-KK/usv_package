@@ -4,7 +4,7 @@ import rospy
 from std_msgs.msg import Float32, Int16
 from geometry_msgs.msg import PointStamped
 
-from numpy import sin, cos, tan, arcsin, arccos, arctan, arctan2, rad2deg, deg2rad, clip, abs, sign, pi
+from numpy import sin, cos, tan, arcsin, arccos, arctan, arctan2, rad2deg, deg2rad, clip, abs, sign, pi, sqrt
 from numpy.linalg import norm
 
 from usv_math import rotationZ, wrapToPi
@@ -19,7 +19,7 @@ class Control():
 
     uSPMax = 4.0
     vSPMax = 1.25
-    rSPMax = deg2rad(45)
+    rSPMax = deg2rad(10)
     
     # USV motor from 50RPM to 1300RPM
     # USV angle from -85deg to 85deg
@@ -31,8 +31,8 @@ class Control():
     # 无人船参数
     usvMass = 775.0
     usvInerZ = 2072.475
-    usvWidth = 2.4
-    usvThrust2Center = 1.1
+    usvWidth = 3.3
+    usvThrust2Center = 1.55
 
     def __init__(self, control_frequency):
         self.lThrustPublisher_ = rospy.Publisher("/workshop_setup/pods/left", Int16, queue_size=10)
@@ -107,7 +107,7 @@ class Control():
 
         # u v setpoints 限幅
         uSP = clip(uSP, -1.0, 1.0)
-        vSP = clip(vSP, -0.6, 0.6)
+        vSP = clip(vSP, -0.8, 0.8)
        
         # 计算 vx vy 误差
         uErr = uSP - u
@@ -141,7 +141,7 @@ class Control():
         # 发布推力
         self.thrustPub(rpmL, rpmR, angleL, angleR)
 
-        return
+        return [uSP, vSP]
 
     def mixer(self, axSP, aySP, etaSP):
         # 计算推力偏角
@@ -153,8 +153,10 @@ class Control():
         angleR = clip(angleR, -self.angleMax, self.angleMax)
 
         # 计算推力大小
-        rpmL = self.usvMass * sign(axSP) * norm([axSP, aySP]) / 2.0 - self.usvInerZ * etaSP / (2.0 * self.usvThrust2Center * cos(angleL))
-        rpmR = self.usvMass * sign(axSP) * norm([axSP, aySP]) / 2.0 + self.usvInerZ * etaSP / (2.0 * self.usvThrust2Center * cos(angleR))
+        rpmTranslate = self.usvMass * sign(axSP) * sqrt(axSP ** 2 + aySP ** 2)
+        rpmRotate = self.usvInerZ * etaSP / (self.usvThrust2Center * cos(angleL))
+        rpmL = rpmTranslate / 2.0 - rpmRotate / 2.0
+        rpmR = rpmTranslate / 2.0 + rpmRotate / 2.0
 
         # 推力大小限幅
         rpmL = clip(rpmL, -self.rpmMax, self.rpmMax)
