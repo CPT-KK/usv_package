@@ -6,7 +6,7 @@ import atexit
 import traceback
 import signal
 
-from numpy import zeros, rad2deg, median, deg2rad, sin, cos, pi, abs, min, argmin, mean, tan, arctan, arctan2
+from numpy import zeros, rad2deg, median, deg2rad, sin, cos, pi, abs, min, argmin, mean, tan, arctan, arctan2, std
 from numpy.linalg import norm
 
 from usv_can import USVCAN
@@ -242,19 +242,24 @@ def main(args=None):
 
                 # 读取目标船的测量信息，若满足要求，则读取并保存目标船朝向角（ENU下）
                 thisHeading = usvPose.tvHeading
-                if abs(thisHeading) > deg2rad(87.5):
-                    thisHeading = deg2rad(90)
                 tvHeadings[0, tvHeadingIdx] = thisHeading
                 tvHeadingIdx = tvHeadingIdx + 1
                 latestMsg = "Estimating target vessel heading: %.2f deg." % rad2deg(thisHeading)
 
                 # 如果测量段结束了，打印出测量段测量结果，进入变轨段
                 if (usvGuidance.currentIdx >= usvGuidance.endIdx):
+                    # 去除后面未使用的索引
+                    tvHeadings = tvHeadings[0, 0:tvHeadingIdx-1]
+
+                    # 如果标准差大于 20°(0.34906585 rad)，认为大概率是-90°与90°跳变的情况，因此对 tvHeadings 中负角度加一个 pi
+                    if (std(tvHeadings) > 0.34906585):
+                        tvHeadings[tvHeadings < 0] = tvHeadings[tvHeadings < 0] + pi
+
                     # 去除离群点
                     tvHeadings = removeOutliers(tvHeadings[0, 0:tvHeadingIdx-1])
-
-                    # 计算平均值
-                    tvHeadingMean = mean(tvHeadings)
+                    
+                    # 计算平均值，并将结果角度映射到-90°~90°
+                    tvHeadingMean = arctan(tan(mean(tvHeadings)))
                     
                     latestMsg = "Estimating finished with average heading %.2f deg. Begin final approach..." % rad2deg(tvHeadingMean)
                     usvState = "DOCK_APPROACH"

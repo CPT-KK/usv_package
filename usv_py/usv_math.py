@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 from numpy import pi, sign, arctan2, sin, cos, abs, array, sqrt, percentile
+from sklearn.cluster import DBSCAN
 
 def wrapToPi(x):
     x = arctan2(sin(x), cos(x))
@@ -34,14 +35,23 @@ def rotationZ(x, y, angle):
 
     return [xNew, yNew]
 
-def removeOutliers(data):
-    Q1 = percentile(data, 25)
-    Q3 = percentile(data, 75)
-    IQR = Q3 - Q1
-    lb = Q1 - 1.5 * IQR
-    ub = Q3 + 1.5 * IQR
+# def removeOutliers(data):
+#     Q1 = percentile(data, 25)
+#     Q3 = percentile(data, 75)
+#     IQR = Q3 - Q1
+#     lb = Q1 - 1.5 * IQR
+#     ub = Q3 + 1.5 * IQR
     
-    return data[(data >= lb) & (data <= ub)]
+#     return data[(data >= lb) & (data <= ub)]
+
+def removeOutliers(data, eps=0.087266, min_samples=15):
+    # 两个点是邻居的最大距离 eps = 5 deg（0.087266 rad）
+    # 一个点被认为是核心点的最小邻居数目 min_samples = 15 个
+    data = data.reshape(-1, 1)  # 转换为二维数组，因为DBSCAN需要二维输入
+    clustering = DBSCAN(eps=eps, min_samples=min_samples ,n_jobs=-1).fit(data)
+    labels = clustering.labels_
+    return data[labels != -1].flatten()  # -1标签对应的是离群值
+
 
 # checklist = deg2rad(array([10, 20, 30, 45, 60, 89, 90, 91, 135, 150, 179, 181, 200, 215, 260, 270, 359, 361]))
 # print(rad2deg(wrapToPi(checklist)))
