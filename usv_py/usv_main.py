@@ -197,9 +197,9 @@ def main(args=None):
                 if (usvPose.isLidarFindObs):       
                     # 计算避障所需航向角
                     if (usvPose.obsAngleLidar >= 0):
-                        psiSP = usvPose.obsAngleLidar + usvPose.psi - deg2rad(12.0)
+                        psiSP = usvPose.obsAngleLidar - deg2rad(35.0)
                     else:
-                        psiSP = usvPose.obsAngleLidar + usvPose.psi + deg2rad(12.0)
+                        psiSP = usvPose.obsAngleLidar - deg2rad(35.0)
                     
                     uSP = 3.25
                     uSP = usvControl.moveUSV(uSP, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
@@ -256,7 +256,7 @@ def main(args=None):
                         tvHeadings[tvHeadings < 0] = tvHeadings[tvHeadings < 0] + pi
 
                     # 去除离群点
-                    tvHeadings = removeOutliers(tvHeadings[0, 0:tvHeadingIdx-1])
+                    tvHeadings = removeOutliers(tvHeadings)
                     
                     # 计算平均值，并将结果角度映射到-90°~90°
                     tvHeadingMean = arctan(tan(mean(tvHeadings)))
@@ -273,7 +273,7 @@ def main(args=None):
 
                 # 读取激光雷达信息（这个时候应该能保证读到目标船吧？），生成控制指令
                 uSP = 1.5 - 0.7 * (usvGuidance.currentIdx / usvGuidance.endIdx)
-                [uSP, psiSP, xSP, ySP] = usvGuidance.guidance(uSP, 7.0, usvPose.xLidar, usvPose.yLidar, usvPose.psi, usvPose.betaDVL)
+                [uSP, psiSP, xSP, ySP] = usvGuidance.guidance(uSP, 6.0, usvPose.xLidar, usvPose.yLidar, usvPose.psi, usvPose.betaDVL)
 
                 # 控制无人船
                 uSP = usvControl.moveUSV(uSP, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)

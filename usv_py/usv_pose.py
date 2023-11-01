@@ -64,7 +64,7 @@ class Pose():
     obsY = 0
     obsDist = 0
     obsAngleLidar = 0
-    obsDistTol = 50.0
+    obsDistTol = 70.0
     obsAngleTol = deg2rad(15.0)
 
     # Pod 变量  
@@ -263,7 +263,7 @@ class Pose():
                 self.obsDist = objectDist[distMinIdx, 0]
                 self.obsAngleLidar = objectAngle[distMinIdx, 0]
                 self.isLidarFindObs = True
-            else:
+            elif (objectDist[distMinIdx, 0] > self.obsDistTol) | (abs(objectAngle[distMinIdx, 0] - self.psi) > 1.5* self.obsAngleTol):
                 self.isLidarFindObs = False
 
 
