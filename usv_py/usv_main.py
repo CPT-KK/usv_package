@@ -7,7 +7,6 @@ import traceback
 import signal
 
 from numpy import zeros, rad2deg, median, deg2rad, sin, cos, pi, abs, min, argmin, mean, tan, arctan, arctan2, std
-from numpy.linalg import norm
 
 from usv_can import USVCAN
 from usv_pose import Pose
@@ -15,9 +14,9 @@ from usv_path_planner import PathPlanner, planCirclePath
 from usv_guidance import Guidance
 from usv_control import Control
 from usv_communication import Communication
-from usv_math import removeOutliers, wrapToPi
+from usv_math import removeOutliers
 from usv_record import genTable, USVData
-
+from usv_test import test
 from rich.console import Console
 from rich.table import Column, Table
 
@@ -146,8 +145,12 @@ def main(args=None):
 
             elif usvState == "STANDBY":
                 if (isTestEnable):
-                    usvState = TEST_MODE
-
+                    testRet = test(TEST_MODE, usvPathPlanner, usvGuidance, usvControl, usvPose)
+                    if (testRet == 1):
+                        break
+                    else:
+                        continue
+                    
                 if (usvComm.isSearchFindTV):
                     latestMsg = "Receive heading %d deg from sUAV." % rad2deg(usvComm.tvAngleEst)
                     mavrosArmClient.call(armCmd)
@@ -297,10 +300,10 @@ def main(args=None):
                     psiSP = arctan2(ySP - currPath[-2, 1], xSP - currPath[-2, 0])
                     isDockAdjustPlan = True
 
-                    latestMsg = "Approach finished. Stablizing USV pose at [%.2f, %.2f] @ %.2f deg..." % (xSP, ySP, rad2deg(psiSP))
+                    latestMsg = "Approach finished. Stablizing USV pose at [%.2f, %.2f] @ %.2f deg for %.2f / %.2f secs..." % (xSP, ySP, rad2deg(psiSP), rospy.Time.now().to_sec() - timer1, 5.0)
 
                 # 保持静止
-                usvControl.moveUSVVec(xSP, ySP, psiSP, usvPose.xLidar, usvPose.yLidar, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
+                [uSP, vSP] = usvControl.moveUSVVec(xSP, ySP, psiSP, usvPose.xLidar, usvPose.yLidar, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
 
                 # 等待船接近静止并保持 5.0s，进入 FINAL
                 if (rospy.Time.now().to_sec() - timer1 > 5.0):   
@@ -321,75 +324,7 @@ def main(args=None):
                 usvComm.sendTVPosFromLidar(-usvPose.xLidar, -usvPose.yLidar)
 
                 # 继续保持静止
-                usvControl.moveUSVVec(xSP, ySP, psiSP, usvPose.xLidar, usvPose.yLidar, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
-
-            # 测试部分
-            elif usvState == "TEST_LINE":
-                if (isTestLinePlan == False):
-                    endX = -50
-                    endY = 50
-                    currPath = usvPathPlanner.planPursue(usvPose.x, usvPose.y, endX, endY)
-                    usvGuidance.setPath(currPath)
-                    latestMsg = "USV 测试-直线路径已规划. 前往 [%d, %d]." % (endX, endY)
-                    isTestLinePlan = True       
-
-                if (usvGuidance.currentIdx >= usvGuidance.endIdx):    
-                    latestMsg = "USV 测试-直线结束."
-                    break
-
-                [uSP, psiSP, xSP, ySP] = usvGuidance.guidance(3.5, 20.0, usvPose.x, usvPose.y, usvPose.psi, usvPose.beta)
-                uSP = usvControl.moveUSV(uSP, psiSP, usvPose.u, usvPose.axb, usvPose.psi, usvPose.r)
-            
-            elif usvState == "TEST_CIRCLE":
-                if (isTestCirclePlan == False):
-                    R = 15
-                    circleTimes = 3
-                    cirCenX = usvPose.x - R * cos(usvPose.psi - pi/2)
-                    cirCenY = usvPose.y - R * sin(usvPose.psi - pi/2)
-                    currPath = planCirclePath(cirCenX, cirCenY, R, usvPose.psi - pi/2, usvPose.psi - pi/2 + circleTimes * 2 * pi, 4)
-                    usvGuidance.setPath(currPath)
-                    latestMsg = "USV 测试-圆路径已规划. 圆心 [%.2f, %.2f]m. 半径 %.2fm. 环绕次数 %d." % (cirCenX, cirCenY, R, circleTimes)
-                    isTestCirclePlan = True
-
-                if (usvGuidance.currentIdx >= usvGuidance.endIdx):  
-                    latestMsg = "USV 测试-圆结束."
-                    break
-                
-                # R = 30m, dist2Next = 15m, uSP = 3m/s
-                # R = 15m, dist2Next = 7m, uSP = 2.6m/s
-                [uSP, psiSP, xSP, ySP] = usvGuidance.guidance(2.6, 7, usvPose.x, usvPose.y, usvPose.psi, usvPose.beta)
-                uSP = usvControl.moveUSV(uSP, psiSP, usvPose.u, usvPose.axb, usvPose.psi, usvPose.r)
-
-            elif usvState == "TEST_BOTH": 
-                if (isTestLinePlan == False) & (isTestCirclePlan == False):
-                    lineLength = 200
-                    endX = usvPose.x + lineLength*cos(usvPose.psi);
-                    endY = usvPose.y + lineLength*sin(usvPose.psi);
-                    currPath = usvPathPlanner.planPursue(usvPose.x, usvPose.y, endX, endY)
-                    usvGuidance.setPath(currPath)
-                    latestMsg = "USV 测试-直线+圆的直线段路径已规划. 前往 [%.2f, %.2f]m." % (endX, endY)
-                    isTestLinePlan = True
-                    theSpeed = 4
-                    theDist2Next = 20
-
-                if (usvGuidance.currentIdx >= usvGuidance.endIdx) & (isTestLinePlan == True) & (isTestCirclePlan == False):  
-                    R = 30
-                    circleTimes = 3
-                    cirCenX = usvPose.x - R * cos(usvPose.psi - pi/2)
-                    cirCenY = usvPose.y - R * sin(usvPose.psi - pi/2)
-                    currPath = planCirclePath(cirCenX, cirCenY, R, usvPose.psi - pi/2, usvPose.psi - pi/2 + circleTimes * 2 * pi, 4)
-                    usvGuidance.setPath(currPath)
-                    latestMsg = "USV 测试-直线+圆的圆段路径已规划. 圆心 [%.2f, %.2f]m. 半径 %.2fm. 环绕次数 %d." % (cirCenX, cirCenY, R, circleTimes) 
-                    isTestCirclePlan = True
-                    theSpeed = 3
-                    theDist2Next = 16
-
-                if (usvGuidance.currentIdx >= usvGuidance.endIdx) & (isTestCirclePlan == True) & (isTestLinePlan == True):  
-                    latestMsg ="USV 测试-直线+圆结束."
-                    break
-                
-                [uSP, psiSP, xSP, ySP] = usvGuidance.guidance(theSpeed, theDist2Next, usvPose.x, usvPose.y, usvPose.psi, usvPose.beta)
-                uSP = usvControl.moveUSV(uSP, psiSP, usvPose.u, usvPose.axb, usvPose.psi, usvPose.r)
+                [uSP, vSP] = usvControl.moveUSVVec(xSP, ySP, psiSP, usvPose.xLidar, usvPose.yLidar, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
 
             else:
                 # 程序不应该执行到这里
