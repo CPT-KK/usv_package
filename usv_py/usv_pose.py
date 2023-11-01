@@ -256,14 +256,14 @@ class Pose():
             # 没有扫描到目标船才进行障碍物判断
             distMinIdx = argmin(objectDist)
 
-            # 使用距离 obsDistTol 和角度 obsAngleTol 判断最近的那个 object 是否为障碍物
+            # 使用距离 obsDistTol 和角度 obsAngleTol 判断最近的那个 object 是否为障碍物                                   
             if (objectDist[distMinIdx, 0] < self.obsDistTol) & (abs(objectAngle[distMinIdx, 0] - self.psi) < self.obsAngleTol):
                 self.obsX = objectX[distMinIdx, 0]
                 self.obsY = objectY[distMinIdx, 0]
                 self.obsDist = objectDist[distMinIdx, 0]
                 self.obsAngleLidar = objectAngle[distMinIdx, 0]
                 self.isLidarFindObs = True
-            elif (objectDist[distMinIdx, 0] > self.obsDistTol) | (abs(objectAngle[distMinIdx, 0] - self.psi) > 1.5* self.obsAngleTol):
+            elif (objectDist[distMinIdx, 0] > self.obsDistTol) | (abs(objectAngle[distMinIdx, 0] - self.psi) > 2.0 * self.obsAngleTol):
                 self.isLidarFindObs = False
 
 
