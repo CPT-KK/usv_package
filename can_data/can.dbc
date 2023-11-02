@@ -35,7 +35,6 @@ BS_:
 
 BU_:
 
-
 BO_ 2559590401 batt_1_overall_status: 8 Vector__XXX
 	SG_ cumulative_voltage : 7|16@0+ (0.1,0) [0|60] "V" Vector__XXX
 	SG_ collecting_voltage : 23|16@0+ (0.1,0) [0|60] "V" Vector__XXX
@@ -85,13 +84,13 @@ BO_ 2559655940 batt_4_cell_status: 8 Vector__XXX
 	SG_ min_volt_id : 47|8@0+ (1,0) [0|63] "" Vector__XXX
 
 BO_ 2147486213 motor_state: 8 Vector__XXX
-	SG_ motor_index : 7|8@0+ (1,0) [0|0] "" Vector__XXX
-	SG_ valid_check : 15|8@0+ (1,0) [0|0] "" Vector__XXX
-	SG_ motor_status : 23|8@0+ (1,0) [0|0] "" Vector__XXX
-	SG_ engine_speed : 31|16@0+ (0.25,0) [0|0] "RPM" Vector__XXX
-	SG_ motor_torque : 47|8@0+ (1,0) [0|0] "" Vector__XXX
-	SG_ motor_throttle : 55|8@0+ (1,0) [0|0] "" Vector__XXX
-	SG_ motor_gear : 63|8@0+ (1,0) [0|0] "" Vector__XXX
+	SG_ motor_index : 0|8@1+ (1,0) [0|0] "" Vector__XXX
+	SG_ valid_check : 8|8@1+ (1,0) [0|0] "" Vector__XXX
+	SG_ motor_status : 16|8@1+ (1,0) [0|0] "" Vector__XXX
+	SG_ engine_speed : 24|16@1+ (0.25,0) [0|0] "RPM" Vector__XXX
+	SG_ motor_torque : 40|8@1+ (1,0) [0|0] "" Vector__XXX
+	SG_ motor_throttle : 48|8@1+ (1,0) [0|0] "" Vector__XXX
+	SG_ motor_gear : 56|8@1+ (1,0) [0|0] "" Vector__XXX
 
 CM_ BO_ 2559590401 "Battery 1 Overall Status";
 CM_ BO_ 2559590402 "Battery 2 Overall Status";
