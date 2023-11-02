@@ -4,7 +4,7 @@ import rospy
 from std_msgs.msg import Float32, Int16
 from geometry_msgs.msg import PointStamped
 
-from numpy import sin, cos, tan, arcsin, arccos, arctan, arctan2, rad2deg, deg2rad, clip, abs, sign, pi, sqrt
+from numpy import sin, cos, tan, arcsin, arccos, arctan, arctan2, rad2deg, deg2rad, clip, abs, sign, pi, sqrt, array, max
 from numpy.linalg import norm
 
 from usv_math import rotationZ, wrapToPi
@@ -24,7 +24,7 @@ class Control():
     # USV motor from 50RPM to 1300RPM
     # USV angle from -85deg to 85deg
     rpmThreshold = 10
-    rpmMin = 50
+    rpmMin = 40
     rpmMax = 1250
     angleMax = deg2rad(85) # 85 deg
 
@@ -159,18 +159,15 @@ class Control():
         rpmR = rpmTranslate / 2.0 + rpmRotate / 2.0
 
         # 推力大小限幅
+        if (abs(rpmL) < self.rpmThreshold) | (abs(rpmR) < self.rpmThreshold):
+            rpmL = 0
+            rpmR = 0
+        elif (abs(rpmL) <= self.rpmMin) | (abs(rpmR) <= self.rpmMin):  
+            rpmL = rpmL * max(array([self.rpmMin / abs(rpmL), self.rpmMin / abs(rpmR)]))
+            rpmR = rpmR * max(array([self.rpmMin / abs(rpmL), self.rpmMin / abs(rpmR)]))
+
         rpmL = clip(rpmL, -self.rpmMax, self.rpmMax)
         rpmR = clip(rpmR, -self.rpmMax, self.rpmMax)
-
-        if (abs(rpmL) <= self.rpmMin) & (abs(rpmL) >= self.rpmThreshold):
-            rpmL = sign(rpmL) * self.rpmMin
-        if (abs(rpmL) <= self.rpmMin) & (abs(rpmL) < self.rpmThreshold):
-            rpmL = 0
-
-        if (abs(rpmR) <= self.rpmMin) & (abs(rpmR) >= self.rpmThreshold):
-            rpmR = sign(rpmR) * self.rpmMin
-        if (abs(rpmR) <= self.rpmMin) & (abs(rpmR) < self.rpmThreshold):
-            rpmR = 0  
 
         return [rpmL, rpmR, angleL, angleR]
 
