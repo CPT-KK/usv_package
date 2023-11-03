@@ -94,9 +94,9 @@ BO_ 2147486213 motor_state: 8 Vector__XXX
  SG_ motor_gear : 56|8@1+ (1,0) [0|0] "" Vector__XXX
 
 BO_ 1413 mag_output: 8 Vector__XXX
- SG_ x : 0|16@1+ (0.000174532925199433,-3.49065850398866) [0|0] "" Vector__XXX
- SG_ y : 24|16@1+ (0.000174532925199433,-3.49065850398866) [0|0] "" Vector__XXX
- SG_ z : 48|16@1+ (0.000174532925199433,-3.49065850398866) [0|0] "" Vector__XXX
+ SG_ x : 0|16@1+ (0.000174532925199433,-3.49065850398866) [0|0] "rad" Vector__XXX
+ SG_ y : 24|16@1+ (0.000174532925199433,-3.49065850398866) [0|0] "rad" Vector__XXX
+ SG_ z : 48|16@1+ (0.000174532925199433,-3.49065850398866) [0|0] "rad" Vector__XXX
 
 
 
@@ -123,16 +123,16 @@ BA_DEF_DEF_  "DatabaseVersion" "DEMO PLUS";
 BA_DEF_DEF_  "BusType" "";
 BA_DEF_DEF_  "ProtocolType" "";
 BA_DEF_DEF_  "DatabaseCompiler" "";
-BA_ "BusType" "CAN";
 BA_ "ProtocolType" "J1939";
-BA_ "VFrameFormat" BO_ 2559590401 3;
-BA_ "VFrameFormat" BO_ 2559590402 3;
-BA_ "VFrameFormat" BO_ 2559590403 3;
-BA_ "VFrameFormat" BO_ 2559590404 3;
-BA_ "VFrameFormat" BO_ 2559655937 3;
-BA_ "VFrameFormat" BO_ 2559655938 3;
-BA_ "VFrameFormat" BO_ 2559655939 3;
-BA_ "VFrameFormat" BO_ 2559655940 3;
-BA_ "VFrameFormat" BO_ 2147486213 3;
-BA_ "VFrameFormat" BO_ 2147485061 3;
+BA_ "BusType" "CAN";
+BA_ "VFrameFormat" BO_ 2559590401 1;
+BA_ "VFrameFormat" BO_ 2559590402 1;
+BA_ "VFrameFormat" BO_ 2559590403 1;
+BA_ "VFrameFormat" BO_ 2559590404 1;
+BA_ "VFrameFormat" BO_ 2559655937 1;
+BA_ "VFrameFormat" BO_ 2559655938 1;
+BA_ "VFrameFormat" BO_ 2559655939 1;
+BA_ "VFrameFormat" BO_ 2559655940 1;
+BA_ "VFrameFormat" BO_ 2147486213 1;
+BA_ "VFrameFormat" BO_ 1413 0;
 
