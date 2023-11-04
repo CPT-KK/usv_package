@@ -1,5 +1,6 @@
 import can
 import cantools
+from numpy import pi
 
 class USVCAN(can.Listener):
     # CAN 总线设置
@@ -51,7 +52,7 @@ class USVCAN(can.Listener):
         if ("mag_output" in message_obj.name):
             self.roll = decoded_msg.get('y', None)
             self.pitch = decoded_msg.get('x', None)
-            self.yaw = decoded_msg.get('z', None)
+            self.yaw = -(decoded_msg.get('z', None)) + 0.25 * pi
 
         elif ("_overall_status" in message_obj.name):
             # 电池设备 CAN ID （eg: 0x18904101）与掩码 0x00000F00 取并，所得结果在二进制形式下向右移动 8 位，减去 1，得到是第几个电池
