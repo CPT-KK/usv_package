@@ -1,7 +1,7 @@
 import can
 import cantools
-from numpy import pi
-
+from numpy import pi, rad2deg
+from usv_math import wrapToPi
 class USVCAN(can.Listener):
     # CAN 总线设置
     canInterface = 'slcan0'
@@ -52,8 +52,8 @@ class USVCAN(can.Listener):
         if ("mag_output" in message_obj.name):
             self.roll = decoded_msg.get('y', None)
             self.pitch = decoded_msg.get('x', None)
-            self.yaw = -(decoded_msg.get('z', None)) + 0.25 * pi
-
+            self.yaw = wrapToPi(-(decoded_msg.get('z', None)) + 0.5 * pi)
+            # print(rad2deg(self.yaw))
         elif ("_overall_status" in message_obj.name):
             # 电池设备 CAN ID （eg: 0x18904101）与掩码 0x00000F00 取并，所得结果在二进制形式下向右移动 8 位，减去 1，得到是第几个电池
             battIdx = ((msg.arbitration_id & 0x0000000F)) - 1
