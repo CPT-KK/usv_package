@@ -81,8 +81,8 @@ class Pose():
         # For PX4 MAVROS local position and velocity (Velocity is in USV body frame)
         self.px4OdomSub = rospy.Subscriber('/mavros/local_position/odom', Odometry, self.poseCallback, queue_size=1) 
 
-        # For PX4 MAVROS IMU
-        self.px4IMUSub = rospy.Subscriber('/mavros/imu/data', Imu, self.imuCallback, queue_size=1) 
+        # For USV IMU
+        self.px4IMUSub = rospy.Subscriber('/usv/imu/data', Imu, self.imuCallback, queue_size=1) 
 
         # For DVL
         self.dvlPosSub = rospy.Subscriber('/usv/dvl/position', PoseStamped, self.dvlPosCallback)
