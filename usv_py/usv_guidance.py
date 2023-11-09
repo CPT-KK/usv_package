@@ -31,7 +31,7 @@ class Guidance():
 
     def __init__(self, control_frequency):
         # self.publisher_ = rospy.Publisher('/usv/guidance/guidanceSP', PointStamped, queue_size=10)
-        self.yErrPID = PID(1.05, 0.045, 0.05, control_frequency)
+        self.yErrPID = PID(1.0, 0.03, 0.1, control_frequency)
         pass
 
     def setPath(self, inPath, inEndIdx=0):
