@@ -95,7 +95,7 @@ class Pose():
         self.lidarSub = rospy.Subscriber('/filter/target', PoseArray, self.lidarCallback, queue_size=1)
 
         # For MAVROS state
-        self.stateSub = rospy.Subscriber("mavros/state", State, self.stateCallback)
+        # self.stateSub = rospy.Subscriber("/mavros/state", State, self.stateCallback)
 
         
     def __del__(self):

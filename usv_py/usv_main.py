@@ -80,16 +80,16 @@ def main(args=None):
     console.print("[green]>>>>>>> Function classes initialized.")
 
     # 添加服务节点
-    console.print("[green]>>>>>>> Waiting MAVROS services...")
-    rospy.wait_for_service("/mavros/cmd/arming")
-    mavrosArmClient = rospy.ServiceProxy("mavros/cmd/arming", CommandBool)
-    armCmd = CommandBoolRequest(value=True)
-    disarmCmd = CommandBoolRequest(value=False)
+    # console.print("[green]>>>>>>> Waiting MAVROS services...")
+    # rospy.wait_for_service("/mavros/cmd/arming")
+    # mavrosArmClient = rospy.ServiceProxy("mavros/cmd/arming", CommandBool)
+    # armCmd = CommandBoolRequest(value=True)
+    # disarmCmd = CommandBoolRequest(value=False)
 
-    rospy.wait_for_service("/mavros/set_mode")
-    mavrosSetModeClient = rospy.ServiceProxy("mavros/set_mode", SetMode)
-    holdSetMode = SetModeRequest(custom_mode='AUTO.LOITER')
-    console.print("[green]>>>>>>> Connect to MAVROS services.")
+    # rospy.wait_for_service("/mavros/set_mode")
+    # mavrosSetModeClient = rospy.ServiceProxy("mavros/set_mode", SetMode)
+    # holdSetMode = SetModeRequest(custom_mode='AUTO.LOITER')
+    # console.print("[green]>>>>>>> Connect to MAVROS services.")
 
     # 开一个线程用于处理 rospy.spin()
     # 确保 daemon=True，这样主进程结束后，这个线程也会被结束
@@ -153,7 +153,7 @@ def main(args=None):
                     
                 if (usvComm.isSearchFindTV):
                     latestMsg = "Receive heading %d deg from sUAV." % rad2deg(usvComm.tvAngleEst)
-                    mavrosArmClient.call(armCmd)
+                    # mavrosArmClient.call(armCmd)
                     usvState = "PURSUE"
 
             elif usvState == "PURSUE":   
@@ -316,8 +316,8 @@ def main(args=None):
 
             elif usvState == "DOCK_FINAL":
                 # DOCK_FINAL 是一个死循环
-                if (usvPose.state.armed):
-                    mavrosArmClient.call(disarmCmd)
+                # if (usvPose.state.armed):
+                    # mavrosArmClient.call(disarmCmd)
                     
                 latestMsg = "USV has been stabilized. Start to send tUAV take-off flag..."
                 usvComm.sendTakeOffFlag()
