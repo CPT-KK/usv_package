@@ -17,7 +17,7 @@ def test(usvState, usvPathPlanner, usvGuidance, usvControl, usvPose):
             latestMsg = "USV 测试-直线结束."
             return 1
 
-        [uSP, psiSP, xSP, ySP] = usvGuidance.guidance(3.5, 20.0, usvPose.x, usvPose.y, usvPose.psi, usvPose.beta)
+        [psiSP, xSP, ySP] = usvGuidance.guidance(20.0, usvPose.x, usvPose.y, usvPose.psi, usvPose.beta)
         uSP = usvControl.moveUSV(uSP, psiSP, usvPose.u, usvPose.axb, usvPose.psi, usvPose.r)
 
     elif usvState == "TEST_CIRCLE":
@@ -37,7 +37,7 @@ def test(usvState, usvPathPlanner, usvGuidance, usvControl, usvPose):
         
         # R = 30m, dist2Next = 15m, uSP = 3m/s
         # R = 15m, dist2Next = 7m, uSP = 2.6m/s
-        [uSP, psiSP, xSP, ySP] = usvGuidance.guidance(2.6, 7, usvPose.x, usvPose.y, usvPose.psi, usvPose.beta)
+        [psiSP, xSP, ySP] = usvGuidance.guidance(7, usvPose.x, usvPose.y, usvPose.psi, usvPose.beta)
         uSP = usvControl.moveUSV(uSP, psiSP, usvPose.u, usvPose.axb, usvPose.psi, usvPose.r)
 
     elif usvState == "TEST_BOTH": 
@@ -60,15 +60,15 @@ def test(usvState, usvPathPlanner, usvGuidance, usvControl, usvPose):
             currPath = planCirclePath(cirCenX, cirCenY, R, usvPose.psi - pi/2, usvPose.psi - pi/2 + circleTimes * 2 * pi, 4)
             usvGuidance.setPath(currPath)
             latestMsg = "USV 测试-直线+圆的圆段路径已规划. 圆心 [%.2f, %.2f]m. 半径 %.2fm. 环绕次数 %d." % (cirCenX, cirCenY, R, circleTimes) 
-            isTestCirclePlan = True
-            theSpeed = 3
+            isTestCirclePlan = True   
             theDist2Next = 16
 
         if (usvGuidance.currentIdx >= usvGuidance.endIdx) & (isTestCirclePlan == True) & (isTestLinePlan == True):  
             latestMsg ="USV 测试-直线+圆结束."
             return 1
         
-        [uSP, psiSP, xSP, ySP] = usvGuidance.guidance(theSpeed, theDist2Next, usvPose.x, usvPose.y, usvPose.psi, usvPose.beta)
+        uSP = 3
+        [psiSP, xSP, ySP] = usvGuidance.guidance(theDist2Next, usvPose.x, usvPose.y, usvPose.psi, usvPose.beta)
         uSP = usvControl.moveUSV(uSP, psiSP, usvPose.u, usvPose.axb, usvPose.psi, usvPose.r)
 
     return 0

@@ -47,7 +47,7 @@ class Guidance():
 
         self.isPathInit = True
 
-    def guidance(self, uSP, dist2Next, x, y, psi, beta):
+    def guidance(self, dist2Next, x, y, psi, beta):
         if (self.isPathInit == False):
             return [None, None]
         
@@ -85,7 +85,7 @@ class Guidance():
         # print("theta: %5.2f, beta: %5.2f, yErr: %5.2f" % (tanAngle, beta, yErr))
 
         # 返回制导指令
-        return [uSP, psiSP, xSP, ySP]
+        return [psiSP, xSP, ySP]
 
     def guidanceVec(self, dist2Next, vel2Next, x, y):
         if (self.isPathInit == False):

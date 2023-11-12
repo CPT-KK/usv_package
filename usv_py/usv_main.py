@@ -221,7 +221,7 @@ def main(args=None):
                 
                 # 读取激光雷达信息（这个时候应该能保证读到目标船吧？），生成控制指令
                 uSP = 1.6
-                [uSP, psiSP, xSP, ySP] = usvGuidance.guidance(uSP, 12.0, usvPose.xLidar, usvPose.yLidar, usvPose.psi, usvPose.betaDVL)
+                [psiSP, xSP, ySP] = usvGuidance.guidance(12.0, usvPose.xLidar, usvPose.yLidar, usvPose.psi, usvPose.betaDVL)
 
                 # 控制无人船
                 uSP = usvControl.moveUSV(uSP, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
@@ -238,7 +238,7 @@ def main(args=None):
 
                 # 读取激光雷达信息（这个时候应该能保证读到目标船吧？），生成控制指令
                 uSP = 1.5
-                [uSP, psiSP, xSP, ySP] = usvGuidance.guidance(uSP, 8.0, usvPose.xLidar, usvPose.yLidar, usvPose.psi, usvPose.betaDVL)
+                [psiSP, xSP, ySP] = usvGuidance.guidance(8.0, usvPose.xLidar, usvPose.yLidar, usvPose.psi, usvPose.betaDVL)
 
                 # 控制无人船
                 uSP = usvControl.moveUSV(uSP, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
@@ -276,7 +276,7 @@ def main(args=None):
 
                 # 读取激光雷达信息（这个时候应该能保证读到目标船吧？），生成控制指令
                 uSP = 1.5 - 0.7 * (usvGuidance.currentIdx / usvGuidance.endIdx)
-                [uSP, psiSP, xSP, ySP] = usvGuidance.guidance(uSP, 6.0, usvPose.xLidar, usvPose.yLidar, usvPose.psi, usvPose.betaDVL)
+                [psiSP, xSP, ySP] = usvGuidance.guidance(6.0, usvPose.xLidar, usvPose.yLidar, usvPose.psi, usvPose.betaDVL)
 
                 # 控制无人船
                 uSP = usvControl.moveUSV(uSP, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
