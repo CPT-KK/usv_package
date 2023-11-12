@@ -25,7 +25,7 @@ class Control():
     # USV angle from -85deg to 85deg
     rpmThreshold = 10
     rpmMin = 40
-    rpmMax = 1250
+    rpmMax = 1000
     angleMax = deg2rad(85) # 85 deg
 
     # 无人船参数
