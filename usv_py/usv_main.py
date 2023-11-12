@@ -3,7 +3,6 @@
 import rospy
 import threading
 import atexit
-import traceback
 import signal
 
 from numpy import zeros, rad2deg, median, deg2rad, sin, cos, pi, abs, min, argmin, mean, tan, arctan, arctan2, std
