@@ -39,7 +39,6 @@ class Control():
         self.rThrustPublisher_ = rospy.Publisher("/workshop_setup/pods/right", Int16, queue_size=10)
         self.lAnglePublisher_ = rospy.Publisher("/workshop_setup/pod_steer/left_steer", Float32, queue_size=10)
         self.rAnglePublisher_ = rospy.Publisher("/workshop_setup/pod_steer/right_steer", Float32, queue_size=10)
-        self.publisher_ = rospy.Publisher('/usv/guidance/guidanceSP', PointStamped, queue_size=10)
 
         # PID 初始化
         self.uPID = PID(0.8, 0.06, 0.012, control_frequency)
@@ -183,16 +182,6 @@ class Control():
         self.rAnglePublisher_.publish(rA)
 
         return
-    
-    def pubSetpoints(self, xSP, ySP, psiSP):
-        msg = PointStamped()
-        msg.point.x = xSP
-        msg.point.y = ySP
-        msg.point.z = psiSP
-
-        msg.header.frame_id = "base_link"
-        msg.header.stamp = rospy.Time.now()
-        self.publisher_.publish(msg)
     
 if __name__ == '__main__':
     # 以下代码为测试代码
