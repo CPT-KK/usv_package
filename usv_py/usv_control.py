@@ -47,9 +47,9 @@ class Control():
         self.rPID = PID(2.1, 0.03, 0.005, control_frequency)
 
         self.xPID = PID(0.3, 0.000, 0.000, control_frequency)
-        self.yPID = PID(0.2, 0.000, 0.000, control_frequency)
+        self.yPID = PID(0.15, 0.000, 0.000, control_frequency)
         self.vxPID = PID(0.6, 0.0012, 0.05, control_frequency)
-        self.vyPID = PID(0.4, 0.001, 0.05, control_frequency)
+        self.vyPID = PID(0.3, 0.0008, 0.05, control_frequency)
 
     def __del__(self):
         pass
