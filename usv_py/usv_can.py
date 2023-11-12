@@ -21,10 +21,6 @@ class USVCAN(can.Listener):
     motorRPM = [-9999] * 2
     motorAngle = [float("nan")] * 2
 
-    roll = float("nan")
-    pitch = float("nan")
-    yaw = float("nan")
-
     def __init__(self):
         # 加载 DBC 文件
         self.db = cantools.database.load_file(self.dbcPath)
@@ -49,12 +45,7 @@ class USVCAN(can.Listener):
         decoded_msg = message_obj.decode(msg.data)
 
         # 分类信息来源
-        if ("mag_output" in message_obj.name):
-            self.roll = decoded_msg.get('y', None)
-            self.pitch = decoded_msg.get('x', None)
-            self.yaw = wrapToPi(-(decoded_msg.get('z', None)) + 0.5 * pi)
-            # print(rad2deg(self.yaw))
-        elif ("_overall_status" in message_obj.name):
+        if ("_overall_status" in message_obj.name):
             # 电池设备 CAN ID （eg: 0x18904101）与掩码 0x00000F00 取并，所得结果在二进制形式下向右移动 8 位，减去 1，得到是第几个电池
             battIdx = ((msg.arbitration_id & 0x0000000F)) - 1
             self.battCumuVolt[battIdx] = decoded_msg.get('cumulative_voltage', None)
