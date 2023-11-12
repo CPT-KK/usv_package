@@ -42,6 +42,7 @@ class Control():
 
         # PID 初始化
         self.uPID = PID(0.8, 0.06, 0.012, control_frequency)
+        self.vPID = PID(0.5, 0.02, 0.008, control_frequency)
         self.psiPID = PID(1.15, 0.008, 0.00, control_frequency)
         self.rPID = PID(2.1, 0.03, 0.005, control_frequency)
 
@@ -60,7 +61,7 @@ class Control():
         # 朝向角误差限幅
         psiErr = wrapToPi(psiErr)
 
-        # 根据 psiErr 的值，计算可行的 uSP (避免速度太大转不过弯)
+        # 根据 psiErr 的值，计算可行的 uSP (避免速度太大，转弯转不过来)
         uSP = uSP * (0.1 + 0.9 * (1 - abs(psiErr) / pi))  
 
         # 轴向速度限幅
@@ -142,6 +143,45 @@ class Control():
 
         return [uSP, vSP]
 
+    def moveUSVLateral(self, vSP, psiSP, v, ayb, psi, r):
+        # 计算朝向角误差
+        psiErr = psiSP - psi
+
+        # 朝向角误差限幅
+        psiErr = wrapToPi(psiErr)
+
+        # 根据 psiErr 的值，计算可行的 vSP (避免速度太大，转弯转不过来)
+        vSP = vSP * (0.1 + 0.9 * (1 - abs(psiErr) / pi))  
+
+        # 侧向速度限幅
+        vSP = clip(vSP, -self.vSPMax, self.vSPMax)
+
+        # 计算侧向速度误差
+        vErr = vSP - v
+
+        # 计算推力大小
+        aybSP = self.vPID.compute(vErr, ayb)
+
+        # 计算期望朝向角速度
+        rSP = self.psiPID.compute(psiErr, r)
+
+        # 期望朝向角速度限幅
+        rSP = clip(rSP, -self.rSPMax, self.rSPMax)
+
+        # 计算期望角速度误差
+        rErr = rSP - r
+
+        # 计算所需角加速度大小
+        etaSP = self.rPID.compute(rErr)
+
+        # 混控计算
+        [rpmL, rpmR, angleL, angleR] = self.mixerLateral(aybSP, etaSP)
+
+        # 发布推力
+        self.thrustPub(rpmL, rpmR, angleL, angleR)
+
+        return vSP
+    
     def mixer(self, axSP, aySP, etaSP):
         # 计算推力偏角
         angleL = arctan(aySP / axSP)
@@ -170,6 +210,28 @@ class Control():
 
         return [rpmL, rpmR, angleL, angleR]
 
+    def mixerLateral(self, aySP, etaSP):
+        # 计算推力偏角
+        angleL = self.angleMax
+        angleR = 0
+
+        # 计算推力大小
+        rpmL = self.usvMass * aySP
+        rpmR = self.usvInerZ * etaSP / self.usvThrust2Center
+
+        # 推力大小限幅
+        if (abs(rpmL) < self.rpmThreshold) | (abs(rpmR) < self.rpmThreshold):
+            rpmL = 0
+            rpmR = 0
+        elif (abs(rpmL) <= self.rpmMin) | (abs(rpmR) <= self.rpmMin):  
+            rpmL = rpmL * max(array([self.rpmMin / abs(rpmL), self.rpmMin / abs(rpmR)]))
+            rpmR = rpmR * max(array([self.rpmMin / abs(rpmL), self.rpmMin / abs(rpmR)]))
+
+        rpmL = clip(rpmL, -self.rpmMax, self.rpmMax)
+        rpmR = clip(rpmR, -self.rpmMax, self.rpmMax)
+
+        return [rpmL, rpmR, angleL, angleR]
+    
     def thrustPub(self, rpmL, rpmR, angleL, angleR):
         lT = Int16(data=int(rpmL))
         rT = Int16(data=int(rpmR))
