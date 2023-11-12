@@ -277,9 +277,10 @@ if __name__ == '__main__':
     spinThread = threading.Thread(target=rospy.spin, daemon=True)
     spinThread.start()
 
-    while True:
+    while not rospy.is_shutdown():
         try:
-            print("USV: [%.2f, %.2f]m | [%.2f, %.2f]m/s | [%.2f, %.2f]m/s^2 | %.2fdeg" % (usvPose.x, usvPose.y, usvPose.u, usvPose.v, usvPose.axb, usvPose.ayb, rad2deg(usvPose.psi)))
+            print("-----------------------------------------------")
+            print("Vel [%.2f, %.2f]m/s | Acc [%.2f, %.2f]m/s^2 | RPY [%.2f, %.2f, %.2f]deg | Yaw rate %.2fdeg/s" % (usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, rad2deg(usvPose.roll), rad2deg(usvPose.pitch), rad2deg(usvPose.psi), rad2deg(usvPose.r)))
 
             if (usvPose.isPodFindTV):
                 print("吊舱扫描到目标船 %.2f deg" % rad2deg(usvPose.tvAnglePod))
