@@ -30,7 +30,6 @@ class Guidance():
     isPathInit = False
 
     def __init__(self, control_frequency):
-        # self.publisher_ = rospy.Publisher('/usv/guidance/guidanceSP', PointStamped, queue_size=10)
         self.yErrPID = PID(1.0, 0.03, 0.1, control_frequency)
         pass
 
@@ -85,9 +84,6 @@ class Guidance():
         # print("此段路径当前跟踪点: No.%d, [%.2f, %.2f]. 此段路径终点: No.%d, [%.2f, %.2f]." % (self.currentIdx, xSP, ySP, self.endIdx, self.path[self.endIdx, 0], self.path[self.endIdx, 1]))
         # print("theta: %5.2f, beta: %5.2f, yErr: %5.2f" % (tanAngle, beta, yErr))
 
-        # ROS2 内发送制导指令
-        # self.pubSetpoints(xSP, ySP, psiSP)
-
         # 返回制导指令
         return [uSP, psiSP, xSP, ySP]
 
@@ -141,14 +137,3 @@ class Guidance():
         psiSP = - beta - arctan2(self.usvSafeR,distOBS) + lineSightOBS + psi
 
         return [uSP, psiSP]
-
-    def pubSetpoints(self, xSP, ySP, psiSP):
-        msg = PointStamped()
-        msg.point.x = xSP
-        msg.point.y = ySP
-        msg.point.z = psiSP
-
-        msg.header.frame_id = "usv_enu_frame"
-        msg.header.stamp = rospy.Time.now()
-        self.publisher_.publish(msg)
-
