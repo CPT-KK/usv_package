@@ -2,4 +2,27 @@
 
 #### 介绍
 
-For detection, path planning, guidance, and control of a catamaran (USV) in the competition MBZIRC 2024
+本项目是一个 ROS 包（package），用于控制 MBZIRC 2024 大赛中的双体无人船（USV）。
+
+#### 功能
+
+本项目实现的主要功能有：
+1. 接收搜索无人机（sUAV）的方向指令，前往目标船（target vessle）处
+2. 根据吊舱的图像识别，生成方向指令，导引无人船对准目标船
+3. 根据激光雷达的云图信息，融合吊舱的图像识别信息，锁定目标船，获取目标船相对无人船的位置和朝向角信息
+4. 根据目标船的位置和角度信息，对目标船进行泊近（dock），即使无人船**平行地**停靠在目标船的一侧
+5. 根据机械臂深度相机，获取大物体的方向信息，实现最终靠近目标船，并与大物体平齐
+
+#### 依赖项
+
+本项目使用 python 编写，所依赖的包：
+1. `rospy` 和 ROS 的消息包
+2. `numpy`, `sklearn`
+3. `threading`
+4. `rich`
+5. `atexit`, `signal`
+6. `can`, `cantools`
+
+#### 编译
+
+本项目直接使用 `catkin_make` 编译
