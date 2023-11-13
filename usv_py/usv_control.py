@@ -26,7 +26,7 @@ class Control():
     rpmThreshold = 10
     rpmMin = 40
     rpmMax = 1000
-    angleMax = deg2rad(85) # 85 deg
+    angleMax = deg2rad(90)
 
     # 无人船参数
     usvMass = 775.0
@@ -252,31 +252,31 @@ if __name__ == '__main__':
     rosRate = rospy.Rate(rate)
     usvControl = Control(rate)
 
-    lastTime = 8
+    lastTime = 10
     loopTimes = round(lastTime / (1 / rate))
 
-    rpmValue = 50
-    angleValue = deg2rad(85)
+    rpmValue = 150
+    angleValue = deg2rad(90)
     
-    rospy.loginfo("Moving forward...")
+    # rospy.loginfo("Moving left torq...")
+    # for i in range(loopTimes):
+    #     usvControl.thrustPub(rpmValue, 0, 0, 0)
+    #     rosRate.sleep()
+
+    # rospy.loginfo("Moving right torq...")
+    # for i in range(loopTimes):
+    #     usvControl.thrustPub(0, rpmValue, 0, 0)
+    #     rosRate.sleep()
+
+    rospy.loginfo("Moving left angle...")
     for i in range(loopTimes):
-        usvControl.thrustPub(rpmValue, rpmValue, 0, 0)
+        usvControl.thrustPub(0, 0, deg2rad(89.9), deg2rad(0))
         rosRate.sleep()
 
-    # rospy.loginfo("Moving backward...")
-    # for i in range(loopTimes):
-    #     usvControl.thrustPub(-rpmValue, -rpmValue, 0, 0)
-    #     rosRate.sleep()
-
-    # rospy.loginfo("Moving left forward...")
-    # for i in range(loopTimes):
-    #     usvControl.thrustPub(rpmValue, rpmValue, angleValue, angleValue)
-    #     rosRate.sleep()
-
-    # rospy.loginfo("Moving right forward...")
-    # for i in range(loopTimes):
-    #     usvControl.thrustPub(rpmValue, rpmValue, -angleValue, -angleValue)
-    #     rosRate.sleep()
+    rospy.loginfo("Moving right angle...")
+    for i in range(loopTimes):
+        usvControl.thrustPub(0, 0, deg2rad(89.9), deg2rad(-89.9))
+        rosRate.sleep()
 
     rospy.loginfo("Stopping...")
     for i in range(loopTimes):

@@ -269,8 +269,8 @@ class Pose():
 
 if __name__ == '__main__':
     # 以下代码为测试代码
-    rospy.init_node('usv_pos_test_node')
-    rosRate = rospy.Rate(2)
+    rospy.init_node('usv_pose_test_node')
+    rosRate = rospy.Rate(10)
 
     usvPose = Pose()
 
