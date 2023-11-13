@@ -5,11 +5,11 @@ import threading
 import atexit
 import signal
 
-from numpy import zeros, rad2deg, median, deg2rad, sin, cos, pi, abs, min, argmin, mean, tan, arctan, arctan2, std
+from numpy import zeros, rad2deg, deg2rad, pi, abs, mean, tan, arctan, arctan2, std
 
 from usv_can import USVCAN
 from usv_pose import Pose
-from usv_path_planner import PathPlanner, planCirclePath
+from usv_path_planner import PathPlanner
 from usv_guidance import Guidance
 from usv_control import Control
 from usv_communication import Communication
@@ -17,9 +17,6 @@ from usv_math import removeOutliers
 from usv_record import genTable, USVData
 from usv_test import test
 from rich.console import Console
-from rich.table import Column, Table
-
-from mavros_msgs.srv import CommandBool, CommandBoolRequest, SetMode, SetModeRequest
 
 # 无人船状态定义
     # STARTUP
@@ -105,10 +102,10 @@ def main(args=None):
     isDockAdjustPlan = False
     isTestLinePlan = False
     isTestCirclePlan = False
-    isTestEnable = False
+    isTestEnable = True
 
     # 无人船状态
-    usvState = "STANDBY"
+    usvState = "STARTUP"
 
     # 无人船当前正在使用的路径
     currPath = zeros((2000, 2))
@@ -138,17 +135,19 @@ def main(args=None):
                 pubTopicList = sum(rospy.get_published_topics(), [])
                 usvPose.isLidarValid = ('/filter/target' in pubTopicList)
                     
-                if (usvPose.isImuValid) & (usvPose.isDvlValid) & (usvPose.isPodValid) & (usvPose.isLidarValid):
+                if (usvPose.isImuValid) & (usvPose.isDvlValid) & (usvPose.isLidarValid):
                     latestMsg = "Waiting sUAV to send heading..."
                     usvState = "STANDBY"
 
             elif usvState == "STANDBY":
                 if (isTestEnable):
-                    testRet = test(TEST_MODE, usvPathPlanner, usvGuidance, usvControl, usvPose)
-                    if (testRet == 1):
-                        break
-                    else:
-                        continue
+                    usvState = "TEST"
+                    continue
+                    # testRet = test(TEST_MODE, usvPathPlanner, usvGuidance, usvControl, usvPose)
+                    # if (testRet == 1):
+                    #     break
+                    # else:
+                    #     continue
                     
                 if (usvComm.isSearchFindTV):
                     latestMsg = "Receive heading %d deg from sUAV." % rad2deg(usvComm.tvAngleEst)
@@ -208,7 +207,7 @@ def main(args=None):
 
                     latestMsg = "Obstacle detected at %.2f deg!" % usvPose.obsAngleLidar
                 else:
-                    latestMsg = "Back to follow heading %d deg from sUAV." % rad2deg(usvComm.tvAngleEst)     
+                    latestMsg = "Back to follow heading %.2f deg from sUAV." % rad2deg(usvComm.tvAngleEst)     
                     usvState = "PURSUE"
                     continue
             
@@ -324,6 +323,15 @@ def main(args=None):
 
                 # 继续保持静止
                 [uSP, vSP] = usvControl.moveUSVVec(xSP, ySP, psiSP, usvPose.xLidar, usvPose.yLidar, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
+            elif usvState == "TEST":
+                if (isTestLinePlan == False):
+                    xSP = usvPose.x
+                    ySP = usvPose.y
+                    psiSP = usvPose.psi
+                    isTestLinePlan = True
+
+                # vSP = usvControl.moveUSVLateral(0.5, psiSP, usvPose.uDVL, usvPose.ayb, usvPose.psi, usvPose.r)
+                usvControl.moveUSVVec(xSP, ySP, psiSP, usvPose.x, usvPose.y, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
 
             else:
                 # 程序不应该执行到这里
