@@ -62,7 +62,13 @@ class USVCAN(can.Listener):
         
         elif ("motor_state" in message_obj.name):
             motorIdx = decoded_msg.get('motor_index', None) - 1
-            self.motorRPM[motorIdx] = decoded_msg.get('engine_speed', None)
+            motorGear = decoded_msg.get('motor_gear', None) - 0x7D
+            if motorIdx == 0:
+                motorIdx = 1
+            else:
+                motorIdx = 0
+
+            self.motorRPM[motorIdx] = motorGear*decoded_msg.get('engine_speed', None)
             self.motorAngle[motorIdx] = decoded_msg.get('motor_torque', None)
         
         else:

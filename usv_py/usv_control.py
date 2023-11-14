@@ -44,7 +44,7 @@ class Control():
         self.uPID = PID(0.8, 0.06, 0.012, control_frequency)
         self.vPID = PID(2, 0.0, 0.00, control_frequency)
         self.psiPID = PID(0.25, 0.0002, 0.02, control_frequency)
-        self.rPID = PID(12.5, 0.5, 0.1, control_frequency)
+        self.rPID = PID(11.5, 0.5, 0.1, control_frequency)
 
         self.xPID = PID(0.3, 0.000, 0.000, control_frequency)
         self.yPID = PID(0.2, 0.000, 0.000, control_frequency)
@@ -91,7 +91,7 @@ class Control():
         # 发布推力
         self.thrustPub(rpmL, rpmR, angleL, angleR)
 
-        return [uSP, rSP]
+        return [uSP, rSP, rpmL, rpmR, angleL, angleR]
 
     def moveUSVVec(self, xSP, ySP, psiSP, x, y, u, v, axb, ayb, psi, r):
         # 计算 x y 误差
@@ -141,7 +141,7 @@ class Control():
         # 发布推力
         self.thrustPub(rpmL, rpmR, angleL, angleR)
 
-        return [uSP, vSP, rSP]
+        return [uSP, vSP, rSP, rpmL, rpmR, angleL, angleR]
 
     def moveUSVLateral(self, vSP, psiSP, v, ayb, psi, r):
         # 计算朝向角误差
@@ -180,7 +180,7 @@ class Control():
         # 发布推力
         self.thrustPub(rpmL, rpmR, angleL, angleR)
 
-        return vSP
+        return [vSP, rSP, rpmL, rpmR, angleL, angleR]
     
     def mixer(self, axSP, aySP, etaSP):
         # 计算推力偏角

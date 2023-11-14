@@ -45,7 +45,7 @@ class Communication():
         self.usvDatalinkPub = rospy.Publisher('/usv/data_link/distance', Vector3Stamped, queue_size=2)
 
     def __del__(self):
-        self.client_socket.close()
+        pass
     
     def sendTakeOffFlag(self):
         self.uavTakeOffFlagPub.publish(Int8(data=1))

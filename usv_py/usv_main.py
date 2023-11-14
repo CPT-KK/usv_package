@@ -127,6 +127,10 @@ def main(args=None):
     rSP = float("nan")
     xSP = float("nan")
     ySP = float("nan")
+    rpmL_cmd = float("nan")
+    rpmR_cmd = float("nan")
+    angleL_cmd = float("nan")
+    angleR_cmd = float("nan")
 
     # 试一下  
     while not rospy.is_shutdown():
@@ -204,7 +208,7 @@ def main(args=None):
                         psiSP = usvPose.obsAngleLidar - deg2rad(35.0)
                     
                     uSP = 3.25
-                    [uSP, rSP] = usvControl.moveUSV(uSP, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
+                    [uSP, rSP, rpmL_cmd, rpmR_cmd, angleL_cmd, angleR_cmd] = usvControl.moveUSV(uSP, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
 
                     latestMsg = "Obstacle detected at %.2f deg!" % usvPose.obsAngleLidar
                 else:
@@ -223,7 +227,7 @@ def main(args=None):
                 [psiSP, xSP, ySP] = usvGuidance.guidance(12.0, usvPose.xLidar, usvPose.yLidar, usvPose.psi, usvPose.betaDVL)
 
                 # 控制无人船
-                [uSP, rSP] = usvControl.moveUSV(uSP, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
+                [uSP, rSP, rpmL_cmd, rpmR_cmd, angleL_cmd, angleR_cmd] = usvControl.moveUSV(uSP, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
 
                 if (usvGuidance.currentIdx >= usvGuidance.endIdx):
                     usvState = "DOCK_MEASURE"
@@ -240,7 +244,7 @@ def main(args=None):
                 [psiSP, xSP, ySP] = usvGuidance.guidance(8.0, usvPose.xLidar, usvPose.yLidar, usvPose.psi, usvPose.betaDVL)
 
                 # 控制无人船
-                [uSP, rSP] = usvControl.moveUSV(uSP, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
+                [uSP, rSP, rpmL_cmd, rpmR_cmd, angleL_cmd, angleR_cmd] = usvControl.moveUSV(uSP, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
 
                 # 读取目标船的测量信息，若满足要求，则读取并保存目标船朝向角（ENU下）
                 thisHeading = usvPose.tvHeading
@@ -278,7 +282,7 @@ def main(args=None):
                 [psiSP, xSP, ySP] = usvGuidance.guidance(6.0, usvPose.xLidar, usvPose.yLidar, usvPose.psi, usvPose.betaDVL)
 
                 # 控制无人船
-                [uSP, rSP] = usvControl.moveUSV(uSP, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
+                [uSP, rSP, rpmL_cmd, rpmR_cmd, angleL_cmd, angleR_cmd] = usvControl.moveUSV(uSP, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
 
                 if (usvGuidance.currentIdx >= usvGuidance.endIdx):
                     usvState = "DOCK_ADJUST"
@@ -302,7 +306,7 @@ def main(args=None):
                     latestMsg = "Approach finished. Stablizing USV pose at [%.2f, %.2f] @ %.2f deg for %.2f / %.2f secs..." % (xSP, ySP, rad2deg(psiSP), rospy.Time.now().to_sec() - timer1, 5.0)
 
                 # 保持静止
-                [uSP, vSP, rSP] = usvControl.moveUSVVec(xSP, ySP, psiSP, usvPose.xLidar, usvPose.yLidar, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
+                [uSP, vSP, rSP, rpmL_cmd, rpmR_cmd, angleL_cmd, angleR_cmd] = usvControl.moveUSVVec(xSP, ySP, psiSP, usvPose.xLidar, usvPose.yLidar, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
 
                 # 等待船接近静止并保持 5.0s，进入 FINAL
                 if (rospy.Time.now().to_sec() - timer1 > 5.0):   
@@ -323,17 +327,18 @@ def main(args=None):
                 usvComm.sendTVPosFromLidar(-usvPose.xLidar, -usvPose.yLidar)
 
                 # 继续保持静止
-                [uSP, vSP, rSP] = usvControl.moveUSVVec(xSP, ySP, psiSP, usvPose.xLidar, usvPose.yLidar, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
+                [uSP, vSP, rSP, rpmL_cmd, rpmR_cmd, angleL_cmd, angleR_cmd] = usvControl.moveUSVVec(xSP, ySP, psiSP, usvPose.xLidar, usvPose.yLidar, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
             elif usvState == "TEST":              
                 if (isTestLinePlan == False):
-                    xSP = usvPose.x - 15
+                    xSP = usvPose.x
                     ySP = usvPose.y
-                    psiSP = wrapToPi(usvPose.psi + deg2rad(40))
+                    psiSP = wrapToPi(usvPose.psi + deg2rad(0))
                     isTestLinePlan = True
 
-                [uSP, rSP] = usvControl.moveUSV(0, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
-                # # vSP = usvControl.moveUSVLateral(0.5, psiSP, usvPose.uDVL, usvPose.ayb, usvPose.psi, usvPose.r)
-                # [uSP, vSP, rSP] = usvControl.moveUSVVec(xSP, ySP, psiSP, usvPose.x, usvPose.y, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
+                # [uSP, rSP, rpmL, rpmR, angleL, angleR] = usvControl.moveUSV(0, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
+                # [vSP, rSP, rpmL, rpmR, angleL, angleR] = usvControl.moveUSVLateral(0.8, psiSP, usvPose.uDVL, usvPose.ayb, usvPose.psi, usvPose.r)
+                usvControl.thrustPub(-80, -80, 0, 0)
+                # [uSP, vSP, rSP, rpmL, rpmR, angleL, angleR] = usvControl.moveUSVVec(xSP, ySP, psiSP, usvPose.x, usvPose.y, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
 
             else:
                 # 程序不应该执行到这里
@@ -342,11 +347,11 @@ def main(args=None):
         
             # 打印当前状态
             dt = rospy.Time.now().to_sec() - t0
-            theTable = genTable(usvState, latestMsg, usvCAN, usvPose, usvComm, dt, uSP, vSP, psiSP, rSP, xSP, ySP) 
+            theTable = genTable(usvState, latestMsg, usvCAN, usvPose, usvComm, dt, uSP, vSP, psiSP, rSP, xSP, ySP, rpmL_cmd, rpmR_cmd, angleL_cmd, angleR_cmd) 
             console.print(theTable)
 
             # 写入当前状态到文件
-            usvData.saveData(usvCAN, usvPose, usvComm, dt, uSP, vSP, psiSP, rSP, xSP, ySP)
+            usvData.saveData(usvCAN, usvPose, usvComm, dt, uSP, vSP, psiSP, rSP, xSP, ySP, rpmL_cmd, rpmR_cmd, angleL_cmd, angleR_cmd)
 
             # 发送无人船的东西 
             usvComm.sendUSVState(usvState)
