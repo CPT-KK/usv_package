@@ -19,12 +19,12 @@ class Control():
 
     uSPMax = 4.0
     vSPMax = 1.25
-    rSPMax = deg2rad(10)
+    rSPMax = deg2rad(12)
     
     # USV motor from 50RPM to 1300RPM
     # USV angle from -85deg to 85deg
-    rpmThreshold = 10
-    rpmMin = 40
+    rpmThreshold = 2
+    rpmMin = 35
     rpmMax = 1000
     angleMax = deg2rad(90)
 
@@ -43,8 +43,8 @@ class Control():
         # PID 初始化
         self.uPID = PID(0.8, 0.06, 0.012, control_frequency)
         self.vPID = PID(2, 0.0, 0.00, control_frequency)
-        self.psiPID = PID(1.15, 0.008, 0.00, control_frequency)
-        self.rPID = PID(2.1, 0.03, 0.005, control_frequency)
+        self.psiPID = PID(0.18, 0.0002, 0.005, control_frequency)
+        self.rPID = PID(15, 0.5, 0.1, control_frequency)
 
         self.xPID = PID(0.3, 0.000, 0.000, control_frequency)
         self.yPID = PID(0.2, 0.000, 0.000, control_frequency)
@@ -91,7 +91,7 @@ class Control():
         # 发布推力
         self.thrustPub(rpmL, rpmR, angleL, angleR)
 
-        return uSP
+        return [uSP, rSP]
 
     def moveUSVVec(self, xSP, ySP, psiSP, x, y, u, v, axb, ayb, psi, r):
         # 计算 x y 误差
@@ -127,7 +127,7 @@ class Control():
         rSP = self.psiPID.compute(psiErr, r)
 
         # 期望朝向角速度限幅
-        rSP = wrapToPi(rSP)
+        rSP = clip(rSP, -self.rSPMax, self.rSPMax)
 
         # 计算期望角速度误差
         rErr = rSP - r
@@ -141,7 +141,7 @@ class Control():
         # 发布推力
         self.thrustPub(rpmL, rpmR, angleL, angleR)
 
-        return [uSP, vSP]
+        return [uSP, vSP, rSP]
 
     def moveUSVLateral(self, vSP, psiSP, v, ayb, psi, r):
         # 计算朝向角误差

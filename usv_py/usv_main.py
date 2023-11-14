@@ -13,7 +13,7 @@ from usv_path_planner import PathPlanner
 from usv_guidance import Guidance
 from usv_control import Control
 from usv_communication import Communication
-from usv_math import removeOutliers
+from usv_math import removeOutliers, wrapToPi
 from usv_record import genTable, USVData
 from usv_test import test
 from rich.console import Console
@@ -124,6 +124,7 @@ def main(args=None):
     uSP = float("nan")
     vSP = float("nan")
     psiSP = float("nan")
+    rSP = float("nan")
     xSP = float("nan")
     ySP = float("nan")
 
@@ -191,7 +192,7 @@ def main(args=None):
                     psiSP = usvComm.tvAngleEst          
                 
                 # 控制无人船
-                uSP = usvControl.moveUSV(uSP, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
+                [uSP, rSP] = usvControl.moveUSV(uSP, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
                 
             elif usvState == "PURSUE_OBS":             
                 # 判断是否还需要避障
@@ -203,14 +204,14 @@ def main(args=None):
                         psiSP = usvPose.obsAngleLidar - deg2rad(35.0)
                     
                     uSP = 3.25
-                    uSP = usvControl.moveUSV(uSP, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
+                    [uSP, rSP] = usvControl.moveUSV(uSP, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
 
                     latestMsg = "Obstacle detected at %.2f deg!" % usvPose.obsAngleLidar
                 else:
                     latestMsg = "Back to follow heading %.2f deg from sUAV." % rad2deg(usvComm.tvAngleEst)     
                     usvState = "PURSUE"
                     continue
-            
+        
             elif usvState == "DOCK_NEARBY":
                 if (isDockNearbyPlan == False):
                     currPath = usvPathPlanner.planDockNearby(usvPose.xLidar, usvPose.yLidar, 0, 0)
@@ -222,7 +223,7 @@ def main(args=None):
                 [psiSP, xSP, ySP] = usvGuidance.guidance(12.0, usvPose.xLidar, usvPose.yLidar, usvPose.psi, usvPose.betaDVL)
 
                 # 控制无人船
-                uSP = usvControl.moveUSV(uSP, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
+                [uSP, rSP] = usvControl.moveUSV(uSP, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
 
                 if (usvGuidance.currentIdx >= usvGuidance.endIdx):
                     usvState = "DOCK_MEASURE"
@@ -239,7 +240,7 @@ def main(args=None):
                 [psiSP, xSP, ySP] = usvGuidance.guidance(8.0, usvPose.xLidar, usvPose.yLidar, usvPose.psi, usvPose.betaDVL)
 
                 # 控制无人船
-                uSP = usvControl.moveUSV(uSP, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
+                [uSP, rSP] = usvControl.moveUSV(uSP, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
 
                 # 读取目标船的测量信息，若满足要求，则读取并保存目标船朝向角（ENU下）
                 thisHeading = usvPose.tvHeading
@@ -277,7 +278,7 @@ def main(args=None):
                 [psiSP, xSP, ySP] = usvGuidance.guidance(6.0, usvPose.xLidar, usvPose.yLidar, usvPose.psi, usvPose.betaDVL)
 
                 # 控制无人船
-                uSP = usvControl.moveUSV(uSP, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
+                [uSP, rSP] = usvControl.moveUSV(uSP, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
 
                 if (usvGuidance.currentIdx >= usvGuidance.endIdx):
                     usvState = "DOCK_ADJUST"
@@ -301,7 +302,7 @@ def main(args=None):
                     latestMsg = "Approach finished. Stablizing USV pose at [%.2f, %.2f] @ %.2f deg for %.2f / %.2f secs..." % (xSP, ySP, rad2deg(psiSP), rospy.Time.now().to_sec() - timer1, 5.0)
 
                 # 保持静止
-                [uSP, vSP] = usvControl.moveUSVVec(xSP, ySP, psiSP, usvPose.xLidar, usvPose.yLidar, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
+                [uSP, vSP, rSP] = usvControl.moveUSVVec(xSP, ySP, psiSP, usvPose.xLidar, usvPose.yLidar, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
 
                 # 等待船接近静止并保持 5.0s，进入 FINAL
                 if (rospy.Time.now().to_sec() - timer1 > 5.0):   
@@ -322,16 +323,18 @@ def main(args=None):
                 usvComm.sendTVPosFromLidar(-usvPose.xLidar, -usvPose.yLidar)
 
                 # 继续保持静止
-                [uSP, vSP] = usvControl.moveUSVVec(xSP, ySP, psiSP, usvPose.xLidar, usvPose.yLidar, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
+                [uSP, vSP, rSP] = usvControl.moveUSVVec(xSP, ySP, psiSP, usvPose.xLidar, usvPose.yLidar, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
             elif usvState == "TEST":
+                
                 if (isTestLinePlan == False):
-                    xSP = usvPose.x
+                    xSP = usvPose.x - 15
                     ySP = usvPose.y
-                    psiSP = usvPose.psi
+                    psiSP = wrapToPi(usvPose.psi + deg2rad(120))
                     isTestLinePlan = True
 
-                # vSP = usvControl.moveUSVLateral(0.5, psiSP, usvPose.uDVL, usvPose.ayb, usvPose.psi, usvPose.r)
-                usvControl.moveUSVVec(xSP, ySP, psiSP, usvPose.x, usvPose.y, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
+                [uSP, rSP] = usvControl.moveUSV(0, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
+                # # vSP = usvControl.moveUSVLateral(0.5, psiSP, usvPose.uDVL, usvPose.ayb, usvPose.psi, usvPose.r)
+                # [uSP, vSP, rSP] = usvControl.moveUSVVec(xSP, ySP, psiSP, usvPose.x, usvPose.y, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
 
             else:
                 # 程序不应该执行到这里
@@ -340,11 +343,11 @@ def main(args=None):
         
             # 打印当前状态
             dt = rospy.Time.now().to_sec() - t0
-            theTable = genTable(usvState, latestMsg, usvCAN, usvPose, usvComm, dt, uSP, vSP, psiSP, xSP, ySP) 
+            theTable = genTable(usvState, latestMsg, usvCAN, usvPose, usvComm, dt, uSP, vSP, psiSP, rSP, xSP, ySP) 
             console.print(theTable)
 
             # 写入当前状态到文件
-            usvData.saveData(usvCAN, usvPose, usvComm, dt, uSP, vSP, psiSP, xSP, ySP)
+            usvData.saveData(usvCAN, usvPose, usvComm, dt, uSP, vSP, psiSP, rSP, xSP, ySP)
 
             # 发送无人船的东西 
             usvComm.sendUSVState(usvState)
