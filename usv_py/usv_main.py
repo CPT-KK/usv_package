@@ -324,12 +324,11 @@ def main(args=None):
 
                 # 继续保持静止
                 [uSP, vSP, rSP] = usvControl.moveUSVVec(xSP, ySP, psiSP, usvPose.xLidar, usvPose.yLidar, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
-            elif usvState == "TEST":
-                
+            elif usvState == "TEST":              
                 if (isTestLinePlan == False):
                     xSP = usvPose.x - 15
                     ySP = usvPose.y
-                    psiSP = wrapToPi(usvPose.psi + deg2rad(120))
+                    psiSP = wrapToPi(usvPose.psi + deg2rad(40))
                     isTestLinePlan = True
 
                 [uSP, rSP] = usvControl.moveUSV(0, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)

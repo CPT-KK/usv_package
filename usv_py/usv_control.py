@@ -19,7 +19,7 @@ class Control():
 
     uSPMax = 4.0
     vSPMax = 1.25
-    rSPMax = deg2rad(12)
+    rSPMax = deg2rad(8)
     
     # USV motor from 50RPM to 1300RPM
     # USV angle from -85deg to 85deg
@@ -43,8 +43,8 @@ class Control():
         # PID 初始化
         self.uPID = PID(0.8, 0.06, 0.012, control_frequency)
         self.vPID = PID(2, 0.0, 0.00, control_frequency)
-        self.psiPID = PID(0.18, 0.0002, 0.005, control_frequency)
-        self.rPID = PID(15, 0.5, 0.1, control_frequency)
+        self.psiPID = PID(0.25, 0.0002, 0.02, control_frequency)
+        self.rPID = PID(12.5, 0.5, 0.1, control_frequency)
 
         self.xPID = PID(0.3, 0.000, 0.000, control_frequency)
         self.yPID = PID(0.2, 0.000, 0.000, control_frequency)
@@ -62,7 +62,7 @@ class Control():
         psiErr = wrapToPi(psiErr)
 
         # 根据 psiErr 的值，计算可行的 uSP (避免速度太大，转弯转不过来)
-        uSP = uSP * (0.1 + 0.9 * (1 - abs(psiErr) / pi))  
+        uSP = uSP * (0.05 + 0.95 * (1 - abs(psiErr) / pi))  
 
         # 轴向速度限幅
         uSP = clip(uSP, -self.uSPMax, self.uSPMax)
@@ -151,7 +151,7 @@ class Control():
         psiErr = wrapToPi(psiErr)
 
         # 根据 psiErr 的值，计算可行的 vSP (避免速度太大，转弯转不过来)
-        vSP = vSP * (0.1 + 0.9 * (1 - abs(psiErr) / pi))  
+        vSP = vSP * (0.5 + 0.5 * (1 - abs(psiErr) / pi))  
 
         # 侧向速度限幅
         vSP = clip(vSP, -self.vSPMax, self.vSPMax)
@@ -198,12 +198,12 @@ class Control():
         rpmR = rpmTranslate / 2.0 + rpmRotate / 2.0
 
         # 推力大小限幅
-        if (abs(rpmL) < self.rpmThreshold) | (abs(rpmR) < self.rpmThreshold):
-            rpmL = 0
-            rpmR = 0
-        elif (abs(rpmL) <= self.rpmMin) | (abs(rpmR) <= self.rpmMin):  
-            rpmL = rpmL * max(array([self.rpmMin / abs(rpmL), self.rpmMin / abs(rpmR)]))
-            rpmR = rpmR * max(array([self.rpmMin / abs(rpmL), self.rpmMin / abs(rpmR)]))
+        # if (abs(rpmL) < self.rpmThreshold) | (abs(rpmR) < self.rpmThreshold):
+        #     rpmL = 0
+        #     rpmR = 0
+        # elif (abs(rpmL) <= self.rpmMin) | (abs(rpmR) <= self.rpmMin):  
+        #     rpmL = rpmL * max(array([self.rpmMin / abs(rpmL), self.rpmMin / abs(rpmR)]))
+        #     rpmR = rpmR * max(array([self.rpmMin / abs(rpmL), self.rpmMin / abs(rpmR)]))
 
         rpmL = clip(rpmL, -self.rpmMax, self.rpmMax)
         rpmR = clip(rpmR, -self.rpmMax, self.rpmMax)
@@ -220,12 +220,12 @@ class Control():
         rpmR = self.usvInerZ * etaSP / self.usvThrust2Center
 
         # 推力大小限幅
-        if (abs(rpmL) < self.rpmThreshold) | (abs(rpmR) < self.rpmThreshold):
-            rpmL = 0
-            rpmR = 0
-        elif (abs(rpmL) <= self.rpmMin) | (abs(rpmR) <= self.rpmMin):  
-            rpmL = rpmL * max(array([self.rpmMin / abs(rpmL), self.rpmMin / abs(rpmR)]))
-            rpmR = rpmR * max(array([self.rpmMin / abs(rpmL), self.rpmMin / abs(rpmR)]))
+        # if (abs(rpmL) < self.rpmThreshold) | (abs(rpmR) < self.rpmThreshold):
+        #     rpmL = 0
+        #     rpmR = 0
+        # elif (abs(rpmL) <= self.rpmMin) | (abs(rpmR) <= self.rpmMin):  
+        #     rpmL = rpmL * max(array([self.rpmMin / abs(rpmL), self.rpmMin / abs(rpmR)]))
+        #     rpmR = rpmR * max(array([self.rpmMin / abs(rpmL), self.rpmMin / abs(rpmR)]))
 
         rpmL = clip(rpmL, -self.rpmMax, self.rpmMax)
         rpmR = clip(rpmR, -self.rpmMax, self.rpmMax)

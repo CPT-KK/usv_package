@@ -99,7 +99,7 @@ class Pose():
 
         
     def __del__(self):
-        self.bus.shutdown()
+        pass
     
     def stateCallback(self, stateMsg):
         self.state = stateMsg
