@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 
 import rospy
-from std_msgs.msg import Float32, Int16
-from geometry_msgs.msg import PointStamped
+from std_msgs.msg import Float32, Int16, Float32MultiArray
 
 from numpy import sin, cos, tan, arcsin, arccos, arctan, arctan2, rad2deg, deg2rad, clip, abs, sign, pi, sqrt, array, max
 from numpy.linalg import norm
@@ -26,7 +25,7 @@ class Control():
     rpmThreshold = 2
     rpmMin = 35
     rpmMax = 1000
-    angleMax = deg2rad(90)
+    angleMax = deg2rad(15)
 
     # 无人船参数
     usvMass = 775.0
@@ -34,11 +33,38 @@ class Control():
     usvWidth = 3.3
     usvThrust2Center = 1.55
 
+    # Actuator setpoint 量
+    rpmLeftSP = 0
+    rpmRightSP = 0
+    angleLeftSP = 0
+    angleRightSP = 0
+
+    # Actuator 当前状态估计变量
+    rpmLeftEst = 0
+    rpmRightEst = 0
+    angleLeftEst = 0
+    angleRightEst = 0
+
+    # 电池
+    battSOC = [float("nan")] * 4
+    battCellVoltMin = [float("nan")] * 4 
+
     def __init__(self, control_frequency):
-        self.lThrustPublisher_ = rospy.Publisher("/workshop_setup/pods/left", Int16, queue_size=10)
-        self.rThrustPublisher_ = rospy.Publisher("/workshop_setup/pods/right", Int16, queue_size=10)
-        self.lAnglePublisher_ = rospy.Publisher("/workshop_setup/pod_steer/left_steer", Float32, queue_size=10)
-        self.rAnglePublisher_ = rospy.Publisher("/workshop_setup/pod_steer/right_steer", Float32, queue_size=10)
+        # For USV actuator setpoints
+        self.lThrustPublisher_ = rospy.Publisher("/usv/torqeedo/left/setpoint", Int16, queue_size=10)
+        self.rThrustPublisher_ = rospy.Publisher("/usv/torqeedo/right/setpoint", Int16, queue_size=10)
+        self.lAnglePublisher_ = rospy.Publisher("/usv/pod/left/setpoint", Float32, queue_size=10)
+        self.rAnglePublisher_ = rospy.Publisher("/usv/pod/right/setpoint", Float32, queue_size=10)
+
+        # For USV actuator estimates
+        self.lThrustSubscriber_ = rospy.Subscriber("/usv/torqeedo/left/estimate", Int16, self.lThrustCallback, queue_size=1)
+        self.rThrustSubscriber_ = rospy.Subscriber("/usv/torqeedo/right/estimate", Int16, self.rThrustCallback, queue_size=1)
+        self.lAngleSubscriber_ = rospy.Subscriber("/usv/pod/left/estimate", Float32, self.lAngleCallback, queue_size=1)
+        self.rAngleSubscriber_ = rospy.Subscriber("/usv/pod/right/estimate", Float32, self.rAngleCallback, queue_size=1)
+
+        # For USV battery info
+        self.battSOCSubscriber_ = rospy.Subscriber("/usv/battery/soc", Float32MultiArray, self.battSOCCallback, queue_size=1)
+        self.battCellVoltMinSubscriber_ = rospy.Subscriber("/usv/battery/cell_volt_min", Float32MultiArray, self.battCellVoltMinCallback, queue_size=1)
 
         # PID 初始化
         self.uPID = PID(0.8, 0.06, 0.012, control_frequency)
@@ -86,12 +112,12 @@ class Control():
         etaSP = self.rPID.compute(rErr)
 
         # 混控计算
-        [rpmL, rpmR, angleL, angleR] = self.mixer(axbSP, 0, etaSP)
+        self.mixer(axbSP, 0, etaSP)
 
         # 发布推力
-        self.thrustPub(rpmL, rpmR, angleL, angleR)
+        self.thrustPub()
 
-        return [uSP, rSP, rpmL, rpmR, angleL, angleR]
+        return [uSP, rSP]
 
     def moveUSVVec(self, xSP, ySP, psiSP, x, y, u, v, axb, ayb, psi, r):
         # 计算 x y 误差
@@ -136,12 +162,12 @@ class Control():
         etaSP = self.rPID.compute(rErr)
 
         # 送入混控
-        [rpmL, rpmR, angleL, angleR] = self.mixer(axbSP, aybSP, etaSP)
+        self.mixer(axbSP, aybSP, etaSP)
 
         # 发布推力
-        self.thrustPub(rpmL, rpmR, angleL, angleR)
+        self.thrustPub()
 
-        return [uSP, vSP, rSP, rpmL, rpmR, angleL, angleR]
+        return [uSP, vSP, rSP]
 
     def moveUSVLateral(self, vSP, psiSP, v, ayb, psi, r):
         # 计算朝向角误差
@@ -175,68 +201,61 @@ class Control():
         etaSP = self.rPID.compute(rErr)
 
         # 混控计算
-        [rpmL, rpmR, angleL, angleR] = self.mixerLateral(aybSP, etaSP)
+        self.mixerLateral(aybSP, etaSP)
 
         # 发布推力
-        self.thrustPub(rpmL, rpmR, angleL, angleR)
+        self.thrustPub()
 
-        return [vSP, rSP, rpmL, rpmR, angleL, angleR]
+        return [vSP, rSP]
     
     def mixer(self, axSP, aySP, etaSP):
         # 计算推力偏角
-        angleL = arctan(aySP / axSP)
-        angleR = arctan(aySP / axSP)
+        self.angleLeftSP = arctan(aySP / axSP)
+        self.angleRightSP = arctan(aySP / axSP)
 
         # 推力偏角限幅
-        angleL = clip(angleL, -self.angleMax, self.angleMax)
-        angleR = clip(angleR, -self.angleMax, self.angleMax)
+        self.angleLeftSP = clip(self.angleLeftSP, -self.angleMax, self.angleMax)
+        self.angleRightSP = clip(self.angleRightSP, -self.angleMax, self.angleMax)
 
         # 计算推力大小
         rpmTranslate = self.usvMass * sign(axSP) * sqrt(axSP ** 2 + aySP ** 2)
-        rpmRotate = self.usvInerZ * etaSP / (self.usvThrust2Center * cos(angleL))
-        rpmL = rpmTranslate / 2.0 - rpmRotate / 2.0
-        rpmR = rpmTranslate / 2.0 + rpmRotate / 2.0
+        self.rpmLeftSP = rpmTranslate / 2.0 - self.usvInerZ * etaSP / (self.usvThrust2Center * cos(self.angleLeftEst)) / 2.0
+        self.rpmRightSP = rpmTranslate / 2.0 + self.usvInerZ * etaSP / (self.usvThrust2Center * cos(self.angleRightEst)) / 2.0
 
         # 推力大小限幅
-        # if (abs(rpmL) < self.rpmThreshold) | (abs(rpmR) < self.rpmThreshold):
-        #     rpmL = 0
-        #     rpmR = 0
-        # elif (abs(rpmL) <= self.rpmMin) | (abs(rpmR) <= self.rpmMin):  
-        #     rpmL = rpmL * max(array([self.rpmMin / abs(rpmL), self.rpmMin / abs(rpmR)]))
-        #     rpmR = rpmR * max(array([self.rpmMin / abs(rpmL), self.rpmMin / abs(rpmR)]))
+        self.rpmLeftSP = clip(self.rpmLeftSP, -self.rpmMax, self.rpmMax)
+        self.rpmRightSP = clip(self.rpmRightSP, -self.rpmMax, self.rpmMax)
 
-        rpmL = clip(rpmL, -self.rpmMax, self.rpmMax)
-        rpmR = clip(rpmR, -self.rpmMax, self.rpmMax)
-
-        return [rpmL, rpmR, angleL, angleR]
+        return
 
     def mixerLateral(self, aySP, etaSP):
         # 计算推力偏角
-        angleL = self.angleMax
-        angleR = 0
+        self.angleLeftSP = self.angleMax
+        self.angleRightSP = 0
 
         # 计算推力大小
-        rpmL = self.usvMass * aySP
-        rpmR = self.usvInerZ * etaSP / self.usvThrust2Center
+        self.rpmLeftSP = self.usvMass * aySP + self.usvInerZ * etaSP / (self.usvThrust2Center * cos(self.angleLeftEst)) / 2.0
+        self.rpmRightSP = self.usvInerZ * etaSP / (self.usvThrust2Center * (1 + sin(self.angleLeftEst))) / 2.0
 
         # 推力大小限幅
-        # if (abs(rpmL) < self.rpmThreshold) | (abs(rpmR) < self.rpmThreshold):
-        #     rpmL = 0
-        #     rpmR = 0
-        # elif (abs(rpmL) <= self.rpmMin) | (abs(rpmR) <= self.rpmMin):  
-        #     rpmL = rpmL * max(array([self.rpmMin / abs(rpmL), self.rpmMin / abs(rpmR)]))
-        #     rpmR = rpmR * max(array([self.rpmMin / abs(rpmL), self.rpmMin / abs(rpmR)]))
+        self.rpmLeftSP = clip(self.rpmLeftSP, -self.rpmMax, self.rpmMax)
+        self.rpmRightSP = clip(self.rpmRightSP, -self.rpmMax, self.rpmMax)
 
-        rpmL = clip(rpmL, -self.rpmMax, self.rpmMax)
-        rpmR = clip(rpmR, -self.rpmMax, self.rpmMax)
-
-        return [rpmL, rpmR, angleL, angleR]
+        return
     
-    def thrustPub(self, rpmL, rpmR, angleL, angleR):
-        lT = Int16(data=int(rpmL))
-        rT = Int16(data=int(rpmR))
-        lA = Float32(data=rad2deg(-angleL))
-        rA = Float32(data=rad2deg(-angleR))
+    def thrustSet(self, rpmLeft, rpmRight, angleLeft, angleRight):
+        self.rpmLeftSP = rpmLeft
+        self.rpmRightSP = rpmRight
+        self.angleLeftSP = angleLeft
+        self.angleRightSP = angleRight
+
+        return
+
+    def thrustPub(self):
+        lT = Int16(data=int(self.rpmLeftSP))
+        rT = Int16(data=int(self.rpmRightSP))
+        lA = Float32(data=rad2deg(-self.angleLeftSP))
+        rA = Float32(data=rad2deg(-self.angleRightSP))
 
         self.lThrustPublisher_.publish(lT)
         self.rThrustPublisher_.publish(rT)
@@ -245,6 +264,30 @@ class Control():
 
         return
     
+    def lThrustCallback(self, msg):
+        self.rpmLeftEst = msg.data * 4.0
+        return
+    
+    def rThrustCallback(self, msg):
+        self.rpmRightEst = msg.data * 4.0
+        return
+    
+    def lAngleCallback(self, msg):
+        self.angleLeftEst = deg2rad(-msg.data / 500.0)
+        return
+    
+    def rAngleCallback(self, msg):
+        self.angleRightEst = deg2rad(-msg.data / 500.0)
+        return
+
+    def battSOCCallback(self, msg):
+        self.battSOC[int(msg.data[0]) - 1] = msg.data[1]
+        return
+
+    def battCellVoltMinCallback(self, msg):
+        self.battCellVoltMin[int(msg.data[0]) - 1] = msg.data[1]
+        return
+
 if __name__ == '__main__':
     # 以下代码为测试代码
     rospy.init_node('usv_control_test_node')
@@ -256,29 +299,34 @@ if __name__ == '__main__':
     loopTimes = round(lastTime / (1 / rate))
 
     rpmValue = 150
-    angleValue = deg2rad(90)
+    angleValue = deg2rad(15)
     
     # rospy.loginfo("Moving left torq...")
     # for i in range(loopTimes):
-    #     usvControl.thrustPub(rpmValue, 0, 0, 0)
+    #     usvControl.thrustSet(rpmValue, 0, 0, 0)
+    #     usvControl.thrustPub()
     #     rosRate.sleep()
 
     # rospy.loginfo("Moving right torq...")
     # for i in range(loopTimes):
-    #     usvControl.thrustPub(0, rpmValue, 0, 0)
+    #     usvControl.thrustSet(0, rpmValue, 0, 0)
+    #     usvControl.thrustPub()
     #     rosRate.sleep()
 
     rospy.loginfo("Moving left angle...")
     for i in range(loopTimes):
-        usvControl.thrustPub(0, 0, deg2rad(89.9), deg2rad(0))
+        usvControl.thrustSet(0, 0, deg2rad(15), deg2rad(0))
+        usvControl.thrustPub()
         rosRate.sleep()
 
     rospy.loginfo("Moving right angle...")
     for i in range(loopTimes):
-        usvControl.thrustPub(0, 0, deg2rad(89.9), deg2rad(-89.9))
+        usvControl.thrustSet(0, 0, deg2rad(15), deg2rad(-15))
+        usvControl.thrustPub()
         rosRate.sleep()
 
     rospy.loginfo("Stopping...")
     for i in range(loopTimes):
-        usvControl.thrustPub(0, 0, 0, 0)
+        usvControl.thrustSet(0, 0, 0, 0)
+        usvControl.thrustPub()
         rosRate.sleep()
