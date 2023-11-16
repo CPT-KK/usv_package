@@ -5,7 +5,7 @@ import threading
 import atexit
 import signal
 from rich.console import Console
-from numpy import zeros, rad2deg, deg2rad, pi, abs, mean, tan, arctan, arctan2, std
+from numpy import zeros, rad2deg, deg2rad, pi, abs, mean, sin, cos, tan, arctan, arctan2, std
 
 from usv_pose import Pose
 from usv_path_planner import PathPlanner
@@ -15,7 +15,6 @@ from usv_communication import Communication
 from usv_math import removeOutliers, wrapToPi
 from usv_record import genTable, USVData
 from usv_test import test
-
 
 # 无人船状态定义
     # STARTUP
@@ -99,8 +98,7 @@ def main(args=None):
     isDockMeasurePlan = False
     isDockApproachPlan = False
     isDockAdjustPlan = False
-    isTestLinePlan = False
-    isTestCirclePlan = False
+    isTestPlan = False
     isTestEnable = True
 
     # 无人船状态
@@ -323,16 +321,18 @@ def main(args=None):
 
                 # 继续保持静止
                 [uSP, vSP, rSP] = usvControl.moveUSVVec(xSP, ySP, psiSP, usvPose.xLidar, usvPose.yLidar, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
+            
             elif usvState == "TEST":              
-                if (isTestLinePlan == False):
-                    xSP = usvPose.x
-                    ySP = usvPose.y
+                if (isTestPlan == False):
+                    # Move USV straight left for 5m
+                    xSP = usvPose.x + 5.0 * cos(usvPose.psi + pi / 2)
+                    ySP = usvPose.y + 5.0 * sin(usvPose.psi + pi / 2)
                     psiSP = wrapToPi(usvPose.psi + deg2rad(0))
-                    isTestLinePlan = True
+                    isTestPlan = True
 
                 # [uSP, rSP] = usvControl.moveUSV(0, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
                 # [vSP, rSP] = usvControl.moveUSVLateral(0.8, psiSP, usvPose.uDVL, usvPose.ayb, usvPose.psi, usvPose.r)
-                # [uSP, vSP, rSP] = usvControl.moveUSVVec(xSP, ySP, psiSP, usvPose.x, usvPose.y, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
+                [uSP, vSP, rSP] = usvControl.moveUSVVec(xSP, ySP, psiSP, usvPose.x, usvPose.y, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
 
             else:
                 # 程序不应该执行到这里
