@@ -217,7 +217,7 @@ class Control():
         self.angleLeftSP = clip(self.angleLeftSP, -self.angleMax, self.angleMax)
         self.angleRightSP = clip(self.angleRightSP, -self.angleMax, self.angleMax)
 
-        # 计算推力大小
+        # 计算推力大小，目前这样除以 cos(self.angleLeftEst) 还不会出现除以 0 的情况
         rpmTranslate = self.usvMass * sign(axSP) * sqrt(axSP ** 2 + aySP ** 2) / 2.0
         rpmRotate = self.usvInerZ * etaSP / self.usvThrust2Center / 2.0
         self.rpmLeftSP = rpmTranslate * cos(self.angleLeftSP - self.angleLeftEst) - rpmRotate / cos(self.angleLeftEst)
@@ -231,14 +231,14 @@ class Control():
 
     def mixerLateral(self, aySP, etaSP):
         # 计算推力偏角
-        self.angleLeftSP = self.angleMax
+        self.angleLeftSP = deg2rad(90)
         self.angleRightSP = 0
 
         # 计算推力大小
         rpmTranslate = self.usvMass * aySP
         rpmRotate = self.usvInerZ * etaSP / self.usvThrust2Center / 2.0
-        self.rpmLeftSP = rpmTranslate + rpmRotate / cos(self.angleLeftEst)
-        self.rpmRightSP = rpmRotate / cos(self.angleRightEst) + rpmRotate * (1 - 1 / cos(self.angleLeftEst))
+        self.rpmLeftSP = rpmTranslate * cos(self.angleLeftSP - self.angleLeftEst)
+        self.rpmRightSP = rpmRotate
 
         # 推力大小限幅
         self.rpmLeftSP = clip(self.rpmLeftSP, -self.rpmMax, self.rpmMax)
