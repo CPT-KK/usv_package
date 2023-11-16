@@ -218,9 +218,10 @@ class Control():
         self.angleRightSP = clip(self.angleRightSP, -self.angleMax, self.angleMax)
 
         # 计算推力大小
-        rpmTranslate = self.usvMass * sign(axSP) * sqrt(axSP ** 2 + aySP ** 2)
-        self.rpmLeftSP = rpmTranslate / 2.0 - self.usvInerZ * etaSP / (self.usvThrust2Center * cos(self.angleLeftEst)) / 2.0
-        self.rpmRightSP = rpmTranslate / 2.0 + self.usvInerZ * etaSP / (self.usvThrust2Center * cos(self.angleRightEst)) / 2.0
+        rpmTranslate = self.usvMass * sign(axSP) * sqrt(axSP ** 2 + aySP ** 2) / 2.0
+        rpmRotate = self.usvInerZ * etaSP / self.usvThrust2Center / 2.0
+        self.rpmLeftSP = rpmTranslate * cos(self.angleLeftSP - self.angleLeftEst) - rpmRotate / cos(self.angleLeftEst)
+        self.rpmRightSP = rpmTranslate * cos(self.angleRightSP - self.angleRightEst) + rpmRotate / cos(self.angleRightEst)
 
         # 推力大小限幅
         self.rpmLeftSP = clip(self.rpmLeftSP, -self.rpmMax, self.rpmMax)
@@ -234,8 +235,10 @@ class Control():
         self.angleRightSP = 0
 
         # 计算推力大小
-        self.rpmLeftSP = self.usvMass * aySP + self.usvInerZ * etaSP / (self.usvThrust2Center * cos(self.angleLeftEst)) / 2.0
-        self.rpmRightSP = self.usvInerZ * etaSP / (self.usvThrust2Center * (1 + sin(self.angleLeftEst))) / 2.0
+        rpmTranslate = self.usvMass * aySP
+        rpmRotate = self.usvInerZ * etaSP / self.usvThrust2Center / 2.0
+        self.rpmLeftSP = rpmTranslate + rpmRotate / cos(self.angleLeftEst)
+        self.rpmRightSP = rpmRotate / cos(self.angleRightEst) + rpmRotate * (1 - 1 / cos(self.angleLeftEst))
 
         # 推力大小限幅
         self.rpmLeftSP = clip(self.rpmLeftSP, -self.rpmMax, self.rpmMax)
