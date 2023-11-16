@@ -4,10 +4,9 @@ import rospy
 import threading
 import atexit
 import signal
-
+from rich.console import Console
 from numpy import zeros, rad2deg, deg2rad, pi, abs, mean, tan, arctan, arctan2, std
 
-from usv_can import USVCAN
 from usv_pose import Pose
 from usv_path_planner import PathPlanner
 from usv_guidance import Guidance
@@ -16,7 +15,7 @@ from usv_communication import Communication
 from usv_math import removeOutliers, wrapToPi
 from usv_record import genTable, USVData
 from usv_test import test
-from rich.console import Console
+
 
 # 无人船状态定义
     # STARTUP
