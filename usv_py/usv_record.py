@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 import rospy, time, threading
 
-from usv_can import USVCAN
 from usv_pose import Pose
 from usv_communication import Communication
 
@@ -10,7 +9,7 @@ from rich.table import Table
 from rich import box
 from rich.console import Console
 
-def genTable(usvState, latestMsg, usvCAN, usvPose, usvControl, usvComm, dt, uSP, vSP, psiSP, rSP, xSP, ySP):    
+def genTable(usvState, latestMsg, usvPose, usvControl, usvComm, dt, uSP, vSP, psiSP, rSP, xSP, ySP):    
     if (usvComm.isSearchFindTV):
         sUAVOutput = rad2deg(usvComm.tvAngleEst)
     else:
@@ -43,7 +42,7 @@ def genTable(usvState, latestMsg, usvCAN, usvPose, usvControl, usvComm, dt, uSP,
         "Motions": ["u: %.2f m/s" % usvPose.uDVL, "v: %.2f m/s" % usvPose.vDVL, "psi: %.2f deg" % rad2deg(usvPose.psi), "r: %.2f deg/s" % rad2deg(usvPose.r), "ax: %.2f m/s^2" % usvPose.axb, "ay: %.2f m/s^2" % usvPose.ayb],
         "Setpoints": ["uSP: %.2f m/s" % uSP, "vSP: %.2f m/s" % vSP, "psiSP: %.2f deg" % rad2deg(psiSP), "rSP: %.2f deg/s" % rad2deg(rSP), "[bold bright_yellow]xSP: %.2f m" % xSP, "[bold bright_yellow]ySP: %.2f m" % ySP],
         "Sensors": ["x(GPS): %.2f m" % usvPose.x, "y(GPS): %.2f m" % usvPose.y, "Lidar dist: %.2f m" % lidarOutPutDist, "[bold bright_yellow]x(Lidar): %.2f m" % xLidarOutput, "[bold bright_yellow]y(Lidar): %.2f m" % yLidarOutput, "[bold yellow]sUAV yaw: %.2f deg" % sUAVOutput, "[bold yellow]Pod yaw: %.2f deg" % podOutput, "[bold yellow]Lidar yaw: %.2f deg" % lidarOutPutAngle, "TV Heading: %.2f deg" % rad2deg(usvPose.tvHeading), "Obs yaw: %.2f deg" % obsOutPut],
-        "Power": ["L_cmd: %.2f RPM | %.2f deg" % (usvControl.rpmLeftSP, rad2deg(usvControl.angleLeftSP)), "R_cmd: %.2f RPM | %.2f deg" % (usvControl.rpmRightSP, rad2deg(usvControl.angleRightSP)), "L: %.2f RPM | %.2f deg" % (usvControl.rpmLeftEst, rad2deg(usvControl.angleLeftEst)), "R: %.2f RPM | %.2f deg" % (usvControl.rpmRightEst, rad2deg(usvControl.angleRightEst)), "1: %.1f %% | ↓%.3f v" % (usvCAN.battSOC[0], usvCAN.battCellVoltMin[0]), "2: %.1f %% | ↓%.3f v" % (usvCAN.battSOC[1], usvCAN.battCellVoltMin[1]), "3: %.1f %% | ↓%.3f v" % (usvCAN.battSOC[2], usvCAN.battCellVoltMin[2]), "4: %.1f %% | ↓%.3f v" % (usvCAN.battSOC[3], usvCAN.battCellVoltMin[3])],
+        "Power": ["L_cmd: %.2f RPM | %.2f deg" % (usvControl.rpmLeftSP, rad2deg(usvControl.angleLeftSP)), "R_cmd: %.2f RPM | %.2f deg" % (usvControl.rpmRightSP, rad2deg(usvControl.angleRightSP)), "L: %.2f RPM | %.2f deg" % (usvControl.rpmLeftEst, rad2deg(usvControl.angleLeftEst)), "R: %.2f RPM | %.2f deg" % (usvControl.rpmRightEst, rad2deg(usvControl.angleRightEst)), "1: %.1f %% | ↓%.3f v" % (usvControl.battSOC[0], usvControl.battCellVoltMin[0]), "2: %.1f %% | ↓%.3f v" % (usvControl.battSOC[1], usvControl.battCellVoltMin[1]), "3: %.1f %% | ↓%.3f v" % (usvControl.battSOC[2], usvControl.battCellVoltMin[2]), "4: %.1f %% | ↓%.3f v" % (usvControl.battSOC[3], usvControl.battCellVoltMin[3])],
     }
 
     theTable = Table(show_header=True, header_style="bold", title_justify="center", title_style="bold magenta", caption_justify="left", box=box.HORIZONTALS)
@@ -79,10 +78,10 @@ class USVData():
         self.saveDataTimer = 1
         self.recordRate = rate
 
-    def saveData(self, usvCAN, usvPose, usvControl, usvComm, dt, uSP, vSP, psiSP, rSP, xSP, ySP):       
+    def saveData(self, usvPose, usvControl, usvComm, dt, uSP, vSP, psiSP, rSP, xSP, ySP):       
         with open(self.fileNameStr, 'a') as f:          
             if (self.saveDataTimer >= 0.5 * self.recordRate):
-                f.write(self.elementTemplate % (dt, usvPose.x, usvPose.y, usvPose.psi, usvPose.u, usvPose.v, usvPose.r, uSP, vSP, psiSP, rSP, xSP, ySP, usvPose.xDVL, usvPose.yDVL, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.azb, usvPose.roll, usvPose.pitch, usvPose.xLidar, usvPose.yLidar, usvComm.tvAngleEst, usvPose.tvAnglePod, usvPose.tvAngleLidar, usvPose.tvHeading, usvPose.obsX, usvPose.obsY, usvPose.obsAngleLidar, usvControl.rpmLeftSP, usvControl.rpmRightSP, usvControl.angleLeftSP, usvControl.angleRightSP, usvControl.rpmLeftEst, usvControl.rpmRightEst, usvControl.angleLeftEst, usvControl.angleRightEst, usvCAN.battSOC[0], usvCAN.battSOC[1], usvCAN.battSOC[2], usvCAN.battSOC[3], usvCAN.battCellVoltMin[0], usvCAN.battCellVoltMin[1], usvCAN.battCellVoltMin[2], usvCAN.battCellVoltMin[3]) + '\n')
+                f.write(self.elementTemplate % (dt, usvPose.x, usvPose.y, usvPose.psi, usvPose.u, usvPose.v, usvPose.r, uSP, vSP, psiSP, rSP, xSP, ySP, usvPose.xDVL, usvPose.yDVL, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.azb, usvPose.roll, usvPose.pitch, usvPose.xLidar, usvPose.yLidar, usvComm.tvAngleEst, usvPose.tvAnglePod, usvPose.tvAngleLidar, usvPose.tvHeading, usvPose.obsX, usvPose.obsY, usvPose.obsAngleLidar, usvControl.rpmLeftSP, usvControl.rpmRightSP, usvControl.angleLeftSP, usvControl.angleRightSP, usvControl.rpmLeftEst, usvControl.rpmRightEst, usvControl.angleLeftEst, usvControl.angleRightEst, usvControl.battSOC[0], usvControl.battSOC[1], usvControl.battSOC[2], usvControl.battSOC[3], usvControl.battCellVoltMin[0], usvControl.battCellVoltMin[1], usvControl.battCellVoltMin[2], usvControl.battCellVoltMin[3]) + '\n')
 
                 self.saveDataTimer = 1
             else:
@@ -97,7 +96,6 @@ if __name__ == '__main__':
     rosRate = rospy.Rate(10)
     t0 = rospy.Time.now().to_sec()
 
-    usvCAN = USVCAN()
     usvPose = Pose()
     usvComm = Communication()
 
