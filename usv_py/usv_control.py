@@ -24,7 +24,7 @@ class Control():
     rpmMin = 35
     rpmMax = 1000
     rpmRotateMax = 600
-    angleMax = deg2rad(15)
+    angleMax = deg2rad(20)
 
     # 无人船参数
     MASS = 775.0
@@ -116,7 +116,7 @@ class Control():
         # 发布推力
         self.thrustPub()
 
-        return [uSP, rSP]
+        return [uSP, rSP, axbSP, etaSP]
 
     def moveUSVVec(self, xSP, ySP, psiSP, x, y, u, v, axb, ayb, psi, r):
         # 计算 x y 误差
@@ -131,8 +131,8 @@ class Control():
         vSP = self.yPID.compute(yErr, v)
 
         # u v setpoints 限幅
-        uSP = clip(uSP, -1.0, 1.0)
-        vSP = clip(vSP, -0.8, 0.8)
+        uSP = clip(uSP, -2.0, 2.0)
+        vSP = clip(vSP, -1.5, 1.5)
        
         # 计算 vx vy 误差
         uErr = uSP - u
@@ -166,7 +166,7 @@ class Control():
         # 发布推力
         self.thrustPub()
 
-        return [uSP, vSP, rSP]
+        return [uSP, vSP, rSP, axbSP, aybSP, etaSP]
 
     def moveUSVLateral(self, vSP, psiSP, v, ayb, psi, r):
         # 计算朝向角误差
@@ -205,7 +205,7 @@ class Control():
         # 发布推力
         self.thrustPub()
 
-        return [vSP, rSP]
+        return [vSP, rSP, aybSP, etaSP]
     
     def mixer(self, axSP, aySP, etaSP):
         # 计算推力偏角
@@ -272,19 +272,19 @@ class Control():
         return
     
     def lThrustCallback(self, msg):
-        self.rpmLeftEst = msg.data * 4.0
+        self.rpmLeftEst = msg.data
         return
     
     def rThrustCallback(self, msg):
-        self.rpmRightEst = msg.data * 4.0
+        self.rpmRightEst = msg.data
         return
     
     def lAngleCallback(self, msg):
-        self.angleLeftEst = deg2rad(-msg.data / 500.0)
+        self.angleLeftEst = deg2rad(-msg.data)
         return
     
     def rAngleCallback(self, msg):
-        self.angleRightEst = deg2rad(-msg.data / 500.0)
+        self.angleRightEst = deg2rad(-msg.data)
         return
 
     def battSOCCallback(self, msg):

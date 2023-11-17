@@ -124,6 +124,9 @@ def main(args=None):
     rSP = float("nan")
     xSP = float("nan")
     ySP = float("nan")
+    axbSP = float("nan")
+    aybSP = float("nan")
+    etaSP = float("nan")
 
     # 试一下  
     while not rospy.is_shutdown():
@@ -332,7 +335,7 @@ def main(args=None):
 
                 # [uSP, rSP] = usvControl.moveUSV(0, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
                 # [vSP, rSP] = usvControl.moveUSVLateral(0.8, psiSP, usvPose.uDVL, usvPose.ayb, usvPose.psi, usvPose.r)
-                [uSP, vSP, rSP] = usvControl.moveUSVVec(xSP, ySP, psiSP, usvPose.x, usvPose.y, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
+                [uSP, vSP, rSP, axbSP, aybSP, etaSP] = usvControl.moveUSVVec(xSP, ySP, psiSP, usvPose.x, usvPose.y, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
 
             else:
                 # 程序不应该执行到这里
@@ -341,11 +344,11 @@ def main(args=None):
         
             # 打印当前状态
             dt = rospy.Time.now().to_sec() - t0
-            theTable = genTable(usvState, latestMsg, usvPose, usvControl, usvComm, dt, uSP, vSP, psiSP, rSP, xSP, ySP) 
+            theTable = genTable(usvState, latestMsg, usvPose, usvControl, usvComm, dt, uSP, vSP, psiSP, rSP, xSP, ySP, axbSP, aybSP, etaSP) 
             console.print(theTable)
 
             # 写入当前状态到文件
-            usvData.saveData(usvPose, usvControl, usvComm, dt, uSP, vSP, psiSP, rSP, xSP, ySP)
+            usvData.saveData(usvPose, usvControl, usvComm, dt, uSP, vSP, psiSP, rSP, xSP, ySP, axbSP, aybSP, etaSP)
 
             # 发送无人船的东西 
             usvComm.sendUSVState(usvState)
