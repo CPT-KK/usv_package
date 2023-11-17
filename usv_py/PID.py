@@ -29,9 +29,9 @@ class PID:
 
         # 如果有物理上的微分项输入，则使用物理上的微分项，否则使用数值微分项
         if (errDiff is None):
-            output = self.kp * err + self.ki * (self.errIntegral + err / self.frequency) + self.kd * (err - self.errPrevious) * self.frequency   
+            output = self.kp * err + self.ki * self.errIntegral + self.kd * (err - self.errPrevious) * self.frequency   
         else:
-            output = self.kp * err + self.ki * (self.errIntegral + err / self.frequency) + self.kd * errDiff * self.frequency
+            output = self.kp * err + self.ki * self.errIntegral + self.kd * errDiff * self.frequency
 
         # 保存这一时刻的误差
         self.errPrevious = err
