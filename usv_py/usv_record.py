@@ -112,7 +112,7 @@ if __name__ == '__main__':
     while True:
         try:
             dt = rospy.Time.now().to_sec() - t0
-            theTable = genTable(usvState, latestMsg, usvCAN, usvPose, usvComm, dt, uSP, vSP, psiSP, xSP, ySP) 
+            theTable = genTable(usvState, latestMsg, usvPose, usvComm, dt, uSP, vSP, psiSP, xSP, ySP) 
             console.print(theTable)
 
             rosRate.sleep()
