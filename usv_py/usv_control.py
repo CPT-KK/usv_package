@@ -20,18 +20,17 @@ class Control():
     vSPMax = 1.25
     rSPMax = deg2rad(8)
     
-    # USV motor from 50RPM to 1300RPM
-    # USV angle from -85deg to 85deg
-    rpmThreshold = 2
+    # USV RPM and pod angle limits
     rpmMin = 35
     rpmMax = 1000
+    rpmRotateMax = 600
     angleMax = deg2rad(15)
 
     # 无人船参数
-    usvMass = 775.0
-    usvInerZ = 2072.475
-    usvWidth = 3.3
-    usvThrust2Center = 1.55
+    MASS = 775.0
+    INERZ = 2072.475
+    WIDTH = 3.3
+    TORQLEN = 1.55
 
     # Actuator setpoint 量
     rpmLeftSP = 0
@@ -218,10 +217,15 @@ class Control():
         self.angleRightSP = clip(self.angleRightSP, -self.angleMax, self.angleMax)
 
         # 计算推力大小，目前这样除以 cos(self.angleLeftEst) 还不会出现除以 0 的情况
-        rpmTranslate = self.usvMass * sign(axSP) * sqrt(axSP ** 2 + aySP ** 2) / 2.0
-        rpmRotate = self.usvInerZ * etaSP / self.usvThrust2Center / 2.0
-        self.rpmLeftSP = rpmTranslate * cos(self.angleLeftSP - self.angleLeftEst) - rpmRotate / cos(self.angleLeftEst)
-        self.rpmRightSP = rpmTranslate * cos(self.angleRightSP - self.angleRightEst) + rpmRotate / cos(self.angleRightEst)
+        rpmTranslate = self.MASS * sign(axSP) * sqrt(axSP ** 2 + aySP ** 2) / 2.0
+        rpmRotate = self.INERZ * etaSP / self.TORQLEN / 2.0
+        rpmTranslateLeft = rpmTranslate * cos(self.angleLeftSP - self.angleLeftEst)
+        rpmTranslateRight = rpmTranslate * cos(self.angleRightSP - self.angleRightEst)
+        rpmRotateLeft = rpmRotate / cos(self.angleLeftEst)
+        rpmRotateRight = rpmRotate / cos(self.angleRightEst)
+
+        self.rpmLeftSP = rpmTranslateLeft + rpmRotateLeft
+        self.rpmRightSP = rpmTranslateRight + rpmRotateRight
 
         # 推力大小限幅
         self.rpmLeftSP = clip(self.rpmLeftSP, -self.rpmMax, self.rpmMax)
@@ -235,8 +239,8 @@ class Control():
         self.angleRightSP = 0
 
         # 计算推力大小
-        rpmTranslate = self.usvMass * aySP
-        rpmRotate = self.usvInerZ * etaSP / self.usvThrust2Center / 2.0
+        rpmTranslate = self.MASS * aySP
+        rpmRotate = self.INERZ * etaSP / self.TORQLEN / 2.0
         self.rpmLeftSP = rpmTranslate * cos(self.angleLeftSP - self.angleLeftEst)
         self.rpmRightSP = rpmRotate
 
