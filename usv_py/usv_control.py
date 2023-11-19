@@ -24,7 +24,7 @@ class Control():
     rpmMin = 35
     rpmMax = 1000
     rpmRotateMax = 600
-    angleMax = deg2rad(20)
+    angleMax = deg2rad(60)
 
     # 无人船参数
     MASS = 775.0
@@ -216,14 +216,28 @@ class Control():
         self.angleLeftSP = clip(self.angleLeftSP, -self.angleMax, self.angleMax)
         self.angleRightSP = clip(self.angleRightSP, -self.angleMax, self.angleMax)
 
-        # 计算推力大小，目前这样除以 cos(self.angleLeftEst) 还不会出现除以 0 的情况
+        # 计算一侧发动机平动和转动所需推力大小的参考值
         rpmTranslate = self.MASS * sign(axSP) * sqrt(axSP ** 2 + aySP ** 2) / 2.0
         rpmRotate = self.INERZ * etaSP / self.TORQLEN / 2.0
-        rpmTranslateLeft = rpmTranslate * cos(self.angleLeftSP - self.angleLeftEst)
-        rpmTranslateRight = rpmTranslate * cos(self.angleRightSP - self.angleRightEst)
+        
+        # 计算左右两侧平动所需推力
+        # 当推力角的当前值和期望值相差较大时，不给推力
+        if (abs(self.angleLeftSP - self.angleLeftEst) > deg2rad(15)):
+            rpmTranslateLeft = 0
+        else:
+            rpmTranslateLeft = rpmTranslate * cos(self.angleLeftSP - self.angleLeftEst)
+        
+        if (abs(self.angleRightSP - self.angleRightEst) > deg2rad(15)):
+            rpmTranslateRight = 0
+        else:    
+            rpmTranslateRight = rpmTranslate * cos(self.angleRightSP - self.angleRightEst)
+        
+        # 计算左右两侧转动所需推力
+        # 目前这样除以 cos(self.angleLeftEst) 还不会出现除以 0 的情况
         rpmRotateLeft = rpmRotate / cos(self.angleLeftEst)
         rpmRotateRight = rpmRotate / cos(self.angleRightEst)
 
+        # 计算左右两侧真实推力设置值的大小
         self.rpmLeftSP = rpmTranslateLeft - rpmRotateLeft
         self.rpmRightSP = rpmTranslateRight + rpmRotateRight
 
