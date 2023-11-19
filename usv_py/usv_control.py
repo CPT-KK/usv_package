@@ -67,14 +67,14 @@ class Control():
 
         # PID 初始化
         self.uPID = PID(0.8, 0.06, -0.012, control_frequency)
-        self.vPID = PID(2, 0.0, 0.00, control_frequency)
-        self.psiPID = PID(0.25, 0.0002, -0.02, control_frequency)
-        self.rPID = PID(11.5, 0.5, -0.1, control_frequency)
+        self.vPID = PID(5, 0.0, 0.00, control_frequency)
+        self.psiPID = PID(0.225, 0.0002, -0.02, control_frequency)
+        self.rPID = PID(11, 0.5, -0.1, control_frequency)
 
-        self.xPID = PID(0.3, 0.000, 0.000, control_frequency)
-        self.yPID = PID(0.2, 0.000, 0.000, control_frequency)
-        self.vxPID = PID(0.6, 0.0012, -0.05, control_frequency)
-        self.vyPID = PID(0.3, 0.0008, -0.05, control_frequency)
+        self.xPID = PID(0.5, 0.08, 0.000, control_frequency)
+        self.yPID = PID(0.4, 0.06, 0.000, control_frequency)
+        self.vxPID = PID(1.2, 0.00, -0.0, control_frequency)
+        self.vyPID = PID(0.5, 0.00, -0.0, control_frequency)
 
     def __del__(self):
         pass
@@ -131,8 +131,8 @@ class Control():
         vSP = self.yPID.compute(yErr, v)
 
         # u v setpoints 限幅
-        uSP = clip(uSP, -2.0, 2.0)
-        vSP = clip(vSP, -1.5, 1.5)
+        uSP = clip(uSP, -1.0, 1.0)
+        vSP = clip(vSP, -1.0, 1.0)
        
         # 计算 vx vy 误差
         uErr = uSP - u
@@ -176,10 +176,10 @@ class Control():
         psiErr = wrapToPi(psiErr)
 
         # 根据 psiErr 的值，计算可行的 vSP (避免速度太大，转弯转不过来)
-        vSP = vSP * (0.5 + 0.5 * (1 - abs(psiErr) / pi))  
+        vSP = vSP * (0.7 + 0.3 * (1 - abs(psiErr) / pi))  
 
         # 侧向速度限幅
-        vSP = clip(vSP, -self.vSPMax, self.vSPMax)
+        # vSP = clip(vSP, -self.vSPMax, self.vSPMax)
 
         # 计算侧向速度误差
         vErr = vSP - v
@@ -224,7 +224,7 @@ class Control():
         rpmRotateLeft = rpmRotate / cos(self.angleLeftEst)
         rpmRotateRight = rpmRotate / cos(self.angleRightEst)
 
-        self.rpmLeftSP = rpmTranslateLeft + rpmRotateLeft
+        self.rpmLeftSP = rpmTranslateLeft - rpmRotateLeft
         self.rpmRightSP = rpmTranslateRight + rpmRotateRight
 
         # 推力大小限幅

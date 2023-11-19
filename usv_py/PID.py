@@ -17,7 +17,7 @@ class PID:
         self.errIntegral = 0.0
         self.errPrevious = 0.0
 
-    def compute(self, err, errDiff=None):
+    def  compute(self, err, errDiff=None):
         # 计算误差积分项
         self.errIntegral = self.errIntegral + err / self.frequency
 
