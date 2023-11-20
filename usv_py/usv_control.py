@@ -24,7 +24,7 @@ class Control():
     rpmMin = 35
     rpmMax = 1000
     rpmRotateMax = 650
-    angleMax = deg2rad(90)
+    angleMax = deg2rad(60)
 
     # 无人船参数
     MASS = 775.0

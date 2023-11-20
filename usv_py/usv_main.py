@@ -338,7 +338,7 @@ def main(args=None):
                 # psiSP = wrapToPi(arctan2(ySP - usvPose.y, xSP - usvPose.x) - pi / 2)
                 # [vSP, rSP, aybSP, etaSP] = usvControl.moveUSVLateral(0.6, psiSP, usvPose.vDVL, usvPose.ayb, usvPose.psi, usvPose.r)
 
-                psiSP = psiSP0 + 0.1 * (wrapToPi(arctan2(ySP - usvPose.y, xSP - usvPose.x)))
+                # psiSP = psiSP0 + 0.1 * (wrapToPi(arctan2(ySP - usvPose.y, xSP - usvPose.x)))
                 [uSP, vSP, rSP, axbSP, aybSP, etaSP] = usvControl.moveUSVVec(xSP, ySP, psiSP, usvPose.x, usvPose.y, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
 
             else:
