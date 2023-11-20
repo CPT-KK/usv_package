@@ -51,13 +51,15 @@ class Pose():
     isLidarFindTV = False
     objectNum = 0
     tLidar = 0
-    tvX = 0
-    tvY = 0
-    tvAngleLidar = 0    # ENU 系下的激光雷达角
-    tvDist = 0
-    tvHeading = 0
-    xLidar = 0
-    yLidar = 0
+    tvX = 0             # 目标船在 ENU 系（原点为无人船）下的 x 坐标
+    tvY = 0             # 目标船在 ENU 系（原点为无人船）下的 y 坐标
+    tvAngleLidar = 0    # 目标船在 ENU 系（原点为无人船）下的方向角
+    tvDist = 0          # 目标船距离无人船的距离
+    tvHeading = 0       # 目标船在 ENU 系下的朝向
+    tvLength = 0        # 目标船长度
+    tvWidth = 0         # 目标船宽度
+    xLidar = 0          # 无人船在 ENU 系（原点为目标船）下的 x 坐标
+    yLidar = 0          # 无人船在 ENU 系（原点为目标船）下的 y 坐标
 
     isLidarFindObs = False
     obsX = 0
@@ -166,6 +168,8 @@ class Pose():
         objectY = zeros([self.objectNum, 1])
         objectAngle = zeros([self.objectNum, 1])
         objectDist = zeros([self.objectNum, 1])
+        objectLength = zeros([self.objectNum, 1])
+        objectWidth = zeros([self.objectNum, 1])
         objectHeading = zeros([self.objectNum, 1])
         
         for i in range(self.objectNum):
@@ -173,7 +177,10 @@ class Pose():
             objectY[i, 0] = msg.poses[i].position.y
             objectAngle[i, 0] = arctan2(objectY[i, 0], objectX[i, 0])
             objectDist[i, 0] = sqrt(objectX[i, 0]**2 + objectY[i, 0]**2)
-            [_, _, objectHeading[i, 0]] = euler_from_quaternion([msg.poses[i].orientation.x, msg.poses[i].orientation.y, msg.poses[i].orientation.z, msg.poses[i].orientation.w])
+            [objectLength[i, 0], objectWidth[i, 0], objectHeading[i, 0]] = euler_from_quaternion([msg.poses[i].orientation.x, msg.poses[i].orientation.y, msg.poses[i].orientation.z, msg.poses[i].orientation.w])
+
+        objectLength = objectLength * 100.0
+        objectWidth = objectWidth * 100.0
 
         # 判断激光雷达扫描到的物体是否为目标船
         if (self.isLidarFindTV):
@@ -212,6 +219,8 @@ class Pose():
                 self.tvY = objectY[dDistIndex, 0]
                 self.tvAngleLidar = objectAngle[dDistIndex, 0]
                 self.tvDist = objectDist[dDistIndex, 0]
+                self.tvLength = objectLength[dDistIndex, 0]
+                self.tvWidth = objectWidth[dDistIndex, 0]
                 self.tvHeading = objectHeading[dDistIndex, 0]
                   
                 # 记录无人船坐标
@@ -239,7 +248,9 @@ class Pose():
                 self.tvX = objectX[tvIndex, 0]
                 self.tvY = objectY[tvIndex, 0]
                 self.tvAngleLidar = objectAngle[tvIndex, 0]
-                self.tvDist = objectDist[tvIndex, 0]   
+                self.tvDist = objectDist[tvIndex, 0]
+                self.tvLength = objectLength[tvIndex, 0]
+                self.tvWidth = objectWidth[tvIndex, 0]
                 self.tvHeading = objectHeading[tvIndex, 0]
 
                 # 根据目标船坐标计算无人船坐标
