@@ -23,8 +23,8 @@ class Control():
     # USV RPM and pod angle limits
     rpmMin = 35
     rpmMax = 1000
-    rpmRotateMax = 600
-    angleMax = deg2rad(60)
+    rpmRotateMax = 650
+    angleMax = deg2rad(90)
 
     # 无人船参数
     MASS = 775.0
@@ -222,20 +222,20 @@ class Control():
         
         # 计算左右两侧平动所需推力
         # 当推力角的当前值和期望值相差较大时，不给推力
-        if (abs(self.angleLeftSP - self.angleLeftEst) > deg2rad(15)):
+        if (abs(self.angleLeftSP - self.angleLeftEst) > deg2rad(10)):
             rpmTranslateLeft = 0
         else:
             rpmTranslateLeft = rpmTranslate * cos(self.angleLeftSP - self.angleLeftEst)
         
-        if (abs(self.angleRightSP - self.angleRightEst) > deg2rad(15)):
+        if (abs(self.angleRightSP - self.angleRightEst) > deg2rad(10)):
             rpmTranslateRight = 0
         else:    
             rpmTranslateRight = rpmTranslate * cos(self.angleRightSP - self.angleRightEst)
         
         # 计算左右两侧转动所需推力
-        # 目前这样除以 cos(self.angleLeftEst) 还不会出现除以 0 的情况
-        rpmRotateLeft = rpmRotate / cos(self.angleLeftEst)
-        rpmRotateRight = rpmRotate / cos(self.angleRightEst)
+        # 现在除以 cos(self.angleLeftEst) 【会】出现除以 0 的情况，所以加一个限幅
+        rpmRotateLeft = clip(rpmRotate / cos(self.angleLeftEst), -self.rpmRotateMax, self.rpmRotateMax)
+        rpmRotateRight = clip(rpmRotate / cos(self.angleRightEst), -self.rpmRotateMax, self.rpmRotateMax)
 
         # 计算左右两侧真实推力设置值的大小
         self.rpmLeftSP = rpmTranslateLeft - rpmRotateLeft
