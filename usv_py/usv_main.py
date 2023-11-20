@@ -68,9 +68,9 @@ def main(args=None):
     usvPose = Pose()
     usvComm = Communication()
     usvPathPlanner = PathPlanner()
-    usvGuidance = Guidance(ROS_RATE)
-    usvControl = Control(ROS_RATE)
-    usvData = USVData(ROS_RATE)
+    usvGuidance = Guidance()
+    usvControl = Control()
+    usvData = USVData()
     console.print("[green]>>>>>>> Function classes initialized.")
 
     # 添加服务节点
@@ -285,7 +285,7 @@ def main(args=None):
                     
                     # 重要：清除 LOS yErrPID 和差分控制器 PID 的积分项
                     usvGuidance.yErrPID.clearIntResult()
-                    usvControl.uPID.clearIntResult()
+                    usvControl.__uPID.clearIntResult()
 
             elif usvState == "DOCK_ADJUST":
                 if (isDockAdjustPlan == False):
@@ -313,6 +313,19 @@ def main(args=None):
                     # 如果不满足静止条件，需要重置 t1 计时器
                     timer1 = rospy.Time.now().to_sec()
 
+            elif usvState == "DOCK_WAITARM":
+                latestMsg = "Waiting the robotic arm to search the large object..."
+            
+            elif usvState == "DOCK_TOLARGEOBJ":
+                latestMsg = "Receive the large object information from the robotic arm. USV is moving to the large object..."
+
+            elif usvState == "DOCK_TOTARGET":
+                latestMsg = "TIMEOUT waiting the large object information from the robotic arm. USV is moving to the target vessel..."
+
+            elif usvState == "DOCK_ATTACH":
+                latestMsg = "Close enough. Try to attach to the target vessel..."
+            
+            
             elif usvState == "DOCK_FINAL":
                 # DOCK_FINAL 是一个死循环
                 # if (usvPose.state.armed):

@@ -29,8 +29,8 @@ class Guidance():
     pathSize = 2000
     isPathInit = False
 
-    def __init__(self, control_frequency):
-        self.yErrPID = PID(1.0, 0.03, 0.1, control_frequency)
+    def __init__(self):
+        self.yErrPID = PID(1.0, 0.03, 0.1)
         pass
 
     def setPath(self, inPath, inEndIdx=0):

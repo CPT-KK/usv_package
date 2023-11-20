@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import rospy
 
 class PID:
 
@@ -7,39 +8,50 @@ class PID:
         self.ki = ki
         self.kd = kd
         
-        if (frequency <= 0.0):
-            raise ValueError("PID frequency must greater than zero")
+        self.__intMax = intMax
+        self.__intMin = intMin      
+        self.__errIntegral = 0.0
+        self.__errPrevious = 0.0
+        self.__timePrevious = None # unit: sec
+
+    def compute(self, errProportion, errPhysicalDiff=None):
+        
+        # 计算时间差
+        if (self.__timePrevious is None):         
+            dt = 0.0   
         else:
-            self.frequency = frequency
-
-        self.intMax = intMax
-        self.intMin = intMin      
-        self.errIntegral = 0.0
-        self.errPrevious = 0.0
-
-    def  compute(self, err, errDiff=None):
-        # 计算误差积分项
-        self.errIntegral = self.errIntegral + err / self.frequency
+            dt = rospy.Time.now().to_sec() - self.__timePrevious
+        
+        # 计算误差积分项 self.__errIntegral
+        self.__errIntegral = self.__errIntegral + errProportion * dt
 
         # 防止积分项饱和
-        if (self.intMax is not None and self.errIntegral > self.intMax):
-            self.errIntegral = self.intMax
-        elif (self.intMin is not None and self.errIntegral < self.intMin):
-            self.errIntegral = self.intMin
+        if (self.__intMax is not None and self.__errIntegral > self.__intMax):
+            self.__errIntegral = self.__intMax
+        elif (self.__intMin is not None and self.__errIntegral < self.__intMin):
+            self.__errIntegral = self.__intMin
 
-        # 如果有物理上的微分项输入，则使用物理上的微分项，否则使用数值微分项
-        if (errDiff is None):
-            output = self.kp * err + self.ki * self.errIntegral + self.kd * (err - self.errPrevious) * self.frequency   
+        # 计算误差微分项 errDiff
+        if (dt != 0.0):
+            # 如果有物理上的微分项输入，则使用物理上的微分项，否则使用数值微分项
+            if (errPhysicalDiff is None):
+                errDiff = (errProportion - self.__errPrevious) / dt
+            else:
+                errDiff = errPhysicalDiff / dt
         else:
-            output = self.kp * err + self.ki * self.errIntegral + self.kd * errDiff * self.frequency
+            errDiff = 0.0
+        
+        # PID 计算
+        output = self.kp * errProportion + self.ki * self.__errIntegral + self.kd * errDiff
 
-        # 保存这一时刻的误差
-        self.errPrevious = err
+        # 保存这一时刻的误差和时间戳
+        self.__errPrevious = errProportion
+        self.__timePrevious = rospy.Time.now().to_sec() 
 
         return output
-    
+
     def clearIntResult(self):
-        self.errIntegral = 0
+        self.__errIntegral = 0
 
 # class PID:
 #     def __init__(self, P=0.2, I=0.0, D=0.0):
