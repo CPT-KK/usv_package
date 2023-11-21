@@ -3,7 +3,7 @@ import rospy
 
 class PID:
 
-    def __init__(self, kp, ki, kd, frequency, intMax=None, intMin=None):
+    def __init__(self, kp, ki, kd, intMax=None, intMin=None):
         self.kp = kp
         self.ki = ki
         self.kd = kd

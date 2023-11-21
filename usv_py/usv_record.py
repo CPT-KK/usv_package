@@ -76,12 +76,12 @@ class USVData():
             f.write(self.elementStr + '\n')
 
         self.recordInterval = 0.25 # unit: sec
-        self.thisTime = rospy.Time.to_sec()
+        self.thisTime = rospy.Time.now().to_sec()
 
     def saveData(self, usvPose, usvControl, usvComm, dt, uSP, vSP, psiSP, rSP, xSP, ySP, axbSP, aybSP, etaSP):       
         # 如果时间大于记录间隔，才记录
-        if (rospy.Time.to_sec() - self.thisTime >= self.recordInterval):
-            self.thisTime = rospy.Time.to_sec()
+        if (rospy.Time.now().to_sec() - self.thisTime >= self.recordInterval):
+            self.thisTime = rospy.Time.now().to_sec()
             
             with open(self.fileNameStr, 'a') as f:          
                 f.write(self.elementTemplate % (dt, usvPose.x, usvPose.y, usvPose.psi, usvPose.u, usvPose.v, usvPose.r, uSP, vSP, psiSP, rSP, xSP, ySP, axbSP, aybSP, etaSP, usvPose.xDVL, usvPose.yDVL, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.azb, usvPose.roll, usvPose.pitch, usvPose.xLidar, usvPose.yLidar, usvComm.tvAngleEst, usvPose.tvAnglePod, usvPose.tvAngleLidar, usvPose.tvHeading, usvPose.obsX, usvPose.obsY, usvPose.obsAngleLidar, usvControl.rpmLeftSP, usvControl.rpmRightSP, usvControl.angleLeftSP, usvControl.angleRightSP, usvControl.rpmLeftEst, usvControl.rpmRightEst, usvControl.angleLeftEst, usvControl.angleRightEst, usvControl.battSOC[0], usvControl.battSOC[1], usvControl.battSOC[2], usvControl.battSOC[3], usvControl.battCellVoltMin[0], usvControl.battCellVoltMin[1], usvControl.battCellVoltMin[2], usvControl.battCellVoltMin[3]) + '\n')

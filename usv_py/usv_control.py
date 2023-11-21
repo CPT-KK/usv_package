@@ -17,16 +17,15 @@ class Control():
     __aybSPMax = 2.0        # 矢量控制器中 aybSP 的最大值
 
     __uSPMax = 4.0          # 差动控制器中 uSP 的最大值
-    __uSPVecMax = 1.0       # 矢量控制器中 uSP 的最大值
-    __vSPMax = 1.0          # 矢量控制器中 vSP 的最大值
+    __uSPVecMax = 0.7       # 矢量控制器中 uSP 的最大值
+    __vSPMax = 0.7          # 矢量控制器中 vSP 的最大值
     __rSPMax = deg2rad(8)   # 控制器中 rSP 的最大值
     
     # USV RPM and pod angle limits
     __rpmMin = 35                   # 最小转速
     __rpmMax = 1000                 # 最大转速
-    __rpmRotateMax = 650            # 用于转动的最大转速
+    __rpmRotateMax = 800            # 用于转动的最大转速
     __angleMax = deg2rad(20)        # 舵角最大值
-    __angleGapMax = deg2rad(12)     # 允许产生推力的舵角误差最大值
 
     # 无人船参数
     __MASS = 775.0          # 质量
@@ -64,16 +63,16 @@ class Control():
 
         # For USV battery info
         self.__battSOCSubscriber = rospy.Subscriber("/usv/battery/soc", Float32MultiArray, self.battSOCCallback, queue_size=1)
-        self.__battCellVoltMinSubscriber = rospy.Subscriber("/usv/battery/cell_volt_min", Float32MultiArray, self.battCellVoltMinCallback, queue_size=1)
+        self.__battCellVoltMinSubscriber = rospy.Subscriber("/usv/battery/min_cell_volt", Float32MultiArray, self.battCellVoltMinCallback, queue_size=1)
 
         # PID 初始化
         self.__uPID = PID(0.8, 0.06, -0.012)
         self.__vPID = PID(5, 0.0, 0.0)
-        self.__psiPID = PID(0.225, 0.0002, -0.02)
-        self.__rPID = PID(11, 0.5, -0.1)
+        self.__psiPID = PID(0.23, 0.0002, -0.02)
+        self.__rPID = PID(14, 0.5, -0.1)
 
-        self.__xPID = PID(0.5, 0.08, 0.0)
-        self.__yPID = PID(0.1, 0.015, 0.0)
+        self.__xPID = PID(0.5, 0.01, 0.0)
+        self.__yPID = PID(0.1, 0.01, 0.0)
         self.__vxPID = PID(1.2, 0.00, -0.0)
         self.__vyPID = PID(0.2, 0.00, -0.0)
 
@@ -88,7 +87,10 @@ class Control():
         psiErr = wrapToPi(psiErr)
 
         # 根据 psiErr 的值，计算可行的 uSP (避免速度太大，转弯转不过来)
-        uSP = uSP * (0.05 + 0.95 * (1 - abs(psiErr) / pi))  
+        if (psiErr > pi / 4):
+            uSP = 0
+        else:
+            uSP = uSP * (0.1 + 0.9 * (1 - abs(psiErr) / (pi / 4)))  
 
         # 轴向速度限幅
         uSP = clip(uSP, -self.__uSPMax, self.__uSPMax)
@@ -229,16 +231,9 @@ class Control():
         rpmRotate = self.__INERZ * etaSP / self.__TORQLEN / 2.0
         
         # 计算左右两侧平动所需推力
-        # 当推力角的当前值和期望值相差较大时，不给推力
-        if (abs(self.angleLeftSP - self.angleLeftEst) > self.__angleGapMax):
-            rpmTranslateLeft = 0
-        else:
-            rpmTranslateLeft = rpmTranslate * cos(self.angleLeftSP - self.angleLeftEst)
-        
-        if (abs(self.angleRightSP - self.angleRightEst) > self.__angleGapMax):
-            rpmTranslateRight = 0
-        else:    
-            rpmTranslateRight = rpmTranslate * cos(self.angleRightSP - self.angleRightEst)
+        # 当推力角的当前值和期望值相差较大时，实际平动推力变小
+        rpmTranslateLeft = rpmTranslate * cos(self.angleLeftSP - self.angleLeftEst)
+        rpmTranslateRight = rpmTranslate * cos(self.angleRightSP - self.angleRightEst)
         
         # 计算左右两侧转动所需推力
         # 为了避免除以 cos(self.angleLeftEst) 出现除以 0 导致结果为无穷的情况，加一个限幅

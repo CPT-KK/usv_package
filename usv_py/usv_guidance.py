@@ -30,7 +30,7 @@ class Guidance():
     isPathInit = False
 
     def __init__(self):
-        self.yErrPID = PID(1.0, 0.03, 0.1)
+        self.yErrPID = PID(1.02, 0.04, -0.1)
         pass
 
     def setPath(self, inPath, inEndIdx=0):
@@ -107,24 +107,15 @@ class Guidance():
         # 求跟踪点的切线角
         if (self.currentIdx == self.endIdx):
             tanAngle = arctan2(ySP - self.path[self.endIdx - 1, 1], xSP - self.path[self.endIdx - 1, 0])
-        else :
+        else:
             tanAngle = arctan2(self.path[self.currentIdx + 1, 1] - ySP, self.path[self.currentIdx + 1, 0] - xSP)
 
-        # 计算无人船相对于当前跟踪点切线的垂直方向的误差
+        # 计算无人船相对于当前跟踪点切线的侧向误差
         yErr = -(x - xSP) * sin(tanAngle) + (y - ySP) * cos(tanAngle)
 
-        # 计算期望的朝向角
-        psiSP = wrapToPi(tanAngle + arctan2(-yErr, self.delta))
-
-        # Debug 用输出
-        # print("=============================================================================")
-        # print("Guidance 输出:")
-        # print("此段路径当前跟踪点: No.%d, [%.2f, %.2f]. 此段路径终点: No.%d, [%.2f, %.2f]." % (self.currentIdx, xSP, ySP, self.endIdx, self.path[self.endIdx, 0], self.path[self.endIdx, 1]))
-        # print("USV 船体系速度 u: %.2f, v: %.2f，合速度: %.2f." % (u, v, norm((u,v))))
-        # print("期望 psi: %.2f" % rad2deg(psiSP))
-
-        # ROS2 内发送制导指令
-        self.pubSetpoints(xSP, ySP, psiSP)
+        # 计算为了修正侧向误差的航向补偿角
+        yErrAngle = self.yErrPID.compute(arctan2(-yErr, self.delta))
+        psiSP = tanAngle + yErrAngle 
 
         # 返回制导指令
         return [xSP, ySP, psiSP]

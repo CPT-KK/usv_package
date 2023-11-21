@@ -71,7 +71,7 @@ class Pose():
 
     # Pod 变量  
     isPodFindTV = True
-    tvAnglePod = deg2rad(134)  # ENU 系下的吊舱角
+    tvAnglePod = deg2rad(-53)  # ENU 系下的吊舱角
     podTimer = 0
     podTolSec = 0.01
 
@@ -254,7 +254,6 @@ class Pose():
                 self.tvHeading = objectHeading[tvIndex, 0]
 
                 # 根据目标船坐标计算无人船坐标
-                # [self.xLidar, self.yLidar] = rotationZ(self.tvX, self.tvY, -self.psi)
                 self.xLidar = -self.tvX
                 self.yLidar = -self.tvY
 
