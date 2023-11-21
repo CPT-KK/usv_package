@@ -5,7 +5,7 @@ import threading
 import atexit
 import signal
 from rich.console import Console
-from numpy import zeros, rad2deg, deg2rad, pi, abs, mean, sin, cos, tan, arctan, arctan2, std
+from numpy import zeros, rad2deg, deg2rad, pi, abs, mean, sin, cos, tan, arctan, arctan2, std, sqrt
 
 from usv_pose import Pose
 from usv_path_planner import PathPlanner
@@ -98,6 +98,8 @@ def main(args=None):
     isDockMeasurePlan = False
     isDockApproachPlan = False
     isDockAdjustPlan = False
+    isDockWaitArmPlan = False
+    isDockToPlan = False
     isTestPlan = False
     isTestEnable = True
 
@@ -112,6 +114,7 @@ def main(args=None):
 
     # 设置计时器
     timer1 = rospy.Time.now().to_sec()
+    maxSearchTime = 10.0
 
     # 保存目标船朝向角的数组
     tvHeadings = zeros((1, 5000))
@@ -304,9 +307,9 @@ def main(args=None):
                 # 保持静止
                 [uSP, vSP, rSP] = usvControl.moveUSVVec(xSP, ySP, psiSP, usvPose.xLidar, usvPose.yLidar, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
 
-                # 等待船接近静止并保持 5.0s，进入 FINAL
+                # 等待船接近静止并保持 5.0s，进入 DOCK_WAITARM
                 if (rospy.Time.now().to_sec() - timer1 > 5.0):   
-                    usvState = "DOCK_FINAL"
+                    usvState = "DOCK_WAITARM"
                 elif (abs(usvPose.psi - psiSP) < deg2rad(2.0)) & (abs(usvPose.xLidar - xSP) < 1.0) & (abs(usvPose.yLidar - ySP) < 1.0) & (abs(usvPose.uDVL) < 0.25) & (abs(usvPose.vDVL) < 0.25):
                     pass
                 else:
@@ -314,24 +317,67 @@ def main(args=None):
                     timer1 = rospy.Time.now().to_sec()
 
             elif usvState == "DOCK_WAITARM":
-                latestMsg = "Waiting the robotic arm to search the large object..."
-            
+                if (isDockWaitArmPlan == False):
+                    # 将当前时间写入 t1 计时器
+                    timer1 = rospy.Time.now().to_sec()
+
+                    xSP = currPath[-1, 0]
+                    ySP = currPath[-1, 1]
+                    psiSP = arctan2(ySP - currPath[-2, 1], xSP - currPath[-2, 0])
+
+                    isDockWaitArmPlan = True
+
+                    latestMsg = "USV has been stablized. Waiting the arm to search the larget object for %.2f/%.2fs..." % (rospy.Time.now().to_sec() - timer1, maxSearchTime)
+
+                # 保持静止，
+                [uSP, vSP, rSP] = usvControl.moveUSVVec(xSP, ySP, psiSP, usvPose.xLidar, usvPose.yLidar, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
+
+                # 等待机械臂搜索大物体
+                if (usvComm.isArmFindBigObj):   
+                    # 找到大物体，向大物体泊近
+                    usvState = "DOCK_TOLARGEOBJ"
+                elif (rospy.Time.now().to_sec() - timer1 > maxSearchTime): 
+                    # 等待机械臂超时，向目标船泊近
+                    usvState = "DOCK_TOTARGET"
+                else:
+                    pass
+
             elif usvState == "DOCK_TOLARGEOBJ":
                 latestMsg = "Receive the large object information from the robotic arm. USV is moving to the large object..."
 
-            elif usvState == "DOCK_TOTARGET":
-                latestMsg = "TIMEOUT waiting the large object information from the robotic arm. USV is moving to the target vessel..."
+            elif usvState == "DOCK_TOTARGET": 
+                if (isDockToPlan == False):
+                    # 将当前时间写入 t1 计时器
+                    timer1 = rospy.Time.now().to_sec()
+
+                    # 设置目标点为目标船的中心
+                    xSP = 0
+                    ySP = 0
+                    psiSP = arctan2(ySP - currPath[-2, 1], xSP - currPath[-2, 0])
+                    isDockToPlan = True
+
+                    latestMsg = "TIMEOUT waiting the large object information from the robotic arm. USV is moving to the target vessel..."
+
+                # 向目标船中心移动
+                [uSP, vSP, rSP] = usvControl.moveUSVVec(xSP, ySP, psiSP, usvPose.xLidar, usvPose.yLidar, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
+
+                # 如果与目标船的距离小于给定距离并且持续 X 秒，则认为已经固连
+                if (rospy.Time.now().to_sec() - timer1 > 5.0):   
+                    usvState = "DOCK_ATTACH"
+                elif (sqrt((usvPose.xLidar - xSP) ** 2 + (usvPose.yLidar - ySP) ** 2) < 3.0):
+                    pass
+                else:
+                    # 如果不满足静止条件，需要重置 t1 计时器
+                    timer1 = rospy.Time.now().to_sec()
 
             elif usvState == "DOCK_ATTACH":
                 latestMsg = "Close enough. Try to attach to the target vessel..."
-            
+                usvState == "DOCK_FINAL"
             
             elif usvState == "DOCK_FINAL":
                 # DOCK_FINAL 是一个死循环
-                # if (usvPose.state.armed):
-                    # mavrosArmClient.call(disarmCmd)
                     
-                latestMsg = "USV has been stabilized. Start to send tUAV take-off flag..."
+                latestMsg = "Attached to the target vessel. Take-off signal for tUAV has been sent."
                 usvComm.sendTakeOffFlag()
                 usvComm.sendTVPosFromLidar(-usvPose.xLidar, -usvPose.yLidar)
 
