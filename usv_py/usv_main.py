@@ -266,7 +266,7 @@ def main(args=None):
                     isDockApproachPlan = True
 
                 # 读取激光雷达信息（这个时候应该能保证读到目标船吧？），生成控制指令
-                uSP = linearClip(1.5, 0, 0.8, usvGuidance.endIdx, usvGuidance.currentIdx)
+                uSP = linearClip(0, 1.5, usvGuidance.endIdx, 0.8, usvGuidance.currentIdx)
                 [psiSP, xSP, ySP] = usvGuidance.guidance(6.0, usvPose.xLidar, usvPose.yLidar, usvPose.psi, usvPose.betaDVL)
 
                 # 控制无人船
