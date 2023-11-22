@@ -35,6 +35,16 @@ def rotationZ(x, y, angle):
 
     return [xNew, yNew]
 
+def linearClip(x1, y1, x2, y2, x):
+    if (x > x2):
+        y = y2
+    elif (x < x1):
+        y = x1
+    else:
+        y = (y2 - y1) / (x2 - x1) * (x - x1) + y1
+
+    return y
+
 # def removeOutliers(data):
 #     Q1 = percentile(data, 25)
 #     Q3 = percentile(data, 75)
