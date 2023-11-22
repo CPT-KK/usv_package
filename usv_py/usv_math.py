@@ -36,6 +36,16 @@ def rotationZ(x, y, angle):
     return [xNew, yNew]
 
 def linearClip(x1, y1, x2, y2, x):
+    # 线性插值并且限幅
+    # x in [x1, x2]，则线性插值 y
+    # x < x1，y = y1
+    # x > x2，y = y2
+
+    # 判断 x1 x2 哪个大
+    if (x1 > x2):
+        [x1, x2] = [x2, x1]
+        [y1, y2] = [y2, y1]
+
     if (x > x2):
         y = y2
     elif (x < x1):
