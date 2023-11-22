@@ -159,6 +159,13 @@ class Control():
             axbSP = self.__vxPID.compute(uErr, axb)
             axbSP = clip(axbSP, -self.__axbSPMax, self.__axbSPMax)
 
+            # 计算并修正侧向误差
+            vSP = self.__yPID.compute(yErr, v)
+            vSP = clip(vSP, -self.__vSPMax, self.__vSPMax)
+            vErr = vSP - v
+            aybSP = self.__vyPID.compute(vErr, ayb)
+            aybSP = clip(aybSP, -self.__aybSPMax, self.__aybSPMax)
+
             # 计算并修正航向误差
             psiErr = psiSP - psi
             psiErr = wrapToPi(psiErr)
@@ -166,6 +173,9 @@ class Control():
             rSP = clip(rSP, -self.__rSPMax, self.__rSPMax)
             rErr = rSP - r
             etaSP = self.__rPID.compute(rErr)
+
+            # 侧向加速度要被轴向加速度限幅
+            aybSP = clip(aybSP, -axbSP * tan(deg2rad(15)), axbSP * tan(deg2rad(15)))
             
         # 送入混控
         self.mixer(axbSP, aybSP, etaSP)
