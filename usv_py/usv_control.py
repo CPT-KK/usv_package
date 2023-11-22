@@ -21,11 +21,14 @@ class Control():
     __vSPMax = 0.7          # 矢量控制器中 vSP 的最大值
     __rSPMax = deg2rad(8)   # 控制器中 rSP 的最大值
     
+    # 矢量控制器所处状态
+    vecCtrlState = 0        # 0: 正在修正轴向和航向的误差；1: 正在修正侧向的误差
+
     # USV RPM and pod angle limits
     __rpmMin = 35                   # 最小转速
     __rpmMax = 1000                 # 最大转速
     __rpmRotateMax = 800            # 用于转动的最大转速
-    __angleMax = deg2rad(20)        # 舵角最大值
+    __angleMax = deg2rad(90)        # 舵角最大值
 
     # 无人船参数
     __MASS = 775.0          # 质量
@@ -131,45 +134,39 @@ class Control():
 
         # x y 误差转船体系
         [xErr, yErr] = rotationZ(xErr, yErr, psi)
-        
-        # 计算 vx vy setpoints
-        uSP = self.__xPID.compute(xErr, u)
-        vSP = self.__yPID.compute(yErr, v)
 
-        # u v setpoints 限幅
-        uSP = clip(uSP, -self.__uSPVecMax, self.__uSPVecMax)
-        vSP = clip(vSP, -self.__vSPMax, self.__vSPMax)
-       
-        # 计算 vx vy 误差
-        uErr = uSP - u
-        vErr = vSP - v
+        # 选择矢量控制器状态
+        if ((abs(yErr) > 2.0) | (abs(v) > 1.0)) & (self.vecCtrlState == 0):
+            self.vecCtrlState = 1
+        elif (abs(yErr) <= 1.0) & (abs(ayb) <= 0.5) & (self.vecCtrlState == 1):
+            self.vecCtrlState = 0
 
-        # 计算加速度 setpoints 大小
-        axbSP = self.__vxPID.compute(uErr, axb)
-        aybSP = self.__vyPID.compute(vErr, ayb)
+        axbSP = 0.0
+        aybSP = 0.0
+        etaSP = 0.0
+        if (self.vecCtrlState == 1):
+            # 计算并修正侧向误差
+            vSP = self.__yPID.compute(yErr, v)
+            vSP = clip(vSP, -self.__vSPMax, self.__vSPMax)
+            vErr = vSP - v
+            aybSP = self.__vyPID.compute(vErr, ayb)
+            aybSP = clip(aybSP, -self.__aybSPMax, self.__aybSPMax)
+        else:
+            # 计算并修正轴向误差
+            uSP = self.__xPID.compute(xErr, u)
+            uSP = clip(uSP, -self.__uSPVecMax, self.__uSPVecMax)
+            uErr = uSP - u
+            axbSP = self.__vxPID.compute(uErr, axb)
+            axbSP = clip(axbSP, -self.__axbSPMax, self.__axbSPMax)
 
-        # 加速度 setpoints 限幅
-        axbSP = clip(axbSP, -self.__axbSPMax, self.__axbSPMax)
-        aybSP = clip(aybSP, -self.__aybSPMax, self.__aybSPMax)
-
-        # 计算朝向角误差
-        psiErr = psiSP - psi
-
-        # 朝向角误差限幅
-        psiErr = wrapToPi(psiErr)
-
-        # 计算期望朝向角速度
-        rSP = self.__psiPID.compute(psiErr, r)
-
-        # 期望朝向角速度限幅
-        rSP = clip(rSP, -self.__rSPMax, self.__rSPMax)
-
-        # 计算期望角速度误差
-        rErr = rSP - r
-
-        # 计算所需角加速度大小
-        etaSP = self.__rPID.compute(rErr)
-
+            # 计算并修正航向误差
+            psiErr = psiSP - psi
+            psiErr = wrapToPi(psiErr)
+            rSP = self.__psiPID.compute(psiErr, r)
+            rSP = clip(rSP, -self.__rSPMax, self.__rSPMax)
+            rErr = rSP - r
+            etaSP = self.__rPID.compute(rErr)
+            
         # 送入混控
         self.mixer(axbSP, aybSP, etaSP)
 
