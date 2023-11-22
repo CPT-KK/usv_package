@@ -12,7 +12,7 @@ from usv_path_planner import PathPlanner
 from usv_guidance import Guidance
 from usv_control import Control
 from usv_communication import Communication
-from usv_math import removeOutliers, wrapToPi
+from usv_math import removeOutliers, wrapToPi, linearClip
 from usv_record import genTable, USVData
 from usv_test import test
 
@@ -163,13 +163,7 @@ def main(args=None):
                 if (usvPose.isLidarFindTV):
                     # 如果激光雷达找到目标船，则使用激光雷达的信息
                     latestMsg = "Lidar finds target vessel at %.2f deg in %.2f m!" % (rad2deg(usvPose.tvAngleLidar), usvPose.tvDist)
-                    if (usvPose.tvDist < 75.0):
-                        uSP = 1.7
-                    elif (usvPose.tvDist > 100.0):
-                        uSP = 3.0
-                    else:
-                        uSP = 1.7 + (3.0 - 1.7) * (usvPose.tvDist - 75.0) / (100.0 - 75.0)
-
+                    uSP = linearClip(75.0, 1.7, 100.0, 3.0, usvPose.tvDist)
                     psiSP = usvPose.tvAngleLidar
 
                 elif (usvPose.isPodFindTV):
@@ -272,7 +266,7 @@ def main(args=None):
                     isDockApproachPlan = True
 
                 # 读取激光雷达信息（这个时候应该能保证读到目标船吧？），生成控制指令
-                uSP = 1.5 - 0.5 * (usvGuidance.currentIdx / usvGuidance.endIdx)
+                uSP = linearClip(1.5, 0, 0.8, usvGuidance.endIdx, usvGuidance.currentIdx)
                 [psiSP, xSP, ySP] = usvGuidance.guidance(6.0, usvPose.xLidar, usvPose.yLidar, usvPose.psi, usvPose.betaDVL)
 
                 # 控制无人船
@@ -347,15 +341,14 @@ def main(args=None):
                     # 设置目标点为目标船的中心
                     xSP = 0
                     ySP = 0
-                    psiSP = deg2rad(-142.56)
-                    # psiSP = arctan2(ySP - currPath[-2, 1], xSP - currPath[-2, 0])
+                    psiSP = arctan2(ySP - currPath[-2, 1], xSP - currPath[-2, 0])
                     isDockToPlan = True
 
                     latestMsg = "TIMEOUT waiting the large object information from the robotic arm. USV is moving to the target vessel..."
 
-                # 向目标船中心移动
-
-                usvControl.thrustSet(300, 300, deg2rad(-90), deg2rad(-90))
+                # 向目标船中心移动                   
+                thisThrust = linearClip(5.0, 120.0, 10.0, 300.0, usvPose.tvDist)
+                usvControl.thrustSet(thisThrust, thisThrust, deg2rad(90), deg2rad(90))       
                 usvControl.thrustPub()
                 # [uSP, vSP, rSP, axbSP, aybSP, etaSP] = usvControl.moveUSVVec(xSP, ySP, psiSP, usvPose.xLidar, usvPose.yLidar, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
 
@@ -388,7 +381,7 @@ def main(args=None):
                     # Move USV straight left for X m
                     xSP = usvPose.x + 15.0 * cos(usvPose.psi + pi / 2)
                     ySP = usvPose.y + 15.0 * sin(usvPose.psi + pi / 2)
-                    psiSP0 = wrapToPi(usvPose.psi + deg2rad(0))
+                    psiSP = wrapToPi(usvPose.psi + deg2rad(0))
                     isTestPlan = True
 
                 # [uSP, rSP, axbSP, etaSP] = usvControl.moveUSV(0, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
@@ -396,7 +389,6 @@ def main(args=None):
                 # psiSP = wrapToPi(arctan2(ySP - usvPose.y, xSP - usvPose.x) - pi / 2)
                 # [vSP, rSP, aybSP, etaSP] = usvControl.moveUSVLateral(0.6, psiSP, usvPose.vDVL, usvPose.ayb, usvPose.psi, usvPose.r)
 
-                # psiSP = psiSP0 + 0.1 * (wrapToPi(arctan2(ySP - usvPose.y, xSP - usvPose.x)))
                 [uSP, vSP, rSP, axbSP, aybSP, etaSP] = usvControl.moveUSVVec(xSP, ySP, psiSP, usvPose.x, usvPose.y, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
 
             else:
