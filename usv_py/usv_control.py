@@ -14,11 +14,11 @@ class Control():
      
     # 控制器限幅参数
     __axbSPMax = 3.0        # 控制器中 axbSP 的最大值
-    __aybSPMax = 2.0        # 矢量控制器中 aybSP 的最大值
+    __aybSPMax = 1.0        # 矢量控制器中 aybSP 的最大值
 
     __uSPMax = 4.0          # 差动控制器中 uSP 的最大值
-    __uSPVecMax = 0.7       # 矢量控制器中 uSP 的最大值
-    __vSPMax = 0.7          # 矢量控制器中 vSP 的最大值
+    __uSPVecMax = 1.0       # 矢量控制器中 uSP 的最大值
+    __vSPMax = 1.0          # 矢量控制器中 vSP 的最大值
     __rSPMax = deg2rad(8)   # 控制器中 rSP 的最大值
     
     # 矢量控制器所处状态
@@ -29,6 +29,7 @@ class Control():
     __rpmMax = 1000                 # 最大转速
     __rpmRotateMax = 800            # 用于转动的最大转速
     __angleMax = deg2rad(90)        # 舵角最大值
+    __angleMaxState0 = deg2rad(20)  # Control state 0 下的舵角最大值
 
     # 无人船参数
     __MASS = 775.0          # 质量
@@ -42,10 +43,10 @@ class Control():
     angleRightSP = 0    # 右侧舵角 setpoint
 
     # Actuator 当前状态估计变量
-    rpmLeftEst = 0      # 左侧发动机转速 estimate
-    rpmRightEst = 0     # 右侧发动机转速 estimate
-    angleLeftEst = 0    # 左侧舵角 estimate
-    angleRightEst = 0   # 右侧舵角 estimate
+    rpmLeftEst = float("nan")      # 左侧发动机转速 estimate
+    rpmRightEst = float("nan")     # 右侧发动机转速 estimate
+    angleLeftEst = float("nan")    # 左侧舵角 estimate
+    angleRightEst = float("nan")   # 右侧舵角 estimate
 
     # 电池信息
     battSOC = [float("nan")] * 4            # 电池剩余容量百分比
@@ -70,14 +71,13 @@ class Control():
 
         # PID 初始化
         self.__uPID = PID(0.8, 0.06, -0.012)
-        self.__vPID = PID(5, 0.0, 0.0)
         self.__psiPID = PID(0.23, 0.0002, -0.02)
         self.__rPID = PID(14, 0.5, -0.1)
 
-        self.__xPID = PID(0.5, 0.01, 0.0)
-        self.__yPID = PID(0.1, 0.01, 0.0)
+        self.__xPID = PID(0.5, 0.00, 0.0)
+        self.__yPID = PID(0.4, 0.00, 0.0)
         self.__vxPID = PID(1.2, 0.00, -0.0)
-        self.__vyPID = PID(0.2, 0.00, -0.0)
+        self.__vyPID = PID(0.7, 0.00, -0.0)
 
     def __del__(self):
         pass
@@ -141,6 +141,9 @@ class Control():
         elif (abs(yErr) <= 1.0) & (abs(ayb) <= 0.5) & (self.vecCtrlState == 1):
             self.vecCtrlState = 0
 
+        uSP = 0.0
+        vSP = 0.0
+        rSP = 0.0
         axbSP = 0.0
         aybSP = 0.0
         etaSP = 0.0
@@ -175,7 +178,7 @@ class Control():
             etaSP = self.__rPID.compute(rErr)
 
             # 侧向加速度要被轴向加速度限幅
-            aybSP = clip(aybSP, -axbSP * tan(deg2rad(15)), axbSP * tan(deg2rad(15)))
+            aybSP = clip(aybSP, -axbSP * tan(self.__angleMaxState0), axbSP * tan(self.__angleMaxState0))
             
         # 送入混控
         self.mixer(axbSP, aybSP, etaSP)
@@ -185,46 +188,7 @@ class Control():
 
         return [uSP, vSP, rSP, axbSP, aybSP, etaSP]
 
-    def moveUSVLateral(self, vSP, psiSP, v, ayb, psi, r):
-        # 计算朝向角误差
-        psiErr = psiSP - psi
-
-        # 朝向角误差限幅
-        psiErr = wrapToPi(psiErr)
-
-        # 根据 psiErr 的值，计算可行的 vSP (避免速度太大，转弯转不过来)
-        vSP = vSP * (0.7 + 0.3 * (1 - abs(psiErr) / pi))  
-
-        # 侧向速度限幅
-        # vSP = clip(vSP, -self.vSPMax, self.vSPMax)
-
-        # 计算侧向速度误差
-        vErr = vSP - v
-
-        # 计算推力大小
-        aybSP = self.__vPID.compute(vErr, ayb)
-
-        # 计算期望朝向角速度
-        rSP = self.__psiPID.compute(psiErr, r)
-
-        # 期望朝向角速度限幅
-        rSP = clip(rSP, -self.__rSPMax, self.__rSPMax)
-
-        # 计算期望角速度误差
-        rErr = rSP - r
-
-        # 计算所需角加速度大小
-        etaSP = self.__rPID.compute(rErr)
-
-        # 混控计算
-        self.mixerLateral(aybSP, etaSP)
-
-        # 发布推力
-        self.thrustPub()
-
-        return [vSP, rSP, aybSP, etaSP]
-    
-    def mixer(self, axSP, aySP, etaSP):
+    def mixer(self, axSP, aySP, etaSP):       
         # 计算推力偏角
         self.angleLeftSP = arctan(aySP / axSP)
         self.angleRightSP = arctan(aySP / axSP)
@@ -234,7 +198,10 @@ class Control():
         self.angleRightSP = clip(self.angleRightSP, -self.__angleMax, self.__angleMax)
 
         # 计算一侧发动机平动和转动所需推力大小的参考值
-        rpmTranslate = self.__MASS * sign(axSP) * sqrt(axSP ** 2 + aySP ** 2) / 2.0
+        if (axSP == 0.0):
+            rpmTranslate = self.__MASS * 1.0 * sqrt(axSP ** 2 + aySP ** 2) / 2.0
+        else:
+            rpmTranslate = self.__MASS * sign(axSP) * sqrt(axSP ** 2 + aySP ** 2) / 2.0
         rpmRotate = self.__INERZ * etaSP / self.__TORQLEN / 2.0
         
         # 计算左右两侧平动所需推力
@@ -250,23 +217,6 @@ class Control():
         # 计算左右两侧真实推力设置值的大小
         self.rpmLeftSP = rpmTranslateLeft - rpmRotateLeft
         self.rpmRightSP = rpmTranslateRight + rpmRotateRight
-
-        # 推力大小限幅
-        self.rpmLeftSP = clip(self.rpmLeftSP, -self.__rpmMax, self.__rpmMax)
-        self.rpmRightSP = clip(self.rpmRightSP, -self.__rpmMax, self.__rpmMax)
-
-        return
-
-    def mixerLateral(self, aySP, etaSP):
-        # 计算推力偏角
-        self.angleLeftSP = deg2rad(90)
-        self.angleRightSP = 0
-
-        # 计算推力大小
-        rpmTranslate = self.__MASS * aySP
-        rpmRotate = self.__INERZ * etaSP / self.__TORQLEN / 2.0
-        self.rpmLeftSP = rpmTranslate * cos(self.angleLeftSP - self.angleLeftEst)
-        self.rpmRightSP = rpmRotate
 
         # 推力大小限幅
         self.rpmLeftSP = clip(self.rpmLeftSP, -self.__rpmMax, self.__rpmMax)
