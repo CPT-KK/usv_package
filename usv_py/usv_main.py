@@ -101,7 +101,7 @@ def main(args=None):
     isDockWaitArmPlan = False
     isDockToPlan = False
     isTestPlan = False
-    isTestEnable = False
+    isTestEnable = True
 
     # 无人船状态
     usvState = "STARTUP"

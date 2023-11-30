@@ -17,7 +17,7 @@ class Control():
     __aybSPMax = 1.0        # 矢量控制器中 aybSP 的最大值
 
     __uSPMax = 4.0          # 差动控制器中 uSP 的最大值
-    __uSPVecMax = 1.0       # 矢量控制器中 uSP 的最大值
+    __uSPVecMax = 1.2       # 矢量控制器中 uSP 的最大值
     __vSPMax = 1.0          # 矢量控制器中 vSP 的最大值
     __rSPMax = deg2rad(8)   # 控制器中 rSP 的最大值
     
@@ -74,10 +74,10 @@ class Control():
         self.__psiPID = PID(0.23, 0.0002, -0.02)
         self.__rPID = PID(14, 0.5, -0.1)
 
-        self.__xPID = PID(0.5, 0.00, 0.0)
-        self.__yPID = PID(0.4, 0.00, 0.0)
-        self.__vxPID = PID(1.2, 0.00, -0.0)
-        self.__vyPID = PID(0.7, 0.00, -0.0)
+        self.__xPID = PID(0.4, 0.00, 0.0)
+        self.__yPID = PID(0.3, 0.00, 0.0)
+        self.__vxPID = PID(1.0, 0.00, -0.0)
+        self.__vyPID = PID(0.45, 0.00, -0.0)
 
     def __del__(self):
         pass
