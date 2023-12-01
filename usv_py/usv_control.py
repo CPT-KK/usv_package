@@ -17,8 +17,8 @@ class Control():
     __aybSPMax = 1.0        # 矢量控制器中 aybSP 的最大值
 
     __uSPMax = 4.0          # 差动控制器中 uSP 的最大值
-    __uSPVecMax = 1.2       # 矢量控制器中 uSP 的最大值
-    __vSPMax = 1.0          # 矢量控制器中 vSP 的最大值
+    __uSPVecMax = 1.0       # 矢量控制器中 uSP 的最大值
+    __vSPMax = 0.5          # 矢量控制器中 vSP 的最大值
     __rSPMax = deg2rad(8)   # 控制器中 rSP 的最大值
     
     # 矢量控制器所处状态
