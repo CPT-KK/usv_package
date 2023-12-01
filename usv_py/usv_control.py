@@ -74,10 +74,10 @@ class Control():
         self.__psiPID = PID(0.23, 0.0002, -0.02)
         self.__rPID = PID(14, 0.5, -0.1)
 
-        self.__xPID = PID(0.4, 0.00, 0.0)
-        self.__yPID = PID(0.3, 0.00, 0.0)
+        self.__xPID = PID(0.35, 0.00, 0.0)
+        self.__yPID = PID(0.2, 0.00, 0.0)
         self.__vxPID = PID(1.0, 0.00, -0.0)
-        self.__vyPID = PID(0.45, 0.00, -0.0)
+        self.__vyPID = PID(3.2, 0.00, -0.0)
 
     def __del__(self):
         pass
@@ -136,7 +136,7 @@ class Control():
         [xErr, yErr] = rotationZ(xErr, yErr, psi)
 
         # 选择矢量控制器状态
-        if ((abs(yErr) > 2.0) | (abs(v) > 1.0)) & (self.vecCtrlState == 0):
+        if ((abs(yErr) > 2.0) | (sign(v * yErr) > 0 and abs(v) > 0.25)) & (self.vecCtrlState == 0):
             self.vecCtrlState = 1
         elif (abs(yErr) <= 1.0) & (abs(ayb) <= 0.5) & (self.vecCtrlState == 1):
             self.vecCtrlState = 0
