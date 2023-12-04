@@ -32,7 +32,7 @@ class Communication():
         self.tvEstPosSub = rospy.Subscriber('/target_nav_position', Pose2D, self.tvOdomCallback)
 
         # 订阅大物体定位的话题
-        self.bigObjPosSub = rospy.Subscriber('/usv/big_obj/pose', PoseStamped, self.bigObjCallback)
+        self.bigObjPosSub = rospy.Subscriber('/usv/largebox_pos', PoseStamped, self.bigObjCallback)
 
         # 创建发送 tUAV1 起飞标志位的话题
         self.uavTakeOffFlagPub = rospy.Publisher('/tuav1_takeoff_flag', Int8, queue_size=2)
@@ -63,7 +63,9 @@ class Communication():
         self.isSearchFindTV = True
 
     def bigObjCallback(self, msg):
-        self.bigObjAngle = arctan(msg.pose.position.y, msg.pose.position.x)
+        x = -msg.pose.position.y
+        y = msg.pose.position.x + 1.55
+        self.bigObjAngle = arctan(y, x)
         self.isArmFindBigObj = True
 
     def datalinkPub(self):
