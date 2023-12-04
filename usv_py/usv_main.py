@@ -141,7 +141,7 @@ def main(args=None):
                     
                 if (usvPose.isImuValid) & (usvPose.isDvlValid) & (usvPose.isLidarValid):
                     latestMsg = "Waiting sUAV to send heading..."
-                    usvState = "DOCK_TOTARGET"
+                    usvState = "STANDBY"
 
             elif usvState == "STANDBY":
                 if (isTestEnable):
