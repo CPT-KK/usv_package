@@ -5,7 +5,7 @@ import threading
 import atexit
 import signal
 from rich.console import Console
-from numpy import zeros, rad2deg, deg2rad, pi, abs, mean, sin, cos, tan, arctan, arctan2, std, sqrt
+from numpy import zeros, rad2deg, deg2rad, pi, abs, mean, sin, cos, tan, arctan, arctan2, std, sqrt, isnan
 
 from usv_pose import Pose
 from usv_path_planner import PathPlanner
@@ -139,7 +139,7 @@ def main(args=None):
                 pubTopicList = sum(rospy.get_published_topics(), [])
                 usvPose.isLidarValid = ('/filter/target' in pubTopicList)
                     
-                if (usvPose.isImuValid) & (usvPose.isDvlValid) & (usvPose.isLidarValid):
+                if (usvPose.isImuValid) & (usvPose.isDvlValid) & (usvPose.isLidarValid) & (not isnan(usvControl.angleLeftEst)) & (not isnan(usvControl.angleRightEst)) & (not isnan(usvControl.rpmLeftEst) & (not isnan(usvControl.rpmRightEst))):
                     latestMsg = "Waiting sUAV to send heading..."
                     usvState = "STANDBY"
 
@@ -379,9 +379,9 @@ def main(args=None):
             elif usvState == "TEST":              
                 if (isTestPlan == False):
                     # Move USV straight left for X m
-                    xSP = usvPose.x + 15.0 * cos(usvPose.psi + pi / 2)
-                    ySP = usvPose.y + 15.0 * sin(usvPose.psi + pi / 2)
-                    psiSP = wrapToPi(usvPose.psi + deg2rad(0))
+                    xSP = usvPose.x - 0.0 * cos(usvPose.psi - 0)
+                    ySP = usvPose.y - 0.0 * sin(usvPose.psi - 0)
+                    psiSP = wrapToPi(usvPose.psi + deg2rad(-46))
                     isTestPlan = True
 
                 # [uSP, rSP, axbSP, etaSP] = usvControl.moveUSV(0, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)

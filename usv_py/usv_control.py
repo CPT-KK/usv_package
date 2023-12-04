@@ -77,7 +77,7 @@ class Control():
         self.__xPID = PID(0.35, 0.00, 0.0)
         self.__yPID = PID(0.2, 0.00, 0.0)
         self.__vxPID = PID(1.0, 0.00, -0.0)
-        self.__vyPID = PID(3.2, 0.00, -0.0)
+        self.__vyPID = PID(4.0, 0.00, -0.0)
 
     def __del__(self):
         pass
@@ -136,9 +136,9 @@ class Control():
         [xErr, yErr] = rotationZ(xErr, yErr, psi)
 
         # 选择矢量控制器状态
-        if ((abs(yErr) > 2.0) | (sign(v * yErr) > 0 and abs(v) > 0.25)) & (self.vecCtrlState == 0):
+        if ((abs(yErr) > 1.25) | (sign(v * yErr) > 0 and abs(v) > 0.2)) & (self.vecCtrlState == 0):
             self.vecCtrlState = 1
-        elif (abs(yErr) <= 1.0) & (abs(ayb) <= 0.5) & (self.vecCtrlState == 1):
+        elif (abs(yErr) <= 0.6) & (abs(ayb) <= 0.15) & (self.vecCtrlState == 1):
             self.vecCtrlState = 0
 
         uSP = 0.0
@@ -199,7 +199,7 @@ class Control():
 
         # 计算一侧发动机平动和转动所需推力大小的参考值
         if (axSP == 0.0):
-            rpmTranslate = self.__MASS * 1.0 * sqrt(axSP ** 2 + aySP ** 2) / 2.0
+            rpmTranslate = self.__MASS * sqrt(aySP ** 2) / 2.0
         else:
             rpmTranslate = self.__MASS * sign(axSP) * sqrt(axSP ** 2 + aySP ** 2) / 2.0
         rpmRotate = self.__INERZ * etaSP / self.__TORQLEN / 2.0
