@@ -381,13 +381,8 @@ def main(args=None):
                     # Move USV straight left for X m
                     xSP = usvPose.x - 0.0 * cos(usvPose.psi - 0)
                     ySP = usvPose.y - 0.0 * sin(usvPose.psi - 0)
-                    psiSP = wrapToPi(usvPose.psi + deg2rad(-46))
+                    psiSP = wrapToPi(usvPose.psi + deg2rad(0))
                     isTestPlan = True
-
-                # [uSP, rSP, axbSP, etaSP] = usvControl.moveUSV(0, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
-
-                # psiSP = wrapToPi(arctan2(ySP - usvPose.y, xSP - usvPose.x) - pi / 2)
-                # [vSP, rSP, aybSP, etaSP] = usvControl.moveUSVLateral(0.6, psiSP, usvPose.vDVL, usvPose.ayb, usvPose.psi, usvPose.r)
 
                 [uSP, vSP, rSP, axbSP, aybSP, etaSP] = usvControl.moveUSVVec(xSP, ySP, psiSP, usvPose.x, usvPose.y, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
 
