@@ -331,8 +331,31 @@ def main(args=None):
                     pass
 
             elif usvState == "DOCK_TOLARGEOBJ":
-                latestMsg = "Receive the large object information from the robotic arm. USV is moving to the large object..."
+                if (isDockToPlan == False):
+                    # 将当前时间写入 t1 计时器
+                    timer1 = rospy.Time.now().to_sec()
 
+                    # 设置目标点为大物体
+                    xSP = 0
+                    ySP = 0
+                    psiSP = 0
+                    isDockToPlan = True
+
+                    latestMsg = "Receive the large object information from the robotic arm. USV is moving to the large object..."
+                
+                # 向大物体方向移动
+                thisThrust = linearClip(5.0, 120.0, 10.0, 300.0, usvPose.tvDist)
+                usvControl.thrustSet(thisThrust, thisThrust, usvComm.bigObjAngle + usvPose.psi, usvComm.bigObjAngle + usvPose.psi) 
+                
+                # 如果与目标船的距离小于给定距离并且持续 X 秒，则认为已经固连
+                if (rospy.Time.now().to_sec() - timer1 > 5.0): 
+                    usvState = "DOCK_ATTACH"
+                elif (sqrt((usvPose.xLidar - xSP) ** 2 + (usvPose.yLidar - ySP) ** 2) < 4.5):
+                    pass
+                else:
+                    # 如果不满足静止条件，需要重置 t1 计时器
+                    timer1 = rospy.Time.now().to_sec()
+                    
             elif usvState == "DOCK_TOTARGET": 
                 if (isDockToPlan == False):
                     # 将当前时间写入 t1 计时器
@@ -354,8 +377,7 @@ def main(args=None):
 
                 # 如果与目标船的距离小于给定距离并且持续 X 秒，则认为已经固连
                 if (rospy.Time.now().to_sec() - timer1 > 5.0): 
-                    pass  
-                    # usvState = "DOCK_ATTACH"
+                    usvState = "DOCK_ATTACH"
                 elif (sqrt((usvPose.xLidar - xSP) ** 2 + (usvPose.yLidar - ySP) ** 2) < 4.5):
                     pass
                 else:
