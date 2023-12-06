@@ -25,7 +25,9 @@ class Communication():
     tvAngleEst = deg2rad(110)
 
     isArmFindBigObj = False
-    bigObjAngle = 0
+    largeObjX = 0
+    largeObjY = 0
+    largeObjAngle = 0
 
     def __init__(self):
         # 订阅搜索无人机提供目标船的话题
@@ -63,9 +65,9 @@ class Communication():
         self.isSearchFindTV = True
 
     def bigObjCallback(self, msg):
-        x = -msg.pose.position.y
-        y = msg.pose.position.x + 1.55
-        self.bigObjAngle = arctan(y, x)
+        self.largeObjX = -msg.pose.position.y
+        self.largeObjY = msg.pose.position.x + 1.55
+        self.largeObjAngle = arctan(self.largeObjY, self.largeObjX)
         self.isArmFindBigObj = True
 
     def datalinkPub(self):

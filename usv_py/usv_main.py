@@ -12,7 +12,7 @@ from usv_path_planner import PathPlanner
 from usv_guidance import Guidance
 from usv_control import Control
 from usv_communication import Communication
-from usv_math import removeOutliers, wrapToPi, linearClip
+from usv_math import removeOutliers, wrapToPi, linearClip, rotationZ
 from usv_record import genTable, USVData
 from usv_test import test
 
@@ -317,7 +317,7 @@ def main(args=None):
 
                     latestMsg = "USV has been stablized. Waiting the arm to search the larget object for %.2f/%.2fs..." % (rospy.Time.now().to_sec() - timer1, maxSearchTime)
 
-                # 保持静止，
+                # 保持静止
                 [uSP, vSP, rSP, axbSP, aybSP, etaSP] = usvControl.moveUSVVec(xSP, ySP, psiSP, usvPose.xLidar, usvPose.yLidar, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
 
                 # 等待机械臂搜索大物体
@@ -335,21 +335,25 @@ def main(args=None):
                     # 将当前时间写入 t1 计时器
                     timer1 = rospy.Time.now().to_sec()
 
-                    # 设置目标点为大物体
-                    xSP = 0
-                    ySP = 0
-                    psiSP = 0
+                    # 设置目标点为无人船对齐大物体那个点
+                    [xSP, ySP] = rotationZ(usvComm.largeObjX, usvComm.largeObjY, -usvPose.psi)
+                    xSP = xSP + 2 * usvPose.xLidar
+                    ySP = ySP + 2 * usvPose.yLidar
+                    psiSP = arctan2(ySP - currPath[-2, 1], xSP - currPath[-2, 0])
                     isDockToPlan = True
 
-                    latestMsg = "Receive the large object information from the robotic arm. USV is moving to the large object..."
+                    latestMsg = "Receive the large object information from the robotic arm. USV is aligning with the large object @ [%.2f, %.2f]..." % (xSP, ySP)
                 
-                # 向大物体方向移动
+                # 将大物体在无人船的
+
+                # 向大物体对齐
+                [uSP, vSP, rSP, axbSP, aybSP, etaSP] = usvControl.moveUSVVec(xSP, ySP, psiSP, usvPose.xLidar, usvPose.yLidar, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
                 thisThrust = linearClip(5.0, 120.0, 10.0, 300.0, usvPose.tvDist)
-                usvControl.thrustSet(thisThrust, thisThrust, usvComm.bigObjAngle + usvPose.psi, usvComm.bigObjAngle + usvPose.psi) 
+                usvControl.thrustSet(thisThrust, thisThrust, usvComm.largeObjAngle + usvPose.psi, usvComm.largeObjAngle + usvPose.psi) 
                 
-                # 如果与目标船的距离小于给定距离并且持续 X 秒，则认为已经固连
+                # 如果与大物体的轴向误差（？）小于给定距离并且持续 X 秒，则认为已经对齐
                 if (rospy.Time.now().to_sec() - timer1 > 5.0): 
-                    usvState = "DOCK_ATTACH"
+                    usvState = "DOCK_TOTARGET"
                 elif (sqrt((usvPose.xLidar - xSP) ** 2 + (usvPose.yLidar - ySP) ** 2) < 4.5):
                     pass
                 else:
