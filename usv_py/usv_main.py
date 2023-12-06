@@ -400,7 +400,7 @@ def main(args=None):
             
             elif usvState == "TEST":              
                 if (isTestPlan == False):
-                    # Move USV straight left for X m
+                    # Move USV straight      left for X m
                     xSP = usvPose.x - 0.0 * cos(usvPose.psi - 0)
                     ySP = usvPose.y - 0.0 * sin(usvPose.psi - 0)
                     psiSP = wrapToPi(usvPose.psi + deg2rad(0))
