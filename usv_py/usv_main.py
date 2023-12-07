@@ -149,7 +149,7 @@ def main(args=None):
                     continue
                     
                 if (usvComm.isSearchFindTV):
-                    latestMsg = "Receive heading %d deg from sUAV." % rad2deg(usvComm.tvAngleEst)
+                    latestMsg = "Receive heading %.2f deg from sUAV." % rad2deg(usvComm.tvAngleEst)
                     usvState = "PURSUE"
 
             elif usvState == "PURSUE":   
