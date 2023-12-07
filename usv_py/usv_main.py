@@ -38,6 +38,41 @@ TEST_MODE = "TEST_LINE"
 # ROS 定频
 ROS_RATE = 10
 
+# 常量
+USP_SUAV_PURSUE = 3.25                  # 搜索无人机引导时 USV 的轴向速度
+USP_POD_PURSUE = 3.0                    # 吊舱引导时 USV 的轴向速度
+
+USP_LIDAR_PURSUE_UB = 3.0               # 激光雷达引导时 USV 的轴向速度上界
+USP_LIDAR_PURSUE_LB = 1.7               # 激光雷达引导时 USV 的轴向速度下界
+DIST_LIDAR_PURSUE_UB = 100.0            # 激光雷达引导时取到 USP_LIDAR_PURSUE_UB 的 USV-TV 距离
+DIST_LIDAR_PURSUE_LB = 75.0             # 激光雷达引导时取到 USP_LIDAR_PURSUE_LB 的 USV-TV 距离
+DIST_PURSUE_TO_APPROACH = 70.0          # 由 PURSUE 切换到 DOCK_NEARBY 的 USV-TV 距离
+
+USP_OBS_PURSUE = 3.25                   # 避障时 USV 的轴向速度
+ANGLE_AVOID_OBS = deg2rad(35.0)         # 避障时 USV 的航向附加量
+
+USP_DOCK_NEARBY = 1.6                   # DOCK_NEARBY 时 USV 的轴向速度
+DIST_TONEXT_DOCK_NEARBY = 12.0          # DOCK_NEARBY 时切换追踪点为轨迹下一点的距离
+
+USP_DOCK_MEASURE = 1.5                  # DOCK_MEASURE 时 USV 的轴向速度
+DIST_TONEXT_DOCK_MEASURE = 8.0          # DOCK_MEASURE 时切换追踪点为轨迹下一点的距离
+ANGLE_DOCK_MEASURE_JUMP = deg2rad(20.0) # DOCK_MEASURE 时认为激光雷达估计目标船朝向可能跳变的角度判据
+
+USP_DOCK_APPROACH_UB = 1.5              # DOCK_APPROACH 时 USV 的轴向速度上界
+USP_DOCK_APPROACH_LB = 0.8              # DOCK_APPROACH 时 USV 的轴向速度下界
+DIST_TONEXT_DOCK_APPROACH = 6.0         # DOCK_APPROACH 时切换追踪点为轨迹下一点的距离
+
+SECS_WAIT_DOCK_ADJUST_STEADY = 5.0      # DOCK_ADJUST 时认为 USV 已经稳定前所需的秒数
+ANGLE_DOCK_STEADY_TOL = deg2rad(2)      # DOCK_ADJUST 时认为 USV 已经稳定的角度判据
+DIST_DOCK_STEADY_TOL = 1.0              # DOCK_ADJUST 时认为 USV 已经稳定的位置判据
+VEL_DOCK_STEADY_TOL = 0.25              # DOCK_ADJUST 时认为 USV 已经稳定的速度判据
+
+SECS_WAIT_ARM_SEARCH = 10.0             # WAIT_ARM 时等待机械臂搜索大物体的秒数
+
+DIST_TOLARGEOBJ_SIDE = 4.0              # TOLARGEOBJ 时 USV 前往的大物体侧面点与大物体的距离
+SECS_WAIT_TOLARGEOBJ_STEADY = 5.0       # TOLARGEOBJ 时认为 USV 已经稳定前所需的秒数
+DIST_TOLARGEOBJ_TOL = 1.5               # TOLARGEOBJ 时认为 USV 已经前往到大物体侧面点的位置判据
+
 @atexit.register 
 def clean():
     print(">>>>>>> USV program has exited.")
@@ -114,7 +149,6 @@ def main(args=None):
 
     # 设置计时器
     timer1 = rospy.Time.now().to_sec()
-    maxSearchTime = 10.0
 
     # 保存目标船朝向角的数组
     tvHeadings = zeros((1, 5000))
@@ -154,7 +188,7 @@ def main(args=None):
 
             elif usvState == "PURSUE":   
                 # 如果距离小于给定值，则进入 Approach 段
-                if (usvPose.isLidarFindTV) & (usvPose.tvDist < 70.0):
+                if (usvPose.isLidarFindTV) & (usvPose.tvDist < DIST_PURSUE_TO_APPROACH):
                     usvState = "DOCK_NEARBY"
                     latestMsg = "Approaching to the measure circle..."
                     continue        
@@ -162,13 +196,13 @@ def main(args=None):
                 if (usvPose.isLidarFindTV):
                     # 如果激光雷达找到目标船，则使用激光雷达的信息
                     latestMsg = "Lidar finds target vessel at %.2f deg in %.2f m!" % (rad2deg(usvPose.tvAngleLidar), usvPose.tvDist)
-                    uSP = linearClip(75.0, 1.7, 100.0, 3.0, usvPose.tvDist)
+                    uSP = linearClip(DIST_LIDAR_PURSUE_LB, USP_LIDAR_PURSUE_LB, DIST_LIDAR_PURSUE_UB, USP_LIDAR_PURSUE_UB, usvPose.tvDist)
                     psiSP = usvPose.tvAngleLidar
 
                 elif (usvPose.isPodFindTV):
                     # 如果激光雷达没有找到目标船，则使用吊舱的信息
                     latestMsg = "Pod finds target vessel at %.2f deg!" % rad2deg(usvPose.tvAnglePod)
-                    uSP = 2.5
+                    uSP = USP_POD_PURSUE
                     psiSP = usvPose.tvAnglePod
 
                 elif (usvPose.isLidarFindObs) & (isObsAvoidEnable):
@@ -179,7 +213,7 @@ def main(args=None):
                 else:
                     # 如果没有找到目标船，则继续跟随追踪路径
                     latestMsg = "Receive heading %d deg from sUAV." % rad2deg(usvComm.tvAngleEst)
-                    uSP = 2.5
+                    uSP = USP_SUAV_PURSUE
                     psiSP = usvComm.tvAngleEst          
                 
                 # 控制无人船
@@ -189,12 +223,8 @@ def main(args=None):
                 # 判断是否还需要避障
                 if (usvPose.isLidarFindObs):       
                     # 计算避障所需航向角
-                    if (usvPose.obsAngleLidar >= 0):
-                        psiSP = usvPose.obsAngleLidar - deg2rad(35.0)
-                    else:
-                        psiSP = usvPose.obsAngleLidar - deg2rad(35.0)
-                    
-                    uSP = 3.25
+                    psiSP = usvPose.obsAngleLidar - ANGLE_AVOID_OBS   
+                    uSP = USP_OBS_PURSUE
                     [uSP, rSP, axbSP, etaSP] = usvControl.moveUSV(uSP, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
 
                     latestMsg = "Obstacle detected at %.2f deg!" % usvPose.obsAngleLidar
@@ -210,8 +240,8 @@ def main(args=None):
                     isDockNearbyPlan = True       
                 
                 # 读取激光雷达信息（这个时候应该能保证读到目标船吧？），生成控制指令
-                uSP = 1.6
-                [psiSP, xSP, ySP] = usvGuidance.guidance(12.0, usvPose.xLidar, usvPose.yLidar, usvPose.psi, usvPose.betaDVL)
+                uSP = USP_DOCK_NEARBY
+                [psiSP, xSP, ySP] = usvGuidance.guidance(DIST_TONEXT_DOCK_NEARBY, usvPose.xLidar, usvPose.yLidar, usvPose.psi, usvPose.betaDVL)
 
                 # 控制无人船
                 [uSP, rSP, axbSP, etaSP] = usvControl.moveUSV(uSP, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
@@ -227,8 +257,8 @@ def main(args=None):
                     isDockMeasurePlan = True
 
                 # 读取激光雷达信息（这个时候应该能保证读到目标船吧？），生成控制指令
-                uSP = 1.5
-                [psiSP, xSP, ySP] = usvGuidance.guidance(8.0, usvPose.xLidar, usvPose.yLidar, usvPose.psi, usvPose.betaDVL)
+                uSP = USP_DOCK_MEASURE
+                [psiSP, xSP, ySP] = usvGuidance.guidance(DIST_TONEXT_DOCK_MEASURE, usvPose.xLidar, usvPose.yLidar, usvPose.psi, usvPose.betaDVL)
 
                 # 控制无人船
                 [uSP, rSP, axbSP, etaSP] = usvControl.moveUSV(uSP, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
@@ -245,7 +275,7 @@ def main(args=None):
                     tvHeadings = tvHeadings[0, 0:tvHeadingIdx-1]
 
                     # 如果标准差大于 20°(0.34906585 rad)，认为大概率是-90°与90°跳变的情况，因此对 tvHeadings 中负角度加一个 pi
-                    if (std(tvHeadings) > 0.34906585):
+                    if (std(tvHeadings) > ANGLE_DOCK_MEASURE_JUMP):
                         tvHeadings[tvHeadings < 0] = tvHeadings[tvHeadings < 0] + pi
 
                     # 去除离群点
@@ -265,8 +295,8 @@ def main(args=None):
                     isDockApproachPlan = True
 
                 # 读取激光雷达信息（这个时候应该能保证读到目标船吧？），生成控制指令
-                uSP = linearClip(0, 1.5, usvGuidance.endIdx, 0.8, usvGuidance.currentIdx)
-                [psiSP, xSP, ySP] = usvGuidance.guidance(6.0, usvPose.xLidar, usvPose.yLidar, usvPose.psi, usvPose.betaDVL)
+                uSP = linearClip(0, USP_DOCK_APPROACH_UB, usvGuidance.endIdx, USP_DOCK_APPROACH_LB, usvGuidance.currentIdx)
+                [psiSP, xSP, ySP] = usvGuidance.guidance(DIST_TONEXT_DOCK_APPROACH, usvPose.xLidar, usvPose.yLidar, usvPose.psi, usvPose.betaDVL)
 
                 # 控制无人船
                 [uSP, rSP, axbSP, etaSP] = usvControl.moveUSV(uSP, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
@@ -295,9 +325,9 @@ def main(args=None):
                 [uSP, vSP, rSP, axbSP, aybSP, etaSP] = usvControl.moveUSVVec(xSP, ySP, psiSP, usvPose.xLidar, usvPose.yLidar, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
 
                 # 等待船接近静止并保持 5.0s，进入 DOCK_WAITARM
-                if (rospy.Time.now().to_sec() - timer1 > 5.0):   
+                if (rospy.Time.now().to_sec() - timer1 > SECS_WAIT_DOCK_ADJUST_STEADY):   
                     usvState = "DOCK_WAITARM"
-                elif (abs(usvPose.psi - psiSP) < deg2rad(2.0)) & (abs(usvPose.xLidar - xSP) < 1.0) & (abs(usvPose.yLidar - ySP) < 1.0) & (abs(usvPose.uDVL) < 0.25) & (abs(usvPose.vDVL) < 0.25):
+                elif (abs(usvPose.psi - psiSP) < ANGLE_DOCK_STEADY_TOL) & (abs(usvPose.xLidar - xSP) < DIST_DOCK_STEADY_TOL) & (abs(usvPose.yLidar - ySP) < DIST_DOCK_STEADY_TOL) & (abs(usvPose.uDVL) < VEL_DOCK_STEADY_TOL) & (abs(usvPose.vDVL) < VEL_DOCK_STEADY_TOL):
                     pass
                 else:
                     # 如果不满足静止条件，需要重置 t1 计时器
@@ -314,7 +344,7 @@ def main(args=None):
 
                     isDockWaitArmPlan = True
 
-                    latestMsg = "USV has been stablized. Waiting the arm to search the larget object for %.2f/%.2fs..." % (rospy.Time.now().to_sec() - timer1, maxSearchTime)
+                    latestMsg = "USV has been stablized. Waiting the arm to search the larget object for %.2f/%.2fs..." % (rospy.Time.now().to_sec() - timer1, SECS_WAIT_ARM_SEARCH)
 
                 # 保持静止
                 [uSP, vSP, rSP, axbSP, aybSP, etaSP] = usvControl.moveUSVVec(xSP, ySP, psiSP, usvPose.xLidar, usvPose.yLidar, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
@@ -323,9 +353,9 @@ def main(args=None):
                 if (usvComm.isArmFindBigObj):   
                     # 找到大物体，向大物体泊近
                     usvState = "DOCK_TOLARGEOBJ"
-                elif (rospy.Time.now().to_sec() - timer1 > maxSearchTime): 
+                elif (rospy.Time.now().to_sec() - timer1 > SECS_WAIT_ARM_SEARCH): 
                     # 等待机械臂超时，向目标船泊近
-                    usvState = "DOCK_TOTARGET"
+                    usvState = "DOCK_TOVESSEL"
                 else:
                     pass
 
@@ -336,8 +366,8 @@ def main(args=None):
 
                     # 设置目标点为无人船对齐大物体那个点
                     [xSP, ySP] = rotationZ(usvComm.largeObjX, usvComm.largeObjY, -usvPose.psi)
-                    xSP = xSP + 1 * usvPose.x + 1.5 * cos(usvPose.psi - pi / 2)
-                    ySP = ySP + 1 * usvPose.y + 1.5 * sin(usvPose.psi - pi / 2)
+                    xSP = xSP + usvPose.x + DIST_TOLARGEOBJ_SIDE * cos(usvPose.psi - pi / 2)
+                    ySP = ySP + usvPose.y + DIST_TOLARGEOBJ_SIDE * sin(usvPose.psi - pi / 2)
                     psiSP = usvPose.psi
                     isDockToPlan = True
 
@@ -347,15 +377,15 @@ def main(args=None):
                 [uSP, vSP, rSP, axbSP, aybSP, etaSP] = usvControl.moveUSVVec(xSP, ySP, psiSP, usvPose.x, usvPose.y, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
                 
                 # 如果与大物体的轴向误差（？）小于给定距离并且持续 X 秒，则认为已经对齐
-                if (rospy.Time.now().to_sec() - timer1 > 5.0): 
-                    usvState = "DOCK_TOTARGET"
-                elif (sqrt((usvPose.x - xSP) ** 2 + (usvPose.y - ySP) ** 2) < 1.5):
+                if (rospy.Time.now().to_sec() - timer1 > SECS_WAIT_TOLARGEOBJ_STEADY): 
+                    usvState = "DOCK_TOVESSEL"
+                elif (sqrt((usvPose.x - xSP) ** 2 + (usvPose.y - ySP) ** 2) < DIST_TOLARGEOBJ_TOL):
                     pass
                 else:
                     # 如果不满足静止条件，需要重置 t1 计时器
                     timer1 = rospy.Time.now().to_sec()
                     
-            elif usvState == "DOCK_TOTARGET": 
+            elif usvState == "DOCK_TOVESSEL": 
                 if (isDockToPlan == False):
                     # 将当前时间写入 t1 计时器
                     timer1 = rospy.Time.now().to_sec()
@@ -399,7 +429,7 @@ def main(args=None):
             
             elif usvState == "TEST":              
                 if (isTestPlan == False):
-                    # Move USV straight      left for X m
+                    # Move USV straight left for X m
                     xSP = usvPose.x - 0.0 * cos(usvPose.psi - 0)
                     ySP = usvPose.y - 0.0 * sin(usvPose.psi - 0)
                     psiSP = wrapToPi(usvPose.psi + deg2rad(0))
