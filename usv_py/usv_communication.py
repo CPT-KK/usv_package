@@ -19,10 +19,10 @@ class Communication():
     vDVL = 0
     r = 0
 
-    isSearchFindTV = True
+    isSearchFindTV = False
     tvEstPosX = 0
     tvEstPosY = 0
-    tvAngleEst = deg2rad(110)
+    tvAngleEst = deg2rad(0)
 
     isArmFindBigObj = False
     largeObjX = 0
@@ -67,7 +67,7 @@ class Communication():
     def bigObjCallback(self, msg):
         self.largeObjX = -msg.pose.position.y
         self.largeObjY = msg.pose.position.x + 1.55
-        self.largeObjAngle = arctan(self.largeObjY, self.largeObjX)
+        self.largeObjAngle = arctan(self.largeObjY / self.largeObjX)
         self.isArmFindBigObj = True
 
     def datalinkPub(self):

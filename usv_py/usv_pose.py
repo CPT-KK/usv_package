@@ -70,7 +70,7 @@ class Pose():
     obsAngleTol = deg2rad(15.0)
 
     # Pod 变量  
-    isPodFindTV = True
+    isPodFindTV = False
     tvAnglePod = deg2rad(-53)  # ENU 系下的吊舱角
     podTimer = 0
     podTolSec = 0.01

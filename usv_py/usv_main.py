@@ -101,7 +101,7 @@ def main(args=None):
     isDockWaitArmPlan = False
     isDockToPlan = False
     isTestPlan = False
-    isTestEnable = True
+    isTestEnable = False
 
     # 无人船状态
     usvState = "STARTUP"
@@ -145,12 +145,11 @@ def main(args=None):
 
             elif usvState == "STANDBY":
                 if (isTestEnable):
-                    usvState = "TEST"
+                    usvState = "DOCK_TOLARGEOBJ"
                     continue
                     
                 if (usvComm.isSearchFindTV):
                     latestMsg = "Receive heading %d deg from sUAV." % rad2deg(usvComm.tvAngleEst)
-                    # mavrosArmClient.call(armCmd)
                     usvState = "PURSUE"
 
             elif usvState == "PURSUE":   
@@ -169,7 +168,7 @@ def main(args=None):
                 elif (usvPose.isPodFindTV):
                     # 如果激光雷达没有找到目标船，则使用吊舱的信息
                     latestMsg = "Pod finds target vessel at %.2f deg!" % rad2deg(usvPose.tvAnglePod)
-                    uSP = 3.25
+                    uSP = 2.5
                     psiSP = usvPose.tvAnglePod
 
                 elif (usvPose.isLidarFindObs) & (isObsAvoidEnable):
@@ -180,7 +179,7 @@ def main(args=None):
                 else:
                     # 如果没有找到目标船，则继续跟随追踪路径
                     latestMsg = "Receive heading %d deg from sUAV." % rad2deg(usvComm.tvAngleEst)
-                    uSP = 3.25
+                    uSP = 2.5
                     psiSP = usvComm.tvAngleEst          
                 
                 # 控制无人船
@@ -337,24 +336,20 @@ def main(args=None):
 
                     # 设置目标点为无人船对齐大物体那个点
                     [xSP, ySP] = rotationZ(usvComm.largeObjX, usvComm.largeObjY, -usvPose.psi)
-                    xSP = xSP + 2 * usvPose.xLidar
-                    ySP = ySP + 2 * usvPose.yLidar
-                    psiSP = arctan2(ySP - currPath[-2, 1], xSP - currPath[-2, 0])
+                    xSP = xSP + 1 * usvPose.x + 1.5 * cos(usvPose.psi - pi / 2)
+                    ySP = ySP + 1 * usvPose.y + 1.5 * sin(usvPose.psi - pi / 2)
+                    psiSP = usvPose.psi
                     isDockToPlan = True
 
                     latestMsg = "Receive the large object information from the robotic arm. USV is aligning with the large object @ [%.2f, %.2f]..." % (xSP, ySP)
                 
-                # 将大物体在无人船的
-
                 # 向大物体对齐
-                [uSP, vSP, rSP, axbSP, aybSP, etaSP] = usvControl.moveUSVVec(xSP, ySP, psiSP, usvPose.xLidar, usvPose.yLidar, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
-                thisThrust = linearClip(5.0, 120.0, 10.0, 300.0, usvPose.tvDist)
-                usvControl.thrustSet(thisThrust, thisThrust, usvComm.largeObjAngle + usvPose.psi, usvComm.largeObjAngle + usvPose.psi) 
+                [uSP, vSP, rSP, axbSP, aybSP, etaSP] = usvControl.moveUSVVec(xSP, ySP, psiSP, usvPose.x, usvPose.y, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
                 
                 # 如果与大物体的轴向误差（？）小于给定距离并且持续 X 秒，则认为已经对齐
                 if (rospy.Time.now().to_sec() - timer1 > 5.0): 
                     usvState = "DOCK_TOTARGET"
-                elif (sqrt((usvPose.xLidar - xSP) ** 2 + (usvPose.yLidar - ySP) ** 2) < 4.5):
+                elif (sqrt((usvPose.x - xSP) ** 2 + (usvPose.y - ySP) ** 2) < 1.5):
                     pass
                 else:
                     # 如果不满足静止条件，需要重置 t1 计时器
@@ -374,7 +369,7 @@ def main(args=None):
                     latestMsg = "TIMEOUT waiting the large object information from the robotic arm. USV is moving to the target vessel..."
 
                 # 向目标船中心移动                   
-                thisThrust = linearClip(5.0, 120.0, 10.0, 300.0, usvPose.tvDist)
+                thisThrust = linearClip(5.0, 120.0, 10.0, 400.0, usvPose.tvDist)
                 usvControl.thrustSet(thisThrust, thisThrust, deg2rad(90), deg2rad(90))       
                 usvControl.thrustPub()
                 # [uSP, vSP, rSP, axbSP, aybSP, etaSP] = usvControl.moveUSVVec(xSP, ySP, psiSP, usvPose.xLidar, usvPose.yLidar, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)

@@ -90,7 +90,7 @@ class Control():
         psiErr = wrapToPi(psiErr)
 
         # 根据 psiErr 的值，计算可行的 uSP (避免速度太大，转弯转不过来)
-        if (psiErr > pi / 4):
+        if (abs(psiErr) > pi / 4):
             uSP = 0
         else:
             uSP = uSP * (0.1 + 0.9 * (1 - abs(psiErr) / (pi / 4)))  
@@ -136,9 +136,9 @@ class Control():
         [xErr, yErr] = rotationZ(xErr, yErr, psi)
 
         # 选择矢量控制器状态
-        if ((abs(yErr) > 1.25) | (sign(v * yErr) > 0 and abs(v) > 0.2)) & (self.vecCtrlState == 0):
+        if ((abs(yErr) > 2) | (sign(v * yErr) > 0 and abs(v) > 0.2)) & (self.vecCtrlState == 0):
             self.vecCtrlState = 1
-        elif (abs(yErr) <= 0.6) & (abs(ayb) <= 0.15) & (self.vecCtrlState == 1):
+        elif (abs(yErr) <= 1) & (abs(ayb) <= 0.15) & (self.vecCtrlState == 1):
             self.vecCtrlState = 0
 
         uSP = 0.0
