@@ -29,7 +29,7 @@ class Control():
     __rpmMax = 1000                 # 最大转速
     __rpmRotateMax = 800            # 用于转动的最大转速
     __angleMax = deg2rad(90)        # 舵角最大值
-    __angleMaxState0 = deg2rad(30)  # Control state 0 下的舵角最大值
+    __angleMaxState0 = deg2rad(40)  # Control state 0 下的舵角最大值
 
     # 无人船参数
     __MASS = 775.0          # 质量
