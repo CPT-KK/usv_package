@@ -2,6 +2,7 @@
 
 from numpy import pi, sign, arctan2, sin, cos, abs, array, sqrt, percentile
 from sklearn.cluster import DBSCAN
+from collections import Counter
 
 def wrapToPi(x):
     x = arctan2(sin(x), cos(x))
@@ -68,7 +69,13 @@ def removeOutliers(data, eps=0.087266, min_samples=15):
     # 一个点被认为是核心点的最小邻居数目 min_samples = 15 个
     data = data.reshape(-1, 1)  # 转换为二维数组，因为DBSCAN需要二维输入
     clustering = DBSCAN(eps=eps, min_samples=min_samples ,n_jobs=-1).fit(data)
-    labels = clustering.labels_
+    cluster_labels = clustering.labels_
+
+    # 找到数量最大的簇的标签
+    cluster_counts = Counter(cluster_labels)
+    most_common_label = cluster_counts.most_common(1)[0][0]
+
+    # 返回数量最大簇的数据
     return data[labels != -1].flatten()  # -1标签对应的是离群值
 
 
