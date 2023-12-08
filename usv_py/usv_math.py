@@ -76,7 +76,7 @@ def removeOutliers(data, eps=0.087266, min_samples=15):
     most_common_label = cluster_counts.most_common(1)[0][0]
 
     # 返回数量最大簇的数据
-    return data[labels != -1].flatten()  # -1标签对应的是离群值
+    return data[cluster_labels == most_common_label].flatten()  # -1标签对应的是离群值
 
 
 # checklist = deg2rad(array([10, 20, 30, 45, 60, 89, 90, 91, 135, 150, 179, 181, 200, 215, 260, 270, 359, 361]))
