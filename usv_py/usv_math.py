@@ -43,13 +43,12 @@ def linearClip(x1, y1, x2, y2, x):
 
     # 判断 x1 x2 哪个大
     if (x1 > x2):
-        [x1, x2] = [x2, x1]
-        [y1, y2] = [y2, y1]
+        [x1, x2, y1, y2] = [x2, x1, y2, y1]
 
     if (x > x2):
         y = y2
     elif (x < x1):
-        y = x1
+        y = y1
     else:
         y = (y2 - y1) / (x2 - x1) * (x - x1) + y1
 
