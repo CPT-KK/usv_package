@@ -73,6 +73,16 @@ DIST_TOLARGEOBJ_SIDE = 4.0              # TOLARGEOBJ 时 USV 前往的大物体�
 SECS_WAIT_TOLARGEOBJ_STEADY = 5.0       # TOLARGEOBJ 时认为 USV 已经稳定前所需的秒数
 DIST_TOLARGEOBJ_TOL = 1.5               # TOLARGEOBJ 时认为 USV 已经前往到大物体侧面点的位置判据
 
+DIST_TOVESSEL_SIDE = 4.0
+SECS_WAIT_TOVESSEL_STEADY = 5.0
+DIST_TOVESSEL_TOL = 1.5
+
+RPM_ATTACH_UB = 400
+RPM_ATTACH_LB = 150
+DIST_ATTACH_UB = 10.0
+DIST_ATTACH_LB = 5.0
+
+
 @atexit.register 
 def clean():
     print(">>>>>>> USV program has exited.")
@@ -290,7 +300,7 @@ def main(args=None):
             elif usvState == "DOCK_APPROACH":
                 # 使用激光雷达读取的位置信息，规划变轨路径
                 if (isDockApproachPlan == False):
-                    currPath = usvPathPlanner.planDockApproach2(usvPose.xLidar, usvPose.yLidar, 0, 0, tvHeadingMean)
+                    currPath = usvPathPlanner.planDockApproach(usvPose.xLidar, usvPose.yLidar, 0, 0, tvHeadingMean)
                     usvGuidance.setPath(currPath) 
                     isDockApproachPlan = True
 
@@ -344,7 +354,7 @@ def main(args=None):
 
                     isDockWaitArmPlan = True
 
-                    latestMsg = "USV has been stablized. Waiting the arm to search the larget object for %.2f/%.2fs..." % (rospy.Time.now().to_sec() - timer1, SECS_WAIT_ARM_SEARCH)
+                latestMsg = "USV has been stablized. Waiting the arm to search the larget object for %.2f/%.2fs..." % (rospy.Time.now().to_sec() - timer1, SECS_WAIT_ARM_SEARCH)    
 
                 # 保持静止
                 [uSP, vSP, rSP, axbSP, aybSP, etaSP] = usvControl.moveUSVVec(xSP, ySP, psiSP, usvPose.xLidar, usvPose.yLidar, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
@@ -366,19 +376,20 @@ def main(args=None):
 
                     # 设置目标点为无人船对齐大物体那个点
                     [xSP, ySP] = rotationZ(usvComm.largeObjX, usvComm.largeObjY, -usvPose.psi)
-                    xSP = xSP + usvPose.x + DIST_TOLARGEOBJ_SIDE * cos(usvPose.psi - pi / 2)
-                    ySP = ySP + usvPose.y + DIST_TOLARGEOBJ_SIDE * sin(usvPose.psi - pi / 2)
-                    psiSP = usvPose.psi
+                    psiSP = arctan2(ySP - currPath[-2, 1], xSP - currPath[-2, 0])
+                    xSP = xSP + usvPose.xLidar + DIST_TOLARGEOBJ_SIDE * cos(psiSP - pi / 2)
+                    ySP = ySP + usvPose.yLidar + DIST_TOLARGEOBJ_SIDE * sin(psiSP - pi / 2)
+                    
                     isDockToPlan = True
 
                     latestMsg = "Receive the large object information from the robotic arm. USV is aligning with the large object @ [%.2f, %.2f]..." % (xSP, ySP)
                 
                 # 向大物体对齐
-                [uSP, vSP, rSP, axbSP, aybSP, etaSP] = usvControl.moveUSVVec(xSP, ySP, psiSP, usvPose.x, usvPose.y, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
+                [uSP, vSP, rSP, axbSP, aybSP, etaSP] = usvControl.moveUSVVec(xSP, ySP, psiSP, usvPose.xLidar, usvPose.yLidar, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
                 
                 # 如果与大物体的轴向误差（？）小于给定距离并且持续 X 秒，则认为已经对齐
                 if (rospy.Time.now().to_sec() - timer1 > SECS_WAIT_TOLARGEOBJ_STEADY): 
-                    usvState = "DOCK_TOVESSEL"
+                    usvState = "DOCK_ATTACH"
                 elif (sqrt((usvPose.x - xSP) ** 2 + (usvPose.y - ySP) ** 2) < DIST_TOLARGEOBJ_TOL):
                     pass
                 else:
@@ -391,23 +402,21 @@ def main(args=None):
                     timer1 = rospy.Time.now().to_sec()
 
                     # 设置目标点为目标船的中心
-                    xSP = 0
-                    ySP = 0
                     psiSP = arctan2(ySP - currPath[-2, 1], xSP - currPath[-2, 0])
+                    xSP = 0 + DIST_TOVESSEL_SIDE * cos(psiSP - pi / 2)
+                    ySP = 0 + DIST_TOVESSEL_SIDE * sin(psiSP - pi / 2)
+                    
                     isDockToPlan = True
 
-                    latestMsg = "TIMEOUT waiting the large object information from the robotic arm. USV is moving to the target vessel..."
+                    latestMsg = "USV is moving to the target vessel..."
 
-                # 向目标船中心移动                   
-                thisThrust = linearClip(5.0, 120.0, 10.0, 400.0, usvPose.tvDist)
-                usvControl.thrustSet(thisThrust, thisThrust, deg2rad(90), deg2rad(90))       
-                usvControl.thrustPub()
-                # [uSP, vSP, rSP, axbSP, aybSP, etaSP] = usvControl.moveUSVVec(xSP, ySP, psiSP, usvPose.xLidar, usvPose.yLidar, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
+                # 向目标船中心对齐                 
+                [uSP, vSP, rSP, axbSP, aybSP, etaSP] = usvControl.moveUSVVec(xSP, ySP, psiSP, usvPose.xLidar, usvPose.yLidar, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
 
                 # 如果与目标船的距离小于给定距离并且持续 X 秒，则认为已经固连
-                if (rospy.Time.now().to_sec() - timer1 > 5.0): 
+                if (rospy.Time.now().to_sec() - timer1 > SECS_WAIT_TOVESSEL_STEADY): 
                     usvState = "DOCK_ATTACH"
-                elif (sqrt((usvPose.xLidar - xSP) ** 2 + (usvPose.yLidar - ySP) ** 2) < 4.5):
+                elif (sqrt((usvPose.xLidar - xSP) ** 2 + (usvPose.yLidar - ySP) ** 2) < DIST_TOVESSEL_TOL):
                     pass
                 else:
                     # 如果不满足静止条件，需要重置 t1 计时器
@@ -415,6 +424,11 @@ def main(args=None):
 
             elif usvState == "DOCK_ATTACH":
                 latestMsg = "Close enough. Try to attach to the target vessel..."
+                # 向目标船中心移动                   
+                thisThrust = linearClip(DIST_ATTACH_LB, RPM_ATTACH_LB, DIST_ATTACH_UB, RPM_ATTACH_UB, usvPose.tvDist)
+
+                usvControl.thrustSet(thisThrust, thisThrust, deg2rad(90), deg2rad(90))       
+                usvControl.thrustPub()
                 usvState == "DOCK_FINAL"
             
             elif usvState == "DOCK_FINAL":
@@ -424,8 +438,7 @@ def main(args=None):
                 usvComm.sendTakeOffFlag()
                 usvComm.sendTVPosFromLidar(-usvPose.xLidar, -usvPose.yLidar)
 
-                # 继续保持静止
-                [uSP, vSP, rSP, axbSP, aybSP, etaSP] = usvControl.moveUSVVec(xSP, ySP, psiSP, usvPose.xLidar, usvPose.yLidar, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
+                # [uSP, vSP, rSP, axbSP, aybSP, etaSP] = usvControl.moveUSVVec(xSP, ySP, psiSP, usvPose.xLidar, usvPose.yLidar, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
             
             elif usvState == "TEST":              
                 if (isTestPlan == False):
