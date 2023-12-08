@@ -77,8 +77,8 @@ DIST_TOVESSEL_SIDE = 4.0
 SECS_WAIT_TOVESSEL_STEADY = 5.0
 DIST_TOVESSEL_TOL = 1.5
 
-RPM_ATTACH_UB = 400
-RPM_ATTACH_LB = 150
+RPM_ATTACH_UB = 400.0
+RPM_ATTACH_LB = 150.0
 DIST_ATTACH_UB = 10.0
 DIST_ATTACH_LB = 5.0
 
@@ -329,7 +329,7 @@ def main(args=None):
                     psiSP = arctan2(ySP - currPath[-2, 1], xSP - currPath[-2, 0])
                     isDockAdjustPlan = True
 
-                    latestMsg = "Approach finished. Stablizing USV pose at [%.2f, %.2f] @ %.2f deg for %.2f / %.2f secs..." % (xSP, ySP, rad2deg(psiSP), rospy.Time.now().to_sec() - timer1, 5.0)
+                latestMsg = "Approach finished. Stablizing USV @ [%.2f, %.2f], %.2f deg... [%.2f / %.2f]s" % (xSP, ySP, rad2deg(psiSP), rospy.Time.now().to_sec() - timer1, 5.0)
 
                 # 保持静止
                 [uSP, vSP, rSP, axbSP, aybSP, etaSP] = usvControl.moveUSVVec(xSP, ySP, psiSP, usvPose.xLidar, usvPose.yLidar, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
@@ -354,7 +354,7 @@ def main(args=None):
 
                     isDockWaitArmPlan = True
 
-                latestMsg = "USV has been stablized. Waiting the arm to search the larget object for %.2f/%.2fs..." % (rospy.Time.now().to_sec() - timer1, SECS_WAIT_ARM_SEARCH)    
+                latestMsg = "USV has been stablized. Waiting the arm searching... [%.2f / %.2f]s" % (rospy.Time.now().to_sec() - timer1, SECS_WAIT_ARM_SEARCH)    
 
                 # 保持静止
                 [uSP, vSP, rSP, axbSP, aybSP, etaSP] = usvControl.moveUSVVec(xSP, ySP, psiSP, usvPose.xLidar, usvPose.yLidar, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
@@ -408,7 +408,7 @@ def main(args=None):
                     
                     isDockToPlan = True
 
-                    latestMsg = "USV is moving to the target vessel..."
+                    latestMsg = "Timeout waiting the robotic arm to search. USV is aligning with the center of the target vessel..."
 
                 # 向目标船中心对齐                 
                 [uSP, vSP, rSP, axbSP, aybSP, etaSP] = usvControl.moveUSVVec(xSP, ySP, psiSP, usvPose.xLidar, usvPose.yLidar, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
@@ -423,7 +423,7 @@ def main(args=None):
                     timer1 = rospy.Time.now().to_sec()
 
             elif usvState == "DOCK_ATTACH":
-                latestMsg = "Close enough. Try to attach to the target vessel..."
+                latestMsg = "Close enough. Try to attach..."
                 # 向目标船中心移动                   
                 thisThrust = linearClip(DIST_ATTACH_LB, RPM_ATTACH_LB, DIST_ATTACH_UB, RPM_ATTACH_UB, usvPose.tvDist)
 
@@ -434,7 +434,7 @@ def main(args=None):
             elif usvState == "DOCK_FINAL":
                 # DOCK_FINAL 是一个死循环
                     
-                latestMsg = "Attached to the target vessel. Take-off signal for tUAV has been sent."
+                latestMsg = "Attached completed. Take-off signal for tUAV has been sent."
                 usvComm.sendTakeOffFlag()
                 usvComm.sendTVPosFromLidar(-usvPose.xLidar, -usvPose.yLidar)
 
