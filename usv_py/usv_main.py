@@ -77,10 +77,15 @@ DIST_TOVESSEL_SIDE = 4.0
 SECS_WAIT_TOVESSEL_STEADY = 5.0
 DIST_TOVESSEL_TOL = 1.5
 
+SECS_WAIT_ATTACH_STEADY = 5.0
+VEL_ATTACH_TOL = 0.15
+
 RPM_ATTACH_UB = 400.0
 RPM_ATTACH_LB = 150.0
 DIST_ATTACH_UB = 10.0
 DIST_ATTACH_LB = 5.0
+
+RPM_FINAL = 280.0
 
 
 @atexit.register 
@@ -145,6 +150,7 @@ def main(args=None):
     isDockAdjustPlan = False
     isDockWaitArmPlan = False
     isDockToPlan = False
+    isDockAttachPlan = False
     isTestPlan = False
     isTestEnable = False
 
@@ -163,6 +169,8 @@ def main(args=None):
     # 保存目标船朝向角的数组
     tvHeadings = zeros((1, 5000))
     tvHeadingIdx = 0
+    tvLength = float("nan")
+    tvWidth = float("nan")
 
     # Set point 量
     uSP = float("nan")
@@ -284,7 +292,7 @@ def main(args=None):
                     # 去除后面未使用的索引
                     tvHeadings = tvHeadings[0, 0:tvHeadingIdx-1]
 
-                    # 如果标准差大于 20°(0.34906585 rad)，认为大概率是-90°与90°跳变的情况，因此对 tvHeadings 中负角度加一个 pi
+                    # 如果标准差大于 ANGLE_DOCK_MEASURE_JUMP，认为大概率是-90°与90°跳变的情况，因此对 tvHeadings 中负角度加一个 pi
                     if (std(tvHeadings) > ANGLE_DOCK_MEASURE_JUMP):
                         tvHeadings[tvHeadings < 0] = tvHeadings[tvHeadings < 0] + pi
 
@@ -351,10 +359,14 @@ def main(args=None):
                     xSP = currPath[-1, 0]
                     ySP = currPath[-1, 1]
                     psiSP = arctan2(ySP - currPath[-2, 1], xSP - currPath[-2, 0])
+                    
+                    # 记录这个时候的目标船长宽
+                    tvLength = usvPose.tvLength
+                    tvWidth = usvPose.tvWidth
 
                     isDockWaitArmPlan = True
 
-                latestMsg = "USV has been stablized. Waiting the arm searching... [%.2f / %.2f]s" % (rospy.Time.now().to_sec() - timer1, SECS_WAIT_ARM_SEARCH)    
+                latestMsg = "USV has been stablized. Waiting the arm searching... [%.2f / %.2f]s" % (rospy.Time.now().to_sec() - timer1, SECS_WAIT_ARM_SEARCH)
 
                 # 保持静止
                 [uSP, vSP, rSP, axbSP, aybSP, etaSP] = usvControl.moveUSVVec(xSP, ySP, psiSP, usvPose.xLidar, usvPose.yLidar, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
@@ -377,8 +389,8 @@ def main(args=None):
                     # 设置目标点为无人船对齐大物体那个点
                     [xSP, ySP] = rotationZ(usvComm.largeObjX, usvComm.largeObjY, -usvPose.psi)
                     psiSP = arctan2(ySP - currPath[-2, 1], xSP - currPath[-2, 0])
-                    xSP = xSP + usvPose.xLidar + DIST_TOLARGEOBJ_SIDE * cos(psiSP - pi / 2)
-                    ySP = ySP + usvPose.yLidar + DIST_TOLARGEOBJ_SIDE * sin(psiSP - pi / 2)
+                    xSP = xSP + usvPose.xLidar + (DIST_TOLARGEOBJ_SIDE + 0.6 * tvWidth) * cos(psiSP - pi / 2)
+                    ySP = ySP + usvPose.yLidar + (DIST_TOLARGEOBJ_SIDE + 0.6 * tvWidth) * sin(psiSP - pi / 2)
                     
                     isDockToPlan = True
 
@@ -387,7 +399,7 @@ def main(args=None):
                 # 向大物体对齐
                 [uSP, vSP, rSP, axbSP, aybSP, etaSP] = usvControl.moveUSVVec(xSP, ySP, psiSP, usvPose.xLidar, usvPose.yLidar, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
                 
-                # 如果与大物体的轴向误差（？）小于给定距离并且持续 X 秒，则认为已经对齐
+                # 如果与大物体的轴向误差（？）小于给定距离并且持续 X 秒，则认为已经和大物体对齐
                 if (rospy.Time.now().to_sec() - timer1 > SECS_WAIT_TOLARGEOBJ_STEADY): 
                     usvState = "DOCK_ATTACH"
                 elif (sqrt((usvPose.x - xSP) ** 2 + (usvPose.y - ySP) ** 2) < DIST_TOLARGEOBJ_TOL):
@@ -403,8 +415,8 @@ def main(args=None):
 
                     # 设置目标点为目标船的中心
                     psiSP = arctan2(ySP - currPath[-2, 1], xSP - currPath[-2, 0])
-                    xSP = 0 + DIST_TOVESSEL_SIDE * cos(psiSP - pi / 2)
-                    ySP = 0 + DIST_TOVESSEL_SIDE * sin(psiSP - pi / 2)
+                    xSP = 0 + (DIST_TOVESSEL_SIDE + 0.6 * tvWidth) * cos(psiSP - pi / 2)
+                    ySP = 0 + (DIST_TOVESSEL_SIDE + 0.6 * tvWidth) * sin(psiSP - pi / 2)
                     
                     isDockToPlan = True
 
@@ -413,7 +425,7 @@ def main(args=None):
                 # 向目标船中心对齐                 
                 [uSP, vSP, rSP, axbSP, aybSP, etaSP] = usvControl.moveUSVVec(xSP, ySP, psiSP, usvPose.xLidar, usvPose.yLidar, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
 
-                # 如果与目标船的距离小于给定距离并且持续 X 秒，则认为已经固连
+                # 如果与目标船的距离小于给定距离并且持续 X 秒，则认为已经和目标船中心对齐
                 if (rospy.Time.now().to_sec() - timer1 > SECS_WAIT_TOVESSEL_STEADY): 
                     usvState = "DOCK_ATTACH"
                 elif (sqrt((usvPose.xLidar - xSP) ** 2 + (usvPose.yLidar - ySP) ** 2) < DIST_TOVESSEL_TOL):
@@ -423,13 +435,25 @@ def main(args=None):
                     timer1 = rospy.Time.now().to_sec()
 
             elif usvState == "DOCK_ATTACH":
-                latestMsg = "Close enough. Try to attach..."
-                # 向目标船中心移动                   
-                thisThrust = linearClip(DIST_ATTACH_LB, RPM_ATTACH_LB, DIST_ATTACH_UB, RPM_ATTACH_UB, usvPose.tvDist)
+                if (isDockAttachPlan == False):
+                    # 将当前时间写入 t1 计时器
+                    timer1 = rospy.Time.now().to_sec()
 
+                latestMsg = "Close enough. Try to attach. Need to stablize for [%.2f / %.2f]s" % (rospy.Time.now().to_sec() - timer1, SECS_WAIT_ATTACH_STEADY)
+                
+                # 横向移动                   
+                thisThrust = linearClip(DIST_ATTACH_LB, RPM_ATTACH_LB, DIST_ATTACH_UB, RPM_ATTACH_UB, usvPose.tvDist)
                 usvControl.thrustSet(thisThrust, thisThrust, deg2rad(90), deg2rad(90))       
                 usvControl.thrustPub()
-                usvState == "DOCK_FINAL"
+
+                # 如果 USV 速度小于给定值，则认为已经固连
+                if (rospy.Time.now().to_sec() - timer1 > SECS_WAIT_ATTACH_STEADY): 
+                    usvState = "DOCK_FINAL"
+                elif (sqrt(usvPose.uDVL** 2 + usvPose.vDVL** 2) < VEL_ATTACH_TOL):
+                    pass
+                else:
+                    # 如果不满足静止条件，需要重置 t1 计时器
+                    timer1 = rospy.Time.now().to_sec()
             
             elif usvState == "DOCK_FINAL":
                 # DOCK_FINAL 是一个死循环
@@ -438,7 +462,8 @@ def main(args=None):
                 usvComm.sendTakeOffFlag()
                 usvComm.sendTVPosFromLidar(-usvPose.xLidar, -usvPose.yLidar)
 
-                # [uSP, vSP, rSP, axbSP, aybSP, etaSP] = usvControl.moveUSVVec(xSP, ySP, psiSP, usvPose.xLidar, usvPose.yLidar, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
+                # 保持一定的推力
+                usvControl.thrustSet(RPM_FINAL, RPM_FINAL, deg2rad(90), deg2rad(90)) 
             
             elif usvState == "TEST":              
                 if (isTestPlan == False):
