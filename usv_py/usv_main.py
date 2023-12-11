@@ -87,7 +87,6 @@ DIST_ATTACH_LB = 5.0
 
 RPM_FINAL = 280.0
 
-
 @atexit.register 
 def clean():
     print(">>>>>>> USV program has exited.")
@@ -166,7 +165,7 @@ def main(args=None):
     # 设置计时器
     timer1 = rospy.Time.now().to_sec()
 
-    # 保存目标船朝向角的数组
+    # 保存目标船朝向角的数组``
     tvHeadings = zeros((1, 5000))
     tvHeadingIdx = 0
     tvLength = float("nan")
@@ -191,7 +190,7 @@ def main(args=None):
                 pubTopicList = sum(rospy.get_published_topics(), [])
                 usvPose.isLidarValid = ('/filter/target' in pubTopicList)
                     
-                if (usvPose.isImuValid) & (usvPose.isDvlValid) & (usvPose.isLidarValid) & (not isnan(usvControl.angleLeftEst)) & (not isnan(usvControl.angleRightEst)) & (not isnan(usvControl.rpmLeftEst) & (not isnan(usvControl.rpmRightEst))):
+                if (usvPose.isImuValid) & (usvPose.isDvlValid) & (usvPose.isPodValid) & (usvPose.isLidarValid) & (not isnan(usvControl.angleLeftEst)) & (not isnan(usvControl.angleRightEst)) & (not isnan(usvControl.rpmLeftEst) & (not isnan(usvControl.rpmRightEst))):
                     latestMsg = "Waiting sUAV to send heading..."
                     usvState = "STANDBY"
 
