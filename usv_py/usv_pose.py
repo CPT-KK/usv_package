@@ -71,7 +71,7 @@ class Pose():
 
     # Pod 变量  
     isPodFindTV = False
-    tvAnglePod = deg2rad(-101)  # ENU 系下的吊舱角
+    tvAnglePod = deg2rad(90)  # ENU 系下的吊舱角
     podTimer = 0
     podTolSec = 0.01
 
@@ -149,7 +149,7 @@ class Pose():
     def podCallback(self, msg):
         if (msg.data[0] == 1):
             self.isPodFindTV = True
-            self.tvAnglePod = usvPose.psi + msg.data[2]
+            self.tvAnglePod = self.psi + msg.data[2]
         else:
             self.isPodFindTV = False
             self.tvAnglePod = float("nan")

@@ -221,7 +221,7 @@ def main(args=None):
                     latestMsg = "Pod finds target vessel at %.2f deg!" % rad2deg(usvPose.tvAnglePod)
                     uSP = USP_POD_PURSUE
                     psiSP = usvPose.tvAnglePod
-
+    
                 elif (usvPose.isLidarFindObs) & (isObsAvoidEnable):
                     # 遇到障碍物，避障   
                     usvState = "PURSUE_OBS"
