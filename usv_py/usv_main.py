@@ -69,16 +69,17 @@ VEL_DOCK_STEADY_TOL = 0.25              # DOCK_ADJUST 时认为 USV 已经稳定
 
 SECS_WAIT_ARM_SEARCH = 10.0             # WAIT_ARM 时等待机械臂搜索大物体的秒数
 
-DIST_TOLARGEOBJ_SIDE = 4.0              # TOLARGEOBJ 时 USV 前往的大物体侧面点与大物体的距离
+DIST_TOLARGEOBJ_SIDE = 2.5              # TOLARGEOBJ 时 USV 前往的大物体侧面点与船边的距离
 SECS_WAIT_TOLARGEOBJ_STEADY = 5.0       # TOLARGEOBJ 时认为 USV 已经稳定前所需的秒数
 DIST_TOLARGEOBJ_TOL = 1.5               # TOLARGEOBJ 时认为 USV 已经前往到大物体侧面点的位置判据
 
-DIST_TOVESSEL_SIDE = 4.0
-SECS_WAIT_TOVESSEL_STEADY = 5.0
-DIST_TOVESSEL_TOL = 1.5
+DIST_TOVESSEL_SIDE = 2.5                # TOVESSEL 时 USV 前往的目标船侧面点与船边的距离
+SECS_WAIT_TOVESSEL_STEADY = 5.0         # TOVESSEL 时认为 USV 已经稳定前所需的秒数
+DIST_TOVESSEL_TOL = 1.5                 # TOVESSEL 时认为 USV 已经前往到目标船侧面点的位置判据
 
 SECS_WAIT_ATTACH_STEADY = 5.0
 VEL_ATTACH_TOL = 0.15
+DIST_ATTACH_TOL = 1.5
 
 RPM_ATTACH_UB = 400.0
 RPM_ATTACH_LB = 150.0
@@ -149,6 +150,8 @@ def main(args=None):
     isDockAdjustPlan = False
     isDockWaitArmPlan = False
     isDockToPlan = False
+    isDockToLargeObjPlan = False
+    isDockToVesselPlan = False
     isDockAttachPlan = False
     isTestPlan = False
     isTestEnable = False
@@ -165,11 +168,15 @@ def main(args=None):
     # 设置计时器
     timer1 = rospy.Time.now().to_sec()
 
-    # 保存目标船朝向角的数组``
+    # 保存目标船朝向角的数组
     tvHeadings = zeros((1, 5000))
     tvHeadingIdx = 0
     tvLength = float("nan")
     tvWidth = float("nan")
+
+    # 大物体
+    largeObjX = float("nan")
+    largeObjY = float("nan")
 
     # Set point 量
     uSP = float("nan")
@@ -365,7 +372,7 @@ def main(args=None):
 
                     isDockWaitArmPlan = True
 
-                latestMsg = "USV has been stablized. Waiting the arm searching... [%.2f / %.2f]s" % (rospy.Time.now().to_sec() - timer1, SECS_WAIT_ARM_SEARCH)
+                latestMsg = "USV has been stablized. Waiting the arm searching... [%.2f / %.2f]s." % (rospy.Time.now().to_sec() - timer1, SECS_WAIT_ARM_SEARCH)
 
                 # 保持静止
                 [uSP, vSP, rSP, axbSP, aybSP, etaSP] = usvControl.moveUSVVec(xSP, ySP, psiSP, usvPose.xLidar, usvPose.yLidar, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
@@ -381,17 +388,17 @@ def main(args=None):
                     pass
 
             elif usvState == "DOCK_TOLARGEOBJ":
-                if (isDockToPlan == False):
+                if (isDockToLargeObjPlan == False):
                     # 将当前时间写入 t1 计时器
                     timer1 = rospy.Time.now().to_sec()
 
                     # 设置目标点为无人船对齐大物体那个点
-                    [xSP, ySP] = rotationZ(usvComm.largeObjX, usvComm.largeObjY, -usvPose.psi)
+                    [largeObjX, largeObjY] = rotationZ(usvComm.largeObjX, usvComm.largeObjY, -usvPose.psi)
                     psiSP = arctan2(ySP - currPath[-2, 1], xSP - currPath[-2, 0])
-                    xSP = xSP + usvPose.xLidar + (DIST_TOLARGEOBJ_SIDE + 0.6 * tvWidth) * cos(psiSP - pi / 2)
-                    ySP = ySP + usvPose.yLidar + (DIST_TOLARGEOBJ_SIDE + 0.6 * tvWidth) * sin(psiSP - pi / 2)
+                    xSP = largeObjX + (DIST_TOLARGEOBJ_SIDE + 0.6 * tvWidth) * cos(psiSP - pi / 2)
+                    ySP = largeObjY + (DIST_TOLARGEOBJ_SIDE + 0.6 * tvWidth) * sin(psiSP - pi / 2)
                     
-                    isDockToPlan = True
+                    isDockToLargeObjPlan = True
 
                     latestMsg = "Receive the large object information from the robotic arm. USV is aligning with the large object @ [%.2f, %.2f]..." % (xSP, ySP)
                 
@@ -408,7 +415,7 @@ def main(args=None):
                     timer1 = rospy.Time.now().to_sec()
                     
             elif usvState == "DOCK_TOVESSEL": 
-                if (isDockToPlan == False):
+                if (isDockToVesselPlan == False):
                     # 将当前时间写入 t1 计时器
                     timer1 = rospy.Time.now().to_sec()
 
@@ -417,7 +424,7 @@ def main(args=None):
                     xSP = 0 + (DIST_TOVESSEL_SIDE + 0.6 * tvWidth) * cos(psiSP - pi / 2)
                     ySP = 0 + (DIST_TOVESSEL_SIDE + 0.6 * tvWidth) * sin(psiSP - pi / 2)
                     
-                    isDockToPlan = True
+                    isDockToVesselPlan = True
 
                     latestMsg = "Timeout waiting the robotic arm to search. USV is aligning with the center of the target vessel..."
 
@@ -438,17 +445,24 @@ def main(args=None):
                     # 将当前时间写入 t1 计时器
                     timer1 = rospy.Time.now().to_sec()
 
+                    # 设置目标点为目标船/大物体的中心
+                    psiSP = arctan2(ySP - currPath[-2, 1], xSP - currPath[-2, 0])
+                    if (isDockToLargeObjPlan):
+                        xSP = largeObjX + (0.4 * tvWidth) * cos(psiSP - pi / 2)
+                        ySP = largeObjY + (0.4 * tvWidth) * sin(psiSP - pi / 2)
+                    else:
+                        xSP = 0 + (0.4 * tvWidth) * cos(psiSP - pi / 2)
+                        ySP = 0 + (0.4 * tvWidth) * sin(psiSP - pi / 2)
+
                 latestMsg = "Close enough. Try to attach. Need to stablize for [%.2f / %.2f]s" % (rospy.Time.now().to_sec() - timer1, SECS_WAIT_ATTACH_STEADY)
                 
-                # 横向移动                   
-                thisThrust = linearClip(DIST_ATTACH_LB, RPM_ATTACH_LB, DIST_ATTACH_UB, RPM_ATTACH_UB, usvPose.tvDist)
-                usvControl.thrustSet(thisThrust, thisThrust, deg2rad(90), deg2rad(90))       
-                usvControl.thrustPub()
+                # 横向移动向大物体/目标船     
+                [uSP, vSP, rSP, axbSP, aybSP, etaSP] = usvControl.moveUSVVec(xSP, ySP, psiSP, usvPose.xLidar, usvPose.yLidar, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
 
                 # 如果 USV 速度小于给定值，则认为已经固连
                 if (rospy.Time.now().to_sec() - timer1 > SECS_WAIT_ATTACH_STEADY): 
                     usvState = "DOCK_FINAL"
-                elif (sqrt(usvPose.uDVL** 2 + usvPose.vDVL** 2) < VEL_ATTACH_TOL):
+                elif (sqrt((usvPose.xLidar - xSP) ** 2 + (usvPose.yLidar - ySP) ** 2) < DIST_ATTACH_TOL):
                     pass
                 else:
                     # 如果不满足静止条件，需要重置 t1 计时器
