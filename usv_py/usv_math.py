@@ -64,9 +64,9 @@ def linearClip(x1, y1, x2, y2, x):
     
 #     return data[(data >= lb) & (data <= ub)]
 
-def removeOutliers(data, eps=0.087266, min_samples=15):
-    # 两个点是邻居的最大距离 eps = 5 deg（0.087266 rad）
-    # 一个点被认为是核心点的最小邻居数目 min_samples = 15 个
+def removeOutliers(data, eps, min_samples):
+    # 两个点是邻居的最大距离 eps
+    # 一个点被认为是核心点的最小邻居数目 min_samples
     data = data.reshape(-1, 1)  # 转换为二维数组，因为DBSCAN需要二维输入
     clustering = DBSCAN(eps=eps, min_samples=min_samples ,n_jobs=-1).fit(data)
     cluster_labels = clustering.labels_

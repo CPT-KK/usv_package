@@ -169,10 +169,8 @@ def main(args=None):
     timer1 = rospy.Time.now().to_sec()
 
     # 保存目标船朝向角的数组
-    tvHeadings = zeros((1, 5000))
-    tvHeadingIdx = 0
-    tvLength = float("nan")
-    tvWidth = float("nan")
+    tvInfo = zeros((3, 5000))
+    tvInfoIdx = 0
 
     # 大物体
     largeObjX = float("nan")
@@ -288,27 +286,35 @@ def main(args=None):
                 [uSP, rSP, axbSP, etaSP] = usvControl.moveUSV(uSP, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
 
                 # 读取目标船的测量信息，若满足要求，则读取并保存目标船朝向角（ENU下）
-                thisHeading = usvPose.tvHeading
-                tvHeadings[0, tvHeadingIdx] = thisHeading
-                tvHeadingIdx = tvHeadingIdx + 1
-                latestMsg = "Estimating target vessel heading: %.2f deg." % rad2deg(thisHeading)
+                tvInfo[0, tvInfoIdx] = usvPose.tvHeading
+                tvInfo[1, tvInfoIdx] = usvPose.tvLength
+                tvInfo[2, tvInfoIdx] = usvPose.tvWidth
+                tvInfoIdx = tvInfoIdx + 1
+                latestMsg = "Estimating target vessel heading: %.2f deg. L: %.2f m. W: %.2f m." % (usvPose.tvHeading, usvPose.tvLength, usvPose.tvWidth)
 
                 # 如果测量段结束了，打印出测量段测量结果，进入变轨段
                 if (usvGuidance.currentIdx >= usvGuidance.endIdx):
                     # 去除后面未使用的索引
-                    tvHeadings = tvHeadings[0, 0:tvHeadingIdx-1]
+                    tvInfo = tvInfo[:, 0:tvInfoIdx-1]
+                    tvHeadings = tvInfo[0, :]
+                    tvLengths = tvInfo[1, :]
+                    tvWidths = tvInfo[2, :]
 
                     # 如果标准差大于 ANGLE_DOCK_MEASURE_JUMP，认为大概率是-90°与90°跳变的情况，因此对 tvHeadings 中负角度加一个 pi
                     if (std(tvHeadings) > ANGLE_DOCK_MEASURE_JUMP):
                         tvHeadings[tvHeadings < 0] = tvHeadings[tvHeadings < 0] + pi
 
                     # 去除离群点
-                    tvHeadings = removeOutliers(tvHeadings)
+                    tvHeadings = removeOutliers(tvHeadings, 0.087266, 20)
+                    tvLengths = removeOutliers(tvLengths, 0.5, 20)
+                    tvWidths = removeOutliers(tvWidths, 0.5, 20)
                     
                     # 计算平均值，并将结果角度映射到-90°~90°
                     tvHeadingMean = arctan(tan(mean(tvHeadings)))
+                    tvLengthMean = mean(tvLengths)
+                    tvWidthMean = mean(tvWidths)
                     
-                    latestMsg = "Estimating finished with average heading %.2f deg. Begin final approach..." % rad2deg(tvHeadingMean)
+                    latestMsg = "Estimating finished with average heading %.2f deg. L: %.2f m. W: %.2f m. Begin final approach..." % (rad2deg(tvHeadingMean), tvLengthMean, tvWidthMean)
                     usvState = "DOCK_APPROACH"
 
             elif usvState == "DOCK_APPROACH":
@@ -365,10 +371,6 @@ def main(args=None):
                     xSP = currPath[-1, 0]
                     ySP = currPath[-1, 1]
                     psiSP = arctan2(ySP - currPath[-2, 1], xSP - currPath[-2, 0])
-                    
-                    # 记录这个时候的目标船长宽
-                    tvLength = usvPose.tvLength
-                    tvWidth = usvPose.tvWidth
 
                     isDockWaitArmPlan = True
 
@@ -395,8 +397,8 @@ def main(args=None):
                     # 设置目标点为无人船对齐大物体那个点
                     [largeObjX, largeObjY] = rotationZ(usvComm.largeObjX, usvComm.largeObjY, -usvPose.psi)
                     psiSP = arctan2(ySP - currPath[-2, 1], xSP - currPath[-2, 0])
-                    xSP = largeObjX + (DIST_TOLARGEOBJ_SIDE + 0.6 * tvWidth) * cos(psiSP - pi / 2)
-                    ySP = largeObjY + (DIST_TOLARGEOBJ_SIDE + 0.6 * tvWidth) * sin(psiSP - pi / 2)
+                    xSP = largeObjX + (DIST_TOLARGEOBJ_SIDE + 0.6 * tvWidthMean) * cos(psiSP - pi / 2)
+                    ySP = largeObjY + (DIST_TOLARGEOBJ_SIDE + 0.6 * tvWidthMean) * sin(psiSP - pi / 2)
                     
                     isDockToLargeObjPlan = True
 
@@ -421,8 +423,8 @@ def main(args=None):
 
                     # 设置目标点为目标船的中心
                     psiSP = arctan2(ySP - currPath[-2, 1], xSP - currPath[-2, 0])
-                    xSP = 0 + (DIST_TOVESSEL_SIDE + 0.6 * tvWidth) * cos(psiSP - pi / 2)
-                    ySP = 0 + (DIST_TOVESSEL_SIDE + 0.6 * tvWidth) * sin(psiSP - pi / 2)
+                    xSP = 0 + (DIST_TOVESSEL_SIDE + 0.6 * tvWidthMean) * cos(psiSP - pi / 2)
+                    ySP = 0 + (DIST_TOVESSEL_SIDE + 0.6 * tvWidthMean) * sin(psiSP - pi / 2)
                     
                     isDockToVesselPlan = True
 
@@ -448,11 +450,11 @@ def main(args=None):
                     # 设置目标点为目标船/大物体的中心
                     psiSP = arctan2(ySP - currPath[-2, 1], xSP - currPath[-2, 0])
                     if (isDockToLargeObjPlan):
-                        xSP = largeObjX + (0.4 * tvWidth) * cos(psiSP - pi / 2)
-                        ySP = largeObjY + (0.4 * tvWidth) * sin(psiSP - pi / 2)
+                        xSP = largeObjX + (0.4 * tvWidthMean) * cos(psiSP - pi / 2)
+                        ySP = largeObjY + (0.4 * tvWidthMean) * sin(psiSP - pi / 2)
                     else:
-                        xSP = 0 + (0.4 * tvWidth) * cos(psiSP - pi / 2)
-                        ySP = 0 + (0.4 * tvWidth) * sin(psiSP - pi / 2)
+                        xSP = 0 + (0.4 * tvWidthMean) * cos(psiSP - pi / 2)
+                        ySP = 0 + (0.4 * tvWidthMean) * sin(psiSP - pi / 2)
 
                 latestMsg = "Close enough. Try to attach. Need to stablize for [%.2f / %.2f]s" % (rospy.Time.now().to_sec() - timer1, SECS_WAIT_ATTACH_STEADY)
                 
