@@ -15,24 +15,12 @@ import json
 import re
 
 class Communication():
-    uDVL = 0
-    vDVL = 0
-    r = 0
-
-    isSearchFindTV = True
-    tvEstPosX = 0
-    tvEstPosY = 0
-    tvAngleEst = deg2rad(118.9)
-
     isArmFindBigObj = False
     largeObjX = 0
     largeObjY = 0
     largeObjAngle = 0
 
     def __init__(self):
-        # 订阅搜索无人机提供目标船的话题
-        self.tvEstPosSub = rospy.Subscriber('/target_nav_position', Pose2D, self.tvOdomCallback)
-
         # 订阅大物体定位的话题
         self.bigObjPosSub = rospy.Subscriber('/usv/largebox_pos', PoseStamped, self.bigObjCallback)
 

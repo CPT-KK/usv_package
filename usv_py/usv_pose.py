@@ -7,11 +7,10 @@ from numpy.linalg import norm
 from usv_math import rotationZ, wrapToPi
 
 from std_msgs.msg import Float64MultiArray
-from geometry_msgs.msg import PoseStamped, TwistStamped, Vector3Stamped, PoseArray
+from geometry_msgs.msg import PoseStamped, TwistStamped, Vector3Stamped, PoseArray, Pose2D
 from nav_msgs.msg import Odometry
 from sensor_msgs.msg import Imu
 from tf.transformations import quaternion_from_euler, euler_from_quaternion
-from mavros_msgs.msg import State
 
 class Pose():
     # USV 状态量
@@ -32,52 +31,62 @@ class Pose():
     r = float("nan")
     psiOffset = deg2rad(0)
 
-    state = State()
-    
     isGPSValid = False
     isImuValid = False
-    isDvlValid = False
-    isPodValid = False
-    isLidarValid = False
 
     # Dvl-A125 状态量
-    xDVL = 0
-    yDVL = 0
-    uDVL = 0
-    vDVL = 0
-    betaDVL = 0
+    isDvlValid = False
+    xDVL = float("nan")
+    yDVL = float("nan")
+    uDVL = float("nan")
+    vDVL = float("nan")
+    betaDVL = float("nan")
 
-    # Lidar 状态量
+    # Lidar 量
+    isLidarValid = False
     isLidarFindTV = False
-    objectNum = 0
-    tLidar = 0
-    tvX = 0             # 目标船在 ENU 系（原点为无人船）下的 x 坐标
-    tvY = 0             # 目标船在 ENU 系（原点为无人船）下的 y 坐标
-    tvAngleLidar = 0    # 目标船在 ENU 系（原点为无人船）下的方向角
-    tvDist = 0          # 目标船距离无人船的距离
-    tvHeading = 0       # 目标船在 ENU 系下的朝向
-    tvLength = 0        # 目标船长度
-    tvWidth = 0         # 目标船宽度
-    xLidar = 0          # 无人船在 ENU 系（原点为目标船）下的 x 坐标
-    yLidar = 0          # 无人船在 ENU 系（原点为目标船）下的 y 坐标
+    isLidarFindTVPrevious = False
+    objectNum = float("nan")
+    tLidar = float("nan")
+    tvX = float("nan")             # 目标船在 ENU 系（原点为无人船）下的 x 坐标
+    tvY = float("nan")             # 目标船在 ENU 系（原点为无人船）下的 y 坐标
+    tvAngleLidar = float("nan")    # 目标船在 ENU 系（原点为无人船）下的方向角
+    tvDist = float("nan")          # 目标船距离无人船的距离
+    tvHeading = float("nan")       # 目标船在 ENU 系下的朝向
+    tvLength = float("nan")        # 目标船长度
+    tvWidth = float("nan")         # 目标船宽度
+    xLidar = float("nan")          # 无人船在 ENU 系（原点为目标船）下的 x 坐标
+    yLidar = float("nan")          # 无人船在 ENU 系（原点为目标船）下的 y 坐标
 
     isLidarFindObs = False
-    obsX = 0
-    obsY = 0
-    obsDist = 0
-    obsAngleLidar = 0
+    obsX = float("nan")
+    obsY = float("nan")
+    obsDist = float("nan")
+    obsAngleLidar = float("nan")
     obsDistTol = 70.0
     obsAngleTol = deg2rad(15.0)
 
-    # Pod 变量  
+    # Pod 量  
+    isPodValid = False
     isPodFindTV = False
-    tvAnglePod = deg2rad(90)  # ENU 系下的吊舱角
+    tvAnglePod = deg2rad(float("nan"))  # ENU 系下的吊舱角
     podTimer = 0
     podTolSec = 0.01
 
+    # sUAV 量
+    isSearchFindTV = False
+    tvEstPosX = float("nan")
+    tvEstPosY = float("nan")
+    tvAngleEst = deg2rad(118.9)
+
+    isSearchFindUSV = False
+    usvEstPosX = float("nan")
+    usvEstPosY = float("nan")
+
     # 容忍误差
-    angleTol = deg2rad(15.0)
-    distTol = 5.0
+    anglePodLidarTol = deg2rad(15.0)
+    distLidarIntTol = 5.0
+    distSearchLidarTol = 80.0
     
     def __init__(self):
         # For PX4 MAVROS local position and velocity (Velocity is in USV body frame)
@@ -96,18 +105,16 @@ class Pose():
         # For Lidar
         self.lidarSub = rospy.Subscriber('/filter/target', PoseArray, self.lidarCallback, queue_size=1)
 
-        # For MAVROS state
-        # self.stateSub = rospy.Subscriber("/mavros/state", State, self.stateCallback)
+        # For target vessel position from sUAV
+        self.tvEstPosSub = rospy.Subscriber('/target_nav_position', Pose2D, self.tvOdomCallback)
 
+        # For USV position from sUAV
+        self.usvEstPosSub = rospy.Subscriber('/usv_nav_position', Pose2D, self.usvOdomCallback)
         
     def __del__(self):
         pass
-    
-    def stateCallback(self, stateMsg):
-        self.state = stateMsg
 
     def poseCallback(self, odomMsg):
-
         self.x = odomMsg.pose.pose.position.x
         self.y = odomMsg.pose.pose.position.y
         self.u = odomMsg.twist.twist.linear.x
@@ -213,7 +220,7 @@ class Pose():
             # 判断：如果预测位置与真实位置接近，则认为此物体是目标船
             dDist = sqrt((xLidarEst - xLidarPossible) ** 2 + (yLidarEst - yLidarPossible) ** 2)
             dDistIndex = argmin(dDist)
-            if (dDist[dDistIndex, 0] < self.distTol):  
+            if (dDist[dDistIndex, 0] < self.distLidarIntTol):  
                 # 记录目标船信息
                 self.tvX = objectX[dDistIndex, 0]
                 self.tvY = objectY[dDistIndex, 0]
@@ -243,7 +250,7 @@ class Pose():
             self.tLidar = msg.header.stamp
             dAnglePodLidar = abs(objectAngle - self.tvAnglePod)
             tvIndex = argmin(dAnglePodLidar)
-            if (dAnglePodLidar[tvIndex, 0] <= self.angleTol):
+            if (dAnglePodLidar[tvIndex, 0] <= self.anglePodLidarTol):
                 # 记录目标船信息
                 self.tvX = objectX[tvIndex, 0]
                 self.tvY = objectY[tvIndex, 0]
@@ -260,6 +267,29 @@ class Pose():
                 # 将找到目标船标志位置为真
                 self.isLidarFindTV = True    
         
+        elif (self.isSearchFindTV) & (self.isSearchFindUSV):
+            # 计算搜索无人机传入的目标船位置 与 无人船位置+无人船测量的目标船位置 作差
+            dxSearchLidar = abs(objectX + self.usvEstPosX - self.tvEstPosX)
+            dySearchLidar = abs(objectY + self.usvEstPosY - self.tvEstPosY)
+            distSearchLidar = sqrt(dxSearchLidar ** 2 + dySearchLidar ** 2)
+            tvIndex = argmin(distSearchLidar)     
+            if (distSearchLidar[tvIndex, 0] <= self.distSearchLidarTol):
+                # 记录目标船信息
+                self.tvX = objectX[tvIndex, 0]
+                self.tvY = objectY[tvIndex, 0]
+                self.tvAngleLidar = objectAngle[tvIndex, 0]
+                self.tvDist = objectDist[tvIndex, 0]
+                self.tvLength = objectLength[tvIndex, 0]
+                self.tvWidth = objectWidth[tvIndex, 0]
+                self.tvHeading = objectHeading[tvIndex, 0]
+
+                # 根据目标船坐标计算无人船坐标
+                self.xLidar = -self.tvX
+                self.yLidar = -self.tvY
+
+                # 将找到目标船标志位置为真
+                self.isLidarFindTV = True  
+
         else:
             # 此时 isPodFindTV 和 isLidarFindTV 均 false
             # 判断激光雷达扫描到的物体是否为障碍物
@@ -276,6 +306,16 @@ class Pose():
             elif (objectDist[distMinIdx, 0] > self.obsDistTol) | (abs(objectAngle[distMinIdx, 0] - self.psi) > 2.0 * self.obsAngleTol):
                 self.isLidarFindObs = False
 
+    def tvOdomCallback(self, msg):
+        self.tvEstPosX = msg.x
+        self.tvEstPosY = msg.y
+        self.tvAngleEst = deg2rad(msg.theta)
+        self.isSearchFindTV = True
+
+    def usvOdomCallback(self, msg):
+        self.usvEstPosX = msg.x
+        self.usvEstPosY = msg.y
+        self.isSearchFindUSV = True
 
 if __name__ == '__main__':
     # 以下代码为测试代码

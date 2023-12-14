@@ -123,18 +123,6 @@ def main(args=None):
     usvData = USVData()
     console.print("[green]>>>>>>> Function classes initialized.")
 
-    # 添加服务节点
-    # console.print("[green]>>>>>>> Waiting MAVROS services...")
-    # rospy.wait_for_service("/mavros/cmd/arming")
-    # mavrosArmClient = rospy.ServiceProxy("mavros/cmd/arming", CommandBool)
-    # armCmd = CommandBoolRequest(value=True)
-    # disarmCmd = CommandBoolRequest(value=False)
-
-    # rospy.wait_for_service("/mavros/set_mode")
-    # mavrosSetModeClient = rospy.ServiceProxy("mavros/set_mode", SetMode)
-    # holdSetMode = SetModeRequest(custom_mode='AUTO.LOITER')
-    # console.print("[green]>>>>>>> Connect to MAVROS services.")
-
     # 开一个线程用于处理 rospy.spin()
     # 确保 daemon=True，这样主进程结束后，这个线程也会被结束
     # 不然，线程会一直运行，即便主进程结束
@@ -190,6 +178,17 @@ def main(args=None):
     # 试一下  
     while not rospy.is_shutdown():
         try:
+            # 打印当前状态
+            dt = rospy.Time.now().to_sec() - t0
+            theTable = genTable(usvState, latestMsg, usvPose, usvControl, usvComm, dt, uSP, vSP, psiSP, rSP, xSP, ySP, axbSP, aybSP, etaSP) 
+            console.print(theTable)
+
+            # 写入当前状态到文件
+            usvData.saveData(usvPose, usvControl, usvComm, dt, uSP, vSP, psiSP, rSP, xSP, ySP, axbSP, aybSP, etaSP)
+
+            # 发送无人船的东西 
+            usvComm.sendUSVState(usvState)
+
             if usvState == "STARTUP":
                 # 单独为激光雷达设置启动检查
                 pubTopicList = sum(rospy.get_published_topics(), [])
@@ -198,67 +197,95 @@ def main(args=None):
                 if (usvPose.isImuValid) & (usvPose.isDvlValid) & (usvPose.isPodValid) & (usvPose.isLidarValid) & (not isnan(usvControl.angleLeftEst)) & (not isnan(usvControl.angleRightEst)) & (not isnan(usvControl.rpmLeftEst) & (not isnan(usvControl.rpmRightEst))):
                     latestMsg = "Waiting sUAV to send heading..."
                     usvState = "STANDBY"
+                    continue
 
             elif usvState == "STANDBY":
                 if (isTestEnable):
                     usvState = "DOCK_TOLARGEOBJ"
                     continue
                     
-                if (usvComm.isSearchFindTV):
-                    latestMsg = "Receive heading %.2f deg from sUAV." % rad2deg(usvComm.tvAngleEst)
-                    usvState = "PURSUE"
+                if (usvPose.isSearchFindTV):
+                    usvState = "PURSUE_SUAV"
+                    continue
 
-            elif usvState == "PURSUE":   
-                # 如果距离小于给定值，则进入 Approach 段
-                if (usvPose.isLidarFindTV) & (usvPose.tvDist < DIST_PURSUE_TO_APPROACH):
-                    usvState = "DOCK_NEARBY"
-                    latestMsg = "Approaching to the measure circle..."
-                    continue        
-                 
-                if (usvPose.isLidarFindTV):
-                    # 如果激光雷达找到目标船，则使用激光雷达的信息
-                    latestMsg = "Lidar finds target vessel at %.2f deg in %.2f m!" % (rad2deg(usvPose.tvAngleLidar), usvPose.tvDist)
-                    uSP = linearClip(DIST_LIDAR_PURSUE_LB, USP_LIDAR_PURSUE_LB, DIST_LIDAR_PURSUE_UB, USP_LIDAR_PURSUE_UB, usvPose.tvDist)
-                    psiSP = usvPose.tvAngleLidar
+            elif usvState == "PURSUE_SUAV":
+                # 如果吊舱识别，则进入到吊舱导引
+                if (usvPose.isPodFindTV):
+                    usvState == "PURSUE_POD"
+                    continue
 
-                elif (usvPose.isPodFindTV):
-                    # 如果激光雷达没有找到目标船，则使用吊舱的信息
-                    latestMsg = "Pod finds target vessel at %.2f deg!" % rad2deg(usvPose.tvAnglePod)
-                    uSP = USP_POD_PURSUE
-                    psiSP = usvPose.tvAnglePod
-    
-                elif (usvPose.isLidarFindObs) & (isObsAvoidEnable):
-                    # 遇到障碍物，避障   
+                # 如果激光雷达识别到物体，且其坐标和目标船比对后发现正确，则进入到 LIDAR 导引
+
+                # 如果遇到障碍物，避障 
+                if (usvPose.isLidarFindObs) & (isObsAvoidEnable):                  
                     usvState = "PURSUE_OBS"
                     continue 
-
-                else:
-                    # 如果没有找到目标船，则继续跟随追踪路径
-                    latestMsg = "Receive heading %d deg from sUAV." % rad2deg(usvComm.tvAngleEst)
-                    uSP = USP_SUAV_PURSUE
-                    psiSP = usvComm.tvAngleEst          
+                
+                # 接收 SUAV 的航向信息
+                latestMsg = "Following heading %.2f deg from sUAV." % rad2deg(usvPose.tvAngleEst)
+                uSP = USP_SUAV_PURSUE
+                psiSP = usvPose.tvAngleEst     
                 
                 # 控制无人船
                 [uSP, rSP, axbSP, etaSP] = usvControl.moveUSV(uSP, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
-                
-            elif usvState == "PURSUE_OBS":             
-                # 判断是否还需要避障
-                if (usvPose.isLidarFindObs):       
-                    # 计算避障所需航向角
-                    psiSP = usvPose.obsAngleLidar - ANGLE_AVOID_OBS   
-                    uSP = USP_OBS_PURSUE
-                    [uSP, rSP, axbSP, etaSP] = usvControl.moveUSV(uSP, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
 
-                    latestMsg = "Obstacle detected at %.2f deg!" % usvPose.obsAngleLidar
-                else:
-                    latestMsg = "Back to follow heading %.2f deg from sUAV." % rad2deg(usvComm.tvAngleEst)     
-                    usvState = "PURSUE"
+            elif usvState == "PURSUE_POD":
+                # 如果激光雷达识别，则进入到 LIDAR 导引
+                if (usvPose.isLidarFindTV):
+                    usvState = "PURSUE_LIDAR"
+                    continue       
+                
+                # 如果吊舱没有识别，则退回到 SUAV 导引
+                if (not usvPose.isPodFindTV):
+                    usvState == "PURSUE_SUAV"
                     continue
+
+                # 使用吊舱的信息
+                latestMsg = "Following heading %.2f deg from pod" % rad2deg(usvPose.tvAnglePod)
+                uSP = USP_POD_PURSUE
+                psiSP = usvPose.tvAnglePod
+
+                # 控制无人船
+                [uSP, rSP, axbSP, etaSP] = usvControl.moveUSV(uSP, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
+
+            elif usvState == "PURSUE_LIDAR":
+                # 如果激光雷达识别，且距离小于给定值，则进入 Approach 段
+                if (usvPose.isLidarFindTV) & (usvPose.tvDist < DIST_PURSUE_TO_APPROACH):
+                    usvState = "DOCK_NEARBY"
+                    continue    
+
+                # 如果激光雷达没有识别，则退回到吊舱导引
+                if (not usvPose.isLidarFindTV):
+                    usvState = "PURSUE_POD"
+                    continue
+                
+                # 激光雷达找到目标船，则使用激光雷达的信息
+                latestMsg = "Following heading %.2f deg from Lidar. Distance to target: %.2f m" % (rad2deg(usvPose.tvAngleLidar), usvPose.tvDist)
+                uSP = linearClip(DIST_LIDAR_PURSUE_LB, USP_LIDAR_PURSUE_LB, DIST_LIDAR_PURSUE_UB, USP_LIDAR_PURSUE_UB, usvPose.tvDist)
+                psiSP = usvPose.tvAngleLidar
+
+                # 控制无人船
+                [uSP, rSP, axbSP, etaSP] = usvControl.moveUSV(uSP, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
+                
+            elif usvState == "PURSUE_OBS":
+                # 判断是否还需要避障，如果不需要，则回到 PURSUE_SUAV
+                if (not usvPose.isLidarFindObs):  
+                    usvState = "PURSUE_SUAV"
+                    continue
+
+                # 计算避障所需航向角
+                uSP = USP_OBS_PURSUE
+                psiSP = usvPose.obsAngleLidar - ANGLE_AVOID_OBS   
+                latestMsg = "Obstacle detected. Follwing heading %.2f deg to avoid it." % usvPose.obsAngleLidar
+
+                # 控制无人船
+                [uSP, rSP, axbSP, etaSP] = usvControl.moveUSV(uSP, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
         
             elif usvState == "DOCK_NEARBY":
                 if (isDockNearbyPlan == False):
                     currPath = usvPathPlanner.planDockNearby(usvPose.xLidar, usvPose.yLidar, 0, 0)
                     usvGuidance.setPath(currPath)
+                    latestMsg = "Approaching to the measure circle..."
                     isDockNearbyPlan = True       
                 
                 # 读取激光雷达信息（这个时候应该能保证读到目标船吧？），生成控制指令
@@ -494,20 +521,9 @@ def main(args=None):
                 # 程序不应该执行到这里
                 console.print("\n[red] >>>>>>> USV state: %s invalid. Check code." % (usvState))
                 break
-        
-            # 打印当前状态
-            dt = rospy.Time.now().to_sec() - t0
-            theTable = genTable(usvState, latestMsg, usvPose, usvControl, usvComm, dt, uSP, vSP, psiSP, rSP, xSP, ySP, axbSP, aybSP, etaSP) 
-            console.print(theTable)
-
-            # 写入当前状态到文件
-            usvData.saveData(usvPose, usvControl, usvComm, dt, uSP, vSP, psiSP, rSP, xSP, ySP, axbSP, aybSP, etaSP)
-
-            # 发送无人船的东西 
-            usvComm.sendUSVState(usvState)
-
-            rosRate.sleep()
             
+            rosRate.sleep()
+
         except Exception as e:
             console.print("\n")
             console.print_exception(show_locals=True)
