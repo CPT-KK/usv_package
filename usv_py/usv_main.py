@@ -28,12 +28,6 @@ from usv_test import test
     # DOCK_FINAL
     # ATTACH
     # STOP
-# 以下是测试状态
-    # TEST_LINE
-    # TEST_CIRCLE
-    # TEST_BOTH
-
-TEST_MODE = "TEST_LINE"
 
 # ROS 定频
 ROS_RATE = 10
@@ -123,18 +117,6 @@ def main(args=None):
     usvData = USVData()
     console.print("[green]>>>>>>> Function classes initialized.")
 
-    # 添加服务节点
-    # console.print("[green]>>>>>>> Waiting MAVROS services...")
-    # rospy.wait_for_service("/mavros/cmd/arming")
-    # mavrosArmClient = rospy.ServiceProxy("mavros/cmd/arming", CommandBool)
-    # armCmd = CommandBoolRequest(value=True)
-    # disarmCmd = CommandBoolRequest(value=False)
-
-    # rospy.wait_for_service("/mavros/set_mode")
-    # mavrosSetModeClient = rospy.ServiceProxy("mavros/set_mode", SetMode)
-    # holdSetMode = SetModeRequest(custom_mode='AUTO.LOITER')
-    # console.print("[green]>>>>>>> Connect to MAVROS services.")
-
     # 开一个线程用于处理 rospy.spin()
     # 确保 daemon=True，这样主进程结束后，这个线程也会被结束
     # 不然，线程会一直运行，即便主进程结束
@@ -149,7 +131,6 @@ def main(args=None):
     isDockApproachPlan = False
     isDockAdjustPlan = False
     isDockWaitArmPlan = False
-    isDockToPlan = False
     isDockToLargeObjPlan = False
     isDockToVesselPlan = False
     isDockAttachPlan = False
@@ -397,8 +378,8 @@ def main(args=None):
                     # 设置目标点为无人船对齐大物体那个点
                     [largeObjX, largeObjY] = rotationZ(usvComm.largeObjX, usvComm.largeObjY, -usvPose.psi)
                     psiSP = arctan2(ySP - currPath[-2, 1], xSP - currPath[-2, 0])
-                    xSP = largeObjX + (DIST_TOLARGEOBJ_SIDE + 0.6 * tvWidthMean) * cos(psiSP - pi / 2)
-                    ySP = largeObjY + (DIST_TOLARGEOBJ_SIDE + 0.6 * tvWidthMean) * sin(psiSP - pi / 2)
+                    xSP = largeObjX + (DIST_TOLARGEOBJ_SIDE + 0.5 * tvWidthMean) * cos(psiSP - pi / 2)
+                    ySP = largeObjY + (DIST_TOLARGEOBJ_SIDE + 0.5 * tvWidthMean) * sin(psiSP - pi / 2)
                     
                     isDockToLargeObjPlan = True
 
@@ -423,8 +404,8 @@ def main(args=None):
 
                     # 设置目标点为目标船的中心
                     psiSP = arctan2(ySP - currPath[-2, 1], xSP - currPath[-2, 0])
-                    xSP = 0 + (DIST_TOVESSEL_SIDE + 0.6 * tvWidthMean) * cos(psiSP - pi / 2)
-                    ySP = 0 + (DIST_TOVESSEL_SIDE + 0.6 * tvWidthMean) * sin(psiSP - pi / 2)
+                    xSP = 0 + (DIST_TOVESSEL_SIDE + 0.5 * tvWidthMean) * cos(psiSP - pi / 2)
+                    ySP = 0 + (DIST_TOVESSEL_SIDE + 0.5 * tvWidthMean) * sin(psiSP - pi / 2)
                     
                     isDockToVesselPlan = True
 
@@ -455,6 +436,8 @@ def main(args=None):
                     else:
                         xSP = 0 + (0.4 * tvWidthMean) * cos(psiSP - pi / 2)
                         ySP = 0 + (0.4 * tvWidthMean) * sin(psiSP - pi / 2)
+
+                    isDockAttachPlan = True
 
                 latestMsg = "Close enough. Try to attach. Need to stablize for [%.2f / %.2f]s" % (rospy.Time.now().to_sec() - timer1, SECS_WAIT_ATTACH_STEADY)
                 
