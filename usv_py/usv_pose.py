@@ -246,6 +246,7 @@ class Pose():
                 rospy.logwarn("Pod and lidar lose detection for %.2fs", dt.to_sec())
 
         elif (self.isPodFindTV):
+            # 吊舱识别目标船方法
             # 如果此时吊舱扫描到目标船，则比对吊舱偏航角和船-物体方位角
             # 若在角度容许范围内，则认为此物体是目标船，否则，进入激光雷达位置预测判断
             self.tLidar = msg.header.stamp
@@ -269,8 +270,10 @@ class Pose():
                 self.isLidarFindTV = True    
         
         elif (self.isSearchFindTV) & (self.isSearchPointRealTV):
-            # 坐标比对方法
-            # 计算搜索无人机传入的目标船位置 与 无人船测量的目标船位置 作差
+            # 坐标比对识别目标船方法
+            # 如果搜索无人机给了目标船坐标，并且这个坐标是真的目标船（不是虚拟点）
+            # 则通过 搜索无人机传入的目标船位置 与 无人船测量的目标船位置 作差
+            # 如果这个差值小于容忍误差，则认为此物体是目标船
             dxSearchLidar = abs(objectX - self.tvEstPosX)
             dySearchLidar = abs(objectY - self.tvEstPosY)
             distSearchLidar = sqrt(dxSearchLidar ** 2 + dySearchLidar ** 2)
@@ -293,9 +296,8 @@ class Pose():
                 self.isLidarFindTV = True  
 
         else:
-            # 此时 isPodFindTV 和 isLidarFindTV 均 false
-            # 判断激光雷达扫描到的物体是否为障碍物
-            # 没有扫描到目标船才进行障碍物判断
+            # 此时激光雷达扫描到物体，但是吊舱和坐标比对均不认为物体是目标船
+            # 因此，需要判断激光雷达扫描到的物体是否为障碍物
             distMinIdx = argmin(objectDist)
 
             # 使用距离 obsDistTol 和角度 obsAngleTol 判断最近的那个 object 是否为障碍物                                   
