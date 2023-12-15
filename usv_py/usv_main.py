@@ -207,7 +207,10 @@ def main(args=None):
                     usvState == "PURSUE_POD"
                     continue
 
-                # 如果激光雷达识别到物体，且其坐标和目标船比对后发现正确，则进入到 LIDAR 导引
+                # 如果激光雷达识别，则进入到 LIDAR 导引
+                if (usvPose.isLidarFindTV):
+                    usvState = "PURSUE_LIDAR"
+                    continue    
 
                 # 如果遇到障碍物，避障 
                 if (usvPose.isLidarFindObs) & (isObsAvoidEnable):                  
