@@ -7,7 +7,7 @@ from numpy.linalg import norm
 from usv_math import rotationZ, wrapToPi
 
 from std_msgs.msg import Float64MultiArray
-from geometry_msgs.msg import PoseStamped, TwistStamped, Vector3Stamped, PoseArray, Pose2D
+from geometry_msgs.msg import PoseStamped, TwistStamped, Vector3Stamped, PoseArray, PoseStamped
 from nav_msgs.msg import Odometry
 from sensor_msgs.msg import Imu
 from tf.transformations import quaternion_from_euler, euler_from_quaternion
@@ -75,13 +75,14 @@ class Pose():
 
     # sUAV 量
     isSearchFindTV = False
-    tvEstPosX = float("nan")
-    tvEstPosY = float("nan")
+    isSearchPointRealTV = False # 搜索无人机会给多个点，用此标志位判断给的点是否为真的目标船
+    tvEstPosX = float("nan")    # 相对于以无人船为原心的 ENU 的 X
+    tvEstPosY = float("nan")    # 相对于以无人船为原心的 ENU 的 Y
     tvAngleEst = deg2rad(118.9)
 
-    isSearchFindUSV = False
-    usvEstPosX = float("nan")
-    usvEstPosY = float("nan")
+    # isSearchFindUSV = False
+    # usvEstPosX = float("nan")
+    # usvEstPosY = float("nan")
 
     # 容忍误差
     anglePodLidarTol = deg2rad(15.0)
@@ -106,10 +107,10 @@ class Pose():
         self.lidarSub = rospy.Subscriber('/filter/target', PoseArray, self.lidarCallback, queue_size=1)
 
         # For target vessel position from sUAV
-        self.tvEstPosSub = rospy.Subscriber('/target_nav_position', Pose2D, self.tvOdomCallback)
+        self.tvEstPosSub = rospy.Subscriber('/target_nav_position', PoseStamped, self.tvOdomCallback)
 
         # For USV position from sUAV
-        self.usvEstPosSub = rospy.Subscriber('/usv_nav_position', Pose2D, self.usvOdomCallback)
+        # self.usvEstPosSub = rospy.Subscriber('/usv_nav_position', PoseStamped, self.usvOdomCallback)
         
     def __del__(self):
         pass
@@ -267,10 +268,11 @@ class Pose():
                 # 将找到目标船标志位置为真
                 self.isLidarFindTV = True    
         
-        elif (self.isSearchFindTV) & (self.isSearchFindUSV):
-            # 计算搜索无人机传入的目标船位置 与 无人船位置+无人船测量的目标船位置 作差
-            dxSearchLidar = abs(objectX + self.usvEstPosX - self.tvEstPosX)
-            dySearchLidar = abs(objectY + self.usvEstPosY - self.tvEstPosY)
+        elif (self.isSearchFindTV):
+            # 坐标比对方法
+            # 计算搜索无人机传入的目标船位置 与 无人船测量的目标船位置 作差
+            dxSearchLidar = abs(objectX - self.tvEstPosX)
+            dySearchLidar = abs(objectY - self.tvEstPosY)
             distSearchLidar = sqrt(dxSearchLidar ** 2 + dySearchLidar ** 2)
             tvIndex = argmin(distSearchLidar)     
             if (distSearchLidar[tvIndex, 0] <= self.distSearchLidarTol):
@@ -307,15 +309,15 @@ class Pose():
                 self.isLidarFindObs = False
 
     def tvOdomCallback(self, msg):
-        self.tvEstPosX = msg.x
-        self.tvEstPosY = msg.y
-        self.tvAngleEst = deg2rad(msg.theta)
+        self.tvEstPosX = msg.pose.position.x
+        self.tvEstPosY = msg.pose.position.y
+        self.tvAngleEst = msg.pose.orientation.w
         self.isSearchFindTV = True
+        if (msg.header.frame_id == "target"):
+            self.isSearchPointRealTV = True
+        else:
+            self.isSearchPointRealTV = False
 
-    def usvOdomCallback(self, msg):
-        self.usvEstPosX = msg.x
-        self.usvEstPosY = msg.y
-        self.isSearchFindUSV = True
 
 if __name__ == '__main__':
     # 以下代码为测试代码
