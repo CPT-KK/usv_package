@@ -268,7 +268,7 @@ class Pose():
                 # 将找到目标船标志位置为真
                 self.isLidarFindTV = True    
         
-        elif (self.isSearchFindTV):
+        elif (self.isSearchFindTV) & (self.isSearchPointRealTV):
             # 坐标比对方法
             # 计算搜索无人机传入的目标船位置 与 无人船测量的目标船位置 作差
             dxSearchLidar = abs(objectX - self.tvEstPosX)
