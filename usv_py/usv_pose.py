@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import rospy, threading
+import rospy, threading, struct
 import message_filters
 
 from numpy import arctan2, rad2deg, arctan, sqrt, deg2rad, zeros, argmax, argmin, array, abs, tan, arctan
@@ -179,13 +179,20 @@ class Pose():
         objectLength = zeros([self.objectNum, 1])
         objectWidth = zeros([self.objectNum, 1])
         objectHeading = zeros([self.objectNum, 1])
+        objectHighestX = zeros([self.objectNum, 1])
+        objectHighestY = zeros([self.objectNum, 1])
+        objectHighestZ = zeros([self.objectNum, 1])
         
         for i in range(self.objectNum):
             objectX[i, 0] = msg.poses[i].position.x
             objectY[i, 0] = msg.poses[i].position.y
             objectAngle[i, 0] = arctan2(objectY[i, 0], objectX[i, 0])
             objectDist[i, 0] = sqrt(objectX[i, 0]**2 + objectY[i, 0]**2)
-            [objectLength[i, 0], objectWidth[i, 0], objectHeading[i, 0]] = euler_from_quaternion([msg.poses[i].orientation.x, msg.poses[i].orientation.y, msg.poses[i].orientation.z, msg.poses[i].orientation.w])
+            objectHeading[i, 0] = msg.poses[i].orientation.w
+            objectLength[i, 0] = msg.poses[i].orientation.x
+            objectWidth[i, 0] = msg.poses[i].orientation.y   
+            objectHighestPointData = struct.pack('d', msg.poses[i].orientation.z)
+            [objectHighestX[i, 0], objectHighestY[i, 0], objectHighestZ[i, 0], _] = struct.unpack('4h', objectHighestPointData)
 
         objectLength = objectLength * 100.0
         objectWidth = objectWidth * 100.0
