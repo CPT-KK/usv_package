@@ -193,6 +193,9 @@ class Pose():
             objectWidth[i, 0] = msg.poses[i].orientation.y   
             objectHighestPointData = struct.pack('d', msg.poses[i].orientation.z)
             [objectHighestX[i, 0], objectHighestY[i, 0], objectHighestZ[i, 0], _] = struct.unpack('4h', objectHighestPointData)
+            objectHighestX[i, 0] = objectHighestX[i, 0] / 100.0
+            objectHighestY[i, 0] = objectHighestY[i, 0] / 100.0
+            objectHighestZ[i, 0] = objectHighestZ[i, 0] / 100.0
 
         objectLength = objectLength * 100.0
         objectWidth = objectWidth * 100.0
