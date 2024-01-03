@@ -55,6 +55,9 @@ class Pose():
     tvHeading = float("nan")       # 目标船在 ENU 系下的朝向
     tvLength = float("nan")        # 目标船长度
     tvWidth = float("nan")         # 目标船宽度
+    tvHighestX = float("nan")      # 目标船最高点 X 坐标（原点为目标船）
+    tvHighestY = float("nan")      # 目标船最高点 Y 坐标（原点为目标船）
+    tvHighestZ = float("nan")      # 目标船最高点 Z 坐标（原点为目标船）
     xLidar = float("nan")          # 无人船在 ENU 系（原点为目标船）下的 x 坐标
     yLidar = float("nan")          # 无人船在 ENU 系（原点为目标船）下的 y 坐标
 
@@ -87,7 +90,8 @@ class Pose():
     # 容忍误差
     anglePodLidarTol = deg2rad(15.0)
     distLidarIntTol = 5.0
-    distSearchLidarTol = 80.0
+    distSearchLidarStrictTol = 150.0
+    distSearchLidarSoftTol = 180.0
     
     def __init__(self):
         # For PX4 MAVROS local position and velocity (Velocity is in USV body frame)
@@ -261,8 +265,11 @@ class Pose():
             # 若在角度容许范围内，则认为此物体是目标船，否则，进入激光雷达位置预测判断
             self.tLidar = msg.header.stamp
             dAnglePodLidar = abs(objectAngle - self.tvAnglePod)
+            dxSearchLidar = abs(objectX - self.tvEstPosX)
+            dySearchLidar = abs(objectY - self.tvEstPosY)
+            distSearchLidar = sqrt(dxSearchLidar ** 2 + dySearchLidar ** 2)
             tvIndex = argmin(dAnglePodLidar)
-            if (dAnglePodLidar[tvIndex, 0] <= self.anglePodLidarTol):
+            if (dAnglePodLidar[tvIndex, 0] <= self.anglePodLidarTol) & (distSearchLidar[tvIndex, 0] <= self.distSearchLidarSoftTol):
                 # 记录目标船信息
                 self.tvX = objectX[tvIndex, 0]
                 self.tvY = objectY[tvIndex, 0]
@@ -271,6 +278,9 @@ class Pose():
                 self.tvLength = objectLength[tvIndex, 0]
                 self.tvWidth = objectWidth[tvIndex, 0]
                 self.tvHeading = objectHeading[tvIndex, 0]
+                self.tvHighestX = objectHighestX[tvIndex, 0]
+                self.tvHighestY = objectHighestY[tvIndex, 0]
+                self.tvHighestZ = objectHighestZ[tvIndex, 0]
 
                 # 根据目标船坐标计算无人船坐标
                 self.xLidar = -self.tvX
@@ -288,7 +298,7 @@ class Pose():
             dySearchLidar = abs(objectY - self.tvEstPosY)
             distSearchLidar = sqrt(dxSearchLidar ** 2 + dySearchLidar ** 2)
             tvIndex = argmin(distSearchLidar)     
-            if (distSearchLidar[tvIndex, 0] <= self.distSearchLidarTol):
+            if (distSearchLidar[tvIndex, 0] <= self.distSearchLidarStrictTol):
                 # 记录目标船信息
                 self.tvX = objectX[tvIndex, 0]
                 self.tvY = objectY[tvIndex, 0]
@@ -297,6 +307,9 @@ class Pose():
                 self.tvLength = objectLength[tvIndex, 0]
                 self.tvWidth = objectWidth[tvIndex, 0]
                 self.tvHeading = objectHeading[tvIndex, 0]
+                self.tvHighestX = objectHighestX[tvIndex, 0]
+                self.tvHighestY = objectHighestY[tvIndex, 0]
+                self.tvHighestZ = objectHighestZ[tvIndex, 0]
 
                 # 根据目标船坐标计算无人船坐标
                 self.xLidar = -self.tvX
