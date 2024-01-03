@@ -61,6 +61,7 @@ ANGLE_DOCK_STEADY_TOL = deg2rad(2)      # DOCK_ADJUST 时认为 USV 已经稳定
 DIST_DOCK_STEADY_TOL = 1.0              # DOCK_ADJUST 时认为 USV 已经稳定的位置判据
 VEL_DOCK_STEADY_TOL = 0.25              # DOCK_ADJUST 时认为 USV 已经稳定的速度判据
 
+HEALTHY_Z_TOL = 1.5                     # 
 SECS_WAIT_ARM_SEARCH = 10.0             # WAIT_ARM 时等待机械臂搜索大物体的秒数
 
 DIST_TOLARGEOBJ_SIDE = 2.5              # TOLARGEOBJ 时 USV 前往的大物体侧面点与船边的距离
@@ -131,7 +132,7 @@ def main(args=None):
     isDockApproachPlan = False
     isDockAdjustPlan = False
     isDockWaitArmPlan = False
-    isDockToLargeObjPlan = False
+    isDockToObjAreaPlan = False
     isDockToVesselPlan = False
     isDockAttachPlan = False
     isTestPlan = False
@@ -152,6 +153,8 @@ def main(args=None):
     # 保存目标船朝向角的数组
     tvInfo = zeros((3, 5000))
     tvInfoIdx = 0
+    tvHighestInfo = zeros((3, 5000))
+    tvHighestInfoIdx = 0
 
     # 大物体
     largeObjX = float("nan")
@@ -194,7 +197,7 @@ def main(args=None):
 
             elif usvState == "STANDBY":
                 if (isTestEnable):
-                    usvState = "DOCK_TOLARGEOBJ"
+                    usvState = "DOCK_TOOBJAREA"
                     continue
                     
                 if (usvPose.isSearchFindTV):
@@ -332,12 +335,12 @@ def main(args=None):
                     tvHeadings = removeOutliers(tvHeadings, 0.087266, 20)
                     tvLengths = removeOutliers(tvLengths, 0.5, 20)
                     tvWidths = removeOutliers(tvWidths, 0.5, 20)
-                    
+        
                     # 计算平均值，并将结果角度映射到-90°~90°
                     tvHeadingMean = arctan(tan(mean(tvHeadings)))
                     tvLengthMean = mean(tvLengths)
                     tvWidthMean = mean(tvWidths)
-                    
+        
                     latestMsg = "Estimating finished with average heading %.2f deg. L: %.2f m. W: %.2f m. Begin final approach..." % (rad2deg(tvHeadingMean), tvLengthMean, tvWidthMean)
                     usvState = "DOCK_APPROACH"
                     continue
@@ -346,7 +349,10 @@ def main(args=None):
                 # 使用激光雷达读取的位置信息，规划变轨路径
                 if (isDockApproachPlan == False):
                     currPath = usvPathPlanner.planDockApproach(usvPose.xLidar, usvPose.yLidar, 0, 0, tvHeadingMean)
-                    usvGuidance.setPath(currPath) 
+                    usvGuidance.setPath(currPath)
+                    semiFinalX = currPath[-1, 0]
+                    semiFinalY = currPath[-1, 1]
+                    finalPsi = arctan2(currPath[-1, 1] - currPath[-2, 1], currPath[-1, 0] - currPath[-2, 0])
                     isDockApproachPlan = True
 
                 # 读取激光雷达信息（这个时候应该能保证读到目标船吧？），生成控制指令
@@ -371,9 +377,9 @@ def main(args=None):
 
                     # 使用上一段路径的最后一个点作为自稳点
                     # 使用上一段路径最后两个点的切线方向作为 USV 航向
-                    xSP = currPath[-1, 0]
-                    ySP = currPath[-1, 1]
-                    psiSP = arctan2(ySP - currPath[-2, 1], xSP - currPath[-2, 0])
+                    xSP = semiFinalX
+                    ySP = semiFinalY
+                    psiSP = finalPsi
                     isDockAdjustPlan = True
 
                 latestMsg = "Approach finished. Stablizing USV @ [%.2f, %.2f], %.2f deg... [%.2f / %.2f]s" % (xSP, ySP, rad2deg(psiSP), rospy.Time.now().to_sec() - timer1, 5.0)
@@ -381,9 +387,9 @@ def main(args=None):
                 # 保持静止
                 [uSP, vSP, rSP, axbSP, aybSP, etaSP] = usvControl.moveUSVVec(xSP, ySP, psiSP, usvPose.xLidar, usvPose.yLidar, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
 
-                # 等待船接近静止并保持 5.0s，进入 DOCK_WAITARM
+                # 等待船接近静止并保持 5.0s，进入 MEASURE_HIGHEST
                 if (rospy.Time.now().to_sec() - timer1 > SECS_WAIT_DOCK_ADJUST_STEADY):   
-                    usvState = "DOCK_WAITARM"
+                    usvState = "MEASURE_HIGHEST"
                     continue
                 elif (abs(usvPose.psi - psiSP) < ANGLE_DOCK_STEADY_TOL) & (abs(usvPose.xLidar - xSP) < DIST_DOCK_STEADY_TOL) & (abs(usvPose.yLidar - ySP) < DIST_DOCK_STEADY_TOL) & (abs(usvPose.uDVL) < VEL_DOCK_STEADY_TOL) & (abs(usvPose.vDVL) < VEL_DOCK_STEADY_TOL):
                     pass
@@ -391,53 +397,79 @@ def main(args=None):
                     # 如果不满足静止条件，需要重置 t1 计时器
                     timer1 = rospy.Time.now().to_sec()
 
-            elif usvState == "DOCK_WAITARM":
+            elif usvState == "MEASURE_HIGHEST":
                 if (isDockWaitArmPlan == False):
                     # 将当前时间写入 t1 计时器
                     timer1 = rospy.Time.now().to_sec()
 
-                    xSP = currPath[-1, 0]
-                    ySP = currPath[-1, 1]
-                    psiSP = arctan2(ySP - currPath[-2, 1], xSP - currPath[-2, 0])
+                    xSP = semiFinalX
+                    ySP = semiFinalY
+                    psiSP = finalPsi
 
                     isDockWaitArmPlan = True
 
-                latestMsg = "USV has been stablized. Waiting the arm searching... [%.2f / %.2f]s." % (rospy.Time.now().to_sec() - timer1, SECS_WAIT_ARM_SEARCH)
+                latestMsg = "USV has been stablized. Waiting to measure the highest point... [%.2f / %.2f]s." % (rospy.Time.now().to_sec() - timer1, SECS_WAIT_ARM_SEARCH)
+
+                tvHighestInfo[0, tvHighestInfoIdx] = usvPose.tvHighestX
+                tvHighestInfo[1, tvHighestInfoIdx] = usvPose.tvHighestY
+                tvHighestInfo[2, tvHighestInfoIdx] = usvPose.tvHighestZ
 
                 # 保持静止
                 [uSP, vSP, rSP, axbSP, aybSP, etaSP] = usvControl.moveUSVVec(xSP, ySP, psiSP, usvPose.xLidar, usvPose.yLidar, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
 
-                # 等待机械臂搜索大物体
-                if (usvComm.isArmFindBigObj):   
-                    # 找到大物体，向大物体泊近
-                    usvState = "DOCK_TOLARGEOBJ"
-                    continue
-                elif (rospy.Time.now().to_sec() - timer1 > SECS_WAIT_ARM_SEARCH): 
-                    # 等待机械臂超时，向目标船泊近
-                    usvState = "DOCK_TOVESSEL"
-                    continue
+                # 等待测量完成
+                if (rospy.Time.now().to_sec() - timer1 > SECS_WAIT_ARM_SEARCH):
+                    tvHighestInfo = tvHighestInfo[:, 0:tvHighestInfoIdx-1]
+                    tvHighestXs = tvHighestInfo[0, :]
+                    tvHighestYs = tvHighestInfo[1, :]
+                    tvHighestZs = tvHighestInfo[2, :]
+                    tvHighestXs = removeOutliers(tvHighestXs, 0.1, 20)
+                    tvHighestYs = removeOutliers(tvHighestYs, 0.1, 20)
+                    tvHighestZs = removeOutliers(tvHighestZs, 0.1, 20)
+                    tvHighestXMean = mean(tvHighestXs)
+                    tvHighestYMean = mean(tvHighestYs)
+                    tvHighestZMean = mean(tvHighestZs)
+                    if (tvHighestZMean >= HEALTHY_Z_TOL):   
+                        # 最高点测量健康，向最高点映射到船中轴线上的点泊近
+                        # 注意：这里的 rotationZ 是要对点（向量）进行旋转，即求取点在旋转后的坐标（同一坐标系下），
+                        # 而不是同一个点在不同坐标系下的表示，故取负号
+                        [tvHighestXMean2, _] = rotationZ(tvHighestXMean, tvHighestYMean, finalPsi)
+                        if (tvHighestXMean2 >= 0):
+                            finalX = (-0.5 * tvLengthMean + tvHighestXMean2) / 2
+                            finalY = 0.0
+                        else:
+                            finalX = (0.5 * tvLengthMean + tvHighestXMean2) / 2
+                            finalY = 0.0
+                        [finalX, finalY] = rotationZ(finalX, finalY, -finalPsi)
+                        usvState = "DOCK_TOOBJAREA"
+                        continue
+                    else: 
+                        # 最高点测量不健康，向目标船中心泊近
+                        finalX = 0.0
+                        finalY = 0.0
+                        usvState = "DOCK_TOVESCEN"
+                        continue
                 else:
                     pass
 
-            elif usvState == "DOCK_TOLARGEOBJ":
-                if (isDockToLargeObjPlan == False):
+            elif usvState == "DOCK_TOOBJAREA":
+                if (isDockToObjAreaPlan == False):
                     # 将当前时间写入 t1 计时器
                     timer1 = rospy.Time.now().to_sec()
 
-                    # 设置目标点为无人船对齐大物体那个点
-                    [largeObjX, largeObjY] = rotationZ(usvComm.largeObjX, usvComm.largeObjY, -usvPose.psi)
-                    psiSP = arctan2(ySP - currPath[-2, 1], xSP - currPath[-2, 0])
-                    xSP = largeObjX + (DIST_TOLARGEOBJ_SIDE + 0.5 * tvWidthMean) * cos(psiSP - pi / 2)
-                    ySP = largeObjY + (DIST_TOLARGEOBJ_SIDE + 0.5 * tvWidthMean) * sin(psiSP - pi / 2)
+                    # 设置目标点为无人船对齐目标区域侧面那个点
+                    xSP = finalX + (DIST_TOLARGEOBJ_SIDE + 0.5 * tvWidthMean) * cos(finalPsi - pi / 2)
+                    ySP = finalY + (DIST_TOLARGEOBJ_SIDE + 0.5 * tvWidthMean) * sin(finalPsi - pi / 2)
+                    psiSP = finalPsi
                     
-                    isDockToLargeObjPlan = True
+                    isDockToObjAreaPlan = True
 
-                    latestMsg = "Receive the large object information from the robotic arm. USV is aligning with the large object @ [%.2f, %.2f]..." % (xSP, ySP)
+                    latestMsg = "USV is aligning with the estimated object area center [%.2f, %.2f]..." % (xSP, ySP)
                 
-                # 向大物体对齐
+                # 向目标区域对齐
                 [uSP, vSP, rSP, axbSP, aybSP, etaSP] = usvControl.moveUSVVec(xSP, ySP, psiSP, usvPose.xLidar, usvPose.yLidar, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
                 
-                # 如果与大物体的轴向误差（？）小于给定距离并且持续 X 秒，则认为已经和大物体对齐
+                # 如果与目标区域的轴向误差（？）小于给定距离并且持续 X 秒，则认为已经和目标区域对齐
                 if (rospy.Time.now().to_sec() - timer1 > SECS_WAIT_TOLARGEOBJ_STEADY): 
                     usvState = "DOCK_ATTACH"
                     continue
@@ -447,19 +479,19 @@ def main(args=None):
                     # 如果不满足静止条件，需要重置 t1 计时器
                     timer1 = rospy.Time.now().to_sec()
                     
-            elif usvState == "DOCK_TOVESSEL": 
+            elif usvState == "DOCK_TOVESCEN": 
                 if (isDockToVesselPlan == False):
                     # 将当前时间写入 t1 计时器
                     timer1 = rospy.Time.now().to_sec()
 
-                    # 设置目标点为目标船的中心
-                    psiSP = arctan2(ySP - currPath[-2, 1], xSP - currPath[-2, 0])
-                    xSP = 0 + (DIST_TOVESSEL_SIDE + 0.5 * tvWidthMean) * cos(psiSP - pi / 2)
-                    ySP = 0 + (DIST_TOVESSEL_SIDE + 0.5 * tvWidthMean) * sin(psiSP - pi / 2)
-                    
+                    # 设置目标点为目标船的中心 
+                    xSP = finalX + (DIST_TOVESSEL_SIDE + 0.5 * tvWidthMean) * cos(finalPsi - pi / 2)
+                    ySP = finalY + (DIST_TOVESSEL_SIDE + 0.5 * tvWidthMean) * sin(finalPsi - pi / 2)
+                    psiSP = finalPsi
+
                     isDockToVesselPlan = True
 
-                    latestMsg = "Timeout waiting the robotic arm to search. USV is aligning with the center of the target vessel..."
+                    latestMsg = "Failed to estimate the object area center. USV is aligning with the center of the target vessel..."
 
                 # 向目标船中心对齐                 
                 [uSP, vSP, rSP, axbSP, aybSP, etaSP] = usvControl.moveUSVVec(xSP, ySP, psiSP, usvPose.xLidar, usvPose.yLidar, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
@@ -480,13 +512,9 @@ def main(args=None):
                     timer1 = rospy.Time.now().to_sec()
 
                     # 设置目标点为目标船/大物体的中心
-                    psiSP = arctan2(ySP - currPath[-2, 1], xSP - currPath[-2, 0])
-                    if (isDockToLargeObjPlan):
-                        xSP = largeObjX + (0.4 * tvWidthMean) * cos(psiSP - pi / 2)
-                        ySP = largeObjY + (0.4 * tvWidthMean) * sin(psiSP - pi / 2)
-                    else:
-                        xSP = 0 + (0.4 * tvWidthMean) * cos(psiSP - pi / 2)
-                        ySP = 0 + (0.4 * tvWidthMean) * sin(psiSP - pi / 2)
+                    xSP = finalX + (0.4 * tvWidthMean) * cos(finalPsi - pi / 2)
+                    ySP = finalY + (0.4 * tvWidthMean) * sin(finalPsi - pi / 2)
+                    psiSP = finalPsi
 
                     isDockAttachPlan = True
 
