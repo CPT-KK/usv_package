@@ -165,7 +165,11 @@ class Pose():
         self.isPodValid = True
 
     def lidarCallback(self, msg):   
-        self.objectNum = len(msg.poses)
+        
+        if (len(msg.poses) % 2 == 0):
+            self.objectNum = len(msg.poses) / 2
+        else:
+            return
 
         # 确保：self.objectNum > 0 的 for 循环一定会执行
         if (self.objectNum <= 0):
@@ -184,21 +188,17 @@ class Pose():
         objectHighestZ = zeros([self.objectNum, 1])
         
         for i in range(self.objectNum):
-            objectX[i, 0] = msg.poses[i].position.x
-            objectY[i, 0] = msg.poses[i].position.y
-            objectAngle[i, 0] = arctan2(objectY[i, 0], objectX[i, 0])
-            objectDist[i, 0] = sqrt(objectX[i, 0]**2 + objectY[i, 0]**2)
-            objectHeading[i, 0] = msg.poses[i].orientation.w
-            objectLength[i, 0] = msg.poses[i].orientation.x
-            objectWidth[i, 0] = msg.poses[i].orientation.y   
-            objectHighestPointData = struct.pack('d', msg.poses[i].orientation.z)
-            [objectHighestX[i, 0], objectHighestY[i, 0], objectHighestZ[i, 0], _] = struct.unpack('4h', objectHighestPointData)
-            objectHighestX[i, 0] = objectHighestX[i, 0] / 100.0
-            objectHighestY[i, 0] = objectHighestY[i, 0] / 100.0
-            objectHighestZ[i, 0] = objectHighestZ[i, 0] / 100.0
+            objectX[i, 0] = msg.poses[2*(i-1)+1].position.x
+            objectY[i, 0] = msg.poses[2*(i-1)+1].position.y
+            objectAngle[i, 0] = arctan2(objectY[2*(i-1)+1, 0], objectX[2*(i-1)+1, 0])
+            objectDist[i, 0] = sqrt(objectX[2*(i-1)+1, 0]**2 + objectY[2*(i-1)+1, 0]**2)
+            [_, _, objectHeading[i, 0]] = euler_from_quaternion([msg.poses[2*(i-1)+1].orientation.x, msg.poses[2*(i-1)+1].orientation.y, msg.poses[2*(i-1)+1].orientation.z, msg.poses[2*(i-1)+1].orientation.w])
 
-        objectLength = objectLength * 100.0
-        objectWidth = objectWidth * 100.0
+            objectHighestX[i, 0] = msg.poses[2*i, 0].position.x
+            objectHighestY[i, 0] = msg.poses[2*i, 0].position.y
+            objectHighestZ[i, 0] = msg.poses[2*i, 0].position.z
+            objectLength[i, 0] = msg.poses[2*i, 0].orientation.x
+            objectWidth[i, 0] = msg.poses[2*i, 0].orientation.y
 
         # 判断激光雷达扫描到的物体是否为目标船
         if (self.isLidarFindTV):
