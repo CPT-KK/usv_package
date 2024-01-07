@@ -81,7 +81,7 @@ class Pose():
     isSearchPointRealTV = False # 搜索无人机会给多个点，用此标志位判断给的点是否为真的目标船
     tvEstPosX = float("nan")    # 相对于以无人船为原心的 ENU 的 X
     tvEstPosY = float("nan")    # 相对于以无人船为原心的 ENU 的 Y
-    tvAngleEst = deg2rad(118.9)
+    tvAngleEst = deg2rad(float("nan"))
 
     # isSearchFindUSV = False
     # usvEstPosX = float("nan")
@@ -171,7 +171,7 @@ class Pose():
     def lidarCallback(self, msg):   
         
         if (len(msg.poses) % 2 == 0):
-            self.objectNum = len(msg.poses) / 2
+            self.objectNum = int(len(msg.poses) / 2)
         else:
             return
 
@@ -192,17 +192,17 @@ class Pose():
         objectHighestZ = zeros([self.objectNum, 1])
         
         for i in range(self.objectNum):
-            objectX[i, 0] = msg.poses[2*(i-1)+1].position.x
-            objectY[i, 0] = msg.poses[2*(i-1)+1].position.y
-            objectAngle[i, 0] = arctan2(objectY[2*(i-1)+1, 0], objectX[2*(i-1)+1, 0])
-            objectDist[i, 0] = sqrt(objectX[2*(i-1)+1, 0]**2 + objectY[2*(i-1)+1, 0]**2)
-            [_, _, objectHeading[i, 0]] = euler_from_quaternion([msg.poses[2*(i-1)+1].orientation.x, msg.poses[2*(i-1)+1].orientation.y, msg.poses[2*(i-1)+1].orientation.z, msg.poses[2*(i-1)+1].orientation.w])
+            objectX[i, 0] = msg.poses[2*i].position.x
+            objectY[i, 0] = msg.poses[2*i].position.y
+            objectAngle[i, 0] = arctan2(objectY[i, 0], objectX[i, 0])
+            objectDist[i, 0] = sqrt(objectX[i, 0]**2 + objectY[i, 0]**2)
+            [_, _, objectHeading[i, 0]] = euler_from_quaternion([msg.poses[2*i].orientation.x, msg.poses[2*i].orientation.y, msg.poses[2*i].orientation.z, msg.poses[2*i].orientation.w])
 
-            objectHighestX[i, 0] = msg.poses[2*i, 0].position.x
-            objectHighestY[i, 0] = msg.poses[2*i, 0].position.y
-            objectHighestZ[i, 0] = msg.poses[2*i, 0].position.z
-            objectLength[i, 0] = msg.poses[2*i, 0].orientation.x
-            objectWidth[i, 0] = msg.poses[2*i, 0].orientation.y
+            objectHighestX[i, 0] = msg.poses[2*i+1].position.x
+            objectHighestY[i, 0] = msg.poses[2*i+1].position.y
+            objectHighestZ[i, 0] = msg.poses[2*i+1].position.z
+            objectLength[i, 0] = msg.poses[2*i+1].orientation.x
+            objectWidth[i, 0] = msg.poses[2*i+1].orientation.y
 
         # 判断激光雷达扫描到的物体是否为目标船
         if (self.isLidarFindTV):
@@ -244,7 +244,10 @@ class Pose():
                 self.tvLength = objectLength[dDistIndex, 0]
                 self.tvWidth = objectWidth[dDistIndex, 0]
                 self.tvHeading = objectHeading[dDistIndex, 0]
-                  
+                self.tvHighestX = objectHighestX[dDistIndex, 0] - self.tvX
+                self.tvHighestY = objectHighestY[dDistIndex, 0] - self.tvY
+                self.tvHighestZ = objectHighestZ[dDistIndex, 0]  
+                
                 # 记录无人船坐标
                 self.xLidar = xLidarPossible[dDistIndex, 0]
                 self.yLidar = yLidarPossible[dDistIndex, 0]     
@@ -254,7 +257,6 @@ class Pose():
 
                 # 将找到目标船标志位置为真
                 self.isLidarFindTV = True   
-                self.isPodFindTV = False 
 
             else:
                 rospy.logwarn("Pod and lidar lose detection for %.2fs", dt.to_sec())
@@ -263,7 +265,6 @@ class Pose():
             # 吊舱识别目标船方法
             # 如果此时吊舱扫描到目标船，则比对吊舱偏航角和船-物体方位角
             # 若在角度容许范围内，则认为此物体是目标船，否则，进入激光雷达位置预测判断
-            self.tLidar = msg.header.stamp
             dAnglePodLidar = abs(objectAngle - self.tvAnglePod)
             dxSearchLidar = abs(objectX - self.tvEstPosX)
             dySearchLidar = abs(objectY - self.tvEstPosY)
@@ -278,8 +279,8 @@ class Pose():
                 self.tvLength = objectLength[tvIndex, 0]
                 self.tvWidth = objectWidth[tvIndex, 0]
                 self.tvHeading = objectHeading[tvIndex, 0]
-                self.tvHighestX = objectHighestX[tvIndex, 0]
-                self.tvHighestY = objectHighestY[tvIndex, 0]
+                self.tvHighestX = objectHighestX[tvIndex, 0] - self.tvX
+                self.tvHighestY = objectHighestY[tvIndex, 0] - self.tvY
                 self.tvHighestZ = objectHighestZ[tvIndex, 0]
 
                 # 根据目标船坐标计算无人船坐标
@@ -287,7 +288,10 @@ class Pose():
                 self.yLidar = -self.tvY
 
                 # 将找到目标船标志位置为真
-                self.isLidarFindTV = True    
+                self.isLidarFindTV = True
+
+                # 成功才记录此刻的时间戳
+                self.tLidar = msg.header.stamp
         
         elif (self.isSearchFindTV) & (self.isSearchPointRealTV):
             # 坐标比对识别目标船方法
@@ -307,8 +311,8 @@ class Pose():
                 self.tvLength = objectLength[tvIndex, 0]
                 self.tvWidth = objectWidth[tvIndex, 0]
                 self.tvHeading = objectHeading[tvIndex, 0]
-                self.tvHighestX = objectHighestX[tvIndex, 0]
-                self.tvHighestY = objectHighestY[tvIndex, 0]
+                self.tvHighestX = objectHighestX[tvIndex, 0] - self.tvX
+                self.tvHighestY = objectHighestY[tvIndex, 0] - self.tvY
                 self.tvHighestZ = objectHighestZ[tvIndex, 0]
 
                 # 根据目标船坐标计算无人船坐标
@@ -316,7 +320,10 @@ class Pose():
                 self.yLidar = -self.tvY
 
                 # 将找到目标船标志位置为真
-                self.isLidarFindTV = True  
+                self.isLidarFindTV = True
+
+                # 成功才记录此刻的时间戳
+                self.tLidar = msg.header.stamp
 
         else:
             # 此时激光雷达扫描到物体，但是吊舱和坐标比对均不认为物体是目标船

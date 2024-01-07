@@ -14,20 +14,6 @@ from usv_control import Control
 from usv_communication import Communication
 from usv_math import removeOutliers, wrapToPi, linearClip, rotationZ
 from usv_record import genTable, USVData
-from usv_test import test
-
-# 无人船状态定义
-    # STARTUP
-    # STANDBY
-    # PURSUE
-    # PURSUE_OBS
-    # DOCK_NEARBY
-    # DOCK_MEASURE
-    # DOCK_APPROACH
-    # DOCK_ADJUST
-    # DOCK_FINAL
-    # ATTACH
-    # STOP
 
 # ROS 定频
 ROS_RATE = 10
@@ -317,7 +303,7 @@ def main(args=None):
                 tvInfo[1, tvInfoIdx] = usvPose.tvLength
                 tvInfo[2, tvInfoIdx] = usvPose.tvWidth
                 tvInfoIdx = tvInfoIdx + 1
-                latestMsg = "Estimating target vessel heading: %.2f deg. L: %.2f m. W: %.2f m." % (usvPose.tvHeading, usvPose.tvLength, usvPose.tvWidth)
+                latestMsg = "Estimating target vessel heading: %.2f deg. L: %.2f m. W: %.2f m." % (rad2deg(usvPose.tvHeading), usvPose.tvLength, usvPose.tvWidth)
 
                 # 如果测量段结束了，打印出测量段测量结果，进入变轨段
                 if (usvGuidance.currentIdx >= usvGuidance.endIdx):
@@ -413,7 +399,8 @@ def main(args=None):
                 tvHighestXYZs[0, tvHighestInfoIdx] = usvPose.tvHighestX
                 tvHighestXYZs[1, tvHighestInfoIdx] = usvPose.tvHighestY
                 tvHighestXYZs[2, tvHighestInfoIdx] = usvPose.tvHighestZ
-
+                tvHighestInfoIdx = tvHighestInfoIdx + 1
+                
                 # 保持静止
                 [uSP, vSP, rSP, axbSP, aybSP, etaSP] = usvControl.moveUSVVec(xSP, ySP, psiSP, usvPose.xLidar, usvPose.yLidar, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
 
