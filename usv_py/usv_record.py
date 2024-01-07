@@ -2,6 +2,9 @@
 import rospy, time, threading
 
 from usv_pose import Pose
+from usv_path_planner import PathPlanner
+from usv_guidance import Guidance
+from usv_control import Control
 from usv_communication import Communication
 
 from numpy import rad2deg
@@ -38,15 +41,46 @@ def genTable(usvState, latestMsg, usvPose, usvControl, usvComm, dt, uSP, vSP, ps
 
     # 构造表格数据
     tableData = {
-        "[reverse]%s" % usvState: ["GPS: %d" % usvPose.isGPSValid, "Imu: %d" % usvPose.isImuValid, "Dvl: %d" % usvPose.isDvlValid, "Pod: %d" % usvPose.isPodValid, "Lidar: %d" % usvPose.isLidarValid],
-        "Motions": ["u: %.2f m/s" % usvPose.uDVL, "v: %.2f m/s" % usvPose.vDVL, "psi: %.2f deg" % rad2deg(usvPose.psi), "r: %.2f deg/s" % rad2deg(usvPose.r), "ax: %.2f m/s^2" % usvPose.axb, "ay: %.2f m/s^2" % usvPose.ayb],
-        "Setpoints": ["uSP: %.2f m/s" % uSP, "vSP: %.2f m/s" % vSP, "psiSP: %.2f deg" % rad2deg(psiSP), "rSP: %.2f deg/s" % rad2deg(rSP), "[bold bright_yellow]xSP: %.2f m" % xSP, "[bold bright_yellow]ySP: %.2f m" % ySP, "axbSP: %.2f m/s^2" % axbSP, "aybSP: %.2f m/s^2" % aybSP, "etaSP: %.2f deg/s^2" % rad2deg(etaSP)],
-        "Sensors": ["x(GPS): %.2f m" % usvPose.x, "y(GPS): %.2f m" % usvPose.y, "Lidar dist: %.2f m" % lidarOutPutDist, "[bold bright_yellow]x(Lidar): %.2f m" % xLidarOutput, "[bold bright_yellow]y(Lidar): %.2f m" % yLidarOutput, "x(sUAV): %.2f m" % usvPose.usvEstPosX, "y(sUAV): %.2f m" % usvPose.usvEstPosY, "[bold yellow]sUAV yaw: %.2f deg" % sUAVOutput, "[bold yellow]Pod yaw: %.2f deg" % podOutput, "[bold yellow]Lidar yaw: %.2f deg" % lidarOutPutAngle, "TV Heading: %.2f deg" % rad2deg(usvPose.tvHeading), "Obs yaw: %.2f deg" % obsOutPut],
-        "Power": ["L_cmd: %.2f RPM | %.2f deg" % (usvControl.rpmLeftSP, rad2deg(usvControl.angleLeftSP)), "R_cmd: %.2f RPM | %.2f deg" % (usvControl.rpmRightSP, rad2deg(usvControl.angleRightSP)), "L: %.2f RPM | %.2f deg" % (usvControl.rpmLeftEst, rad2deg(usvControl.angleLeftEst)), "R: %.2f RPM | %.2f deg" % (usvControl.rpmRightEst, rad2deg(usvControl.angleRightEst)), "1: %.1f %% | ↓%.3f v" % (usvControl.battSOC[0], usvControl.battCellVoltMin[0]), "2: %.1f %% | ↓%.3f v" % (usvControl.battSOC[1], usvControl.battCellVoltMin[1]), "3: %.1f %% | ↓%.3f v" % (usvControl.battSOC[2], usvControl.battCellVoltMin[2]), "4: %.1f %% | ↓%.3f v" % (usvControl.battSOC[3], usvControl.battCellVoltMin[3])],
+        f"[reverse]{usvState}" : [f"GPS: {usvPose.isGPSValid}", f"Imu: {usvPose.isImuValid}", 
+                                  f"Dvl: {usvPose.isDvlValid}", f"Pod: {usvPose.isPodValid}", 
+                                  f"Lidar: {usvPose.isLidarValid}"],
+        # 
+        "Motions": [f"u: {usvPose.uDVL:.2f} m/s", f"v: {usvPose.vDVL:.2f} m/s", 
+                    f"psi: {rad2deg(usvPose.psi):.2f} deg", f"r: {rad2deg(usvPose.r):.2f} deg/s", 
+                    f"ax: {usvPose.axb:.2f} m/s^2", f"ay: {usvPose.ayb:.2f} m/s^2"],
+        # 
+        "Setpoints": [f"uSP: {uSP:.2f} m/s", f"vSP: {vSP:.2f} m/s", 
+                      f"psiSP: {rad2deg(psiSP):.2f} deg", f"rSP: {rad2deg(rSP):.2f} deg/s", 
+                      f"[bold bright_yellow]xSP: {xSP:.2f} m", f"[bold bright_yellow]ySP: {ySP:.2f} m", 
+                      f"axbSP: {axbSP:.2f} m/s^2", f"aybSP: {aybSP:.2f} m/s^2", 
+                      f"etaSP: {rad2deg(etaSP):.2f} deg/s^2"],
+        # 
+        "Sensors": [f"x(GPS): {usvPose.x:.2f} m", f"y(GPS): {usvPose.y:.2f} m", 
+                    f"Lidar dist: {lidarOutPutDist:.2f} m", 
+                    f"[bold bright_yellow]x(Lidar): {xLidarOutput:.2f} m", 
+                    f"[bold bright_yellow]y(Lidar): {yLidarOutput:.2f} m", 
+                    f"x(sUAV): {usvPose.tvEstPosX:.2f} m", f"y(sUAV): {usvPose.tvEstPosY:.2f} m", 
+                    f"[bold yellow]sUAV yaw: {sUAVOutput:.2f} deg", 
+                    f"[bold yellow]Pod yaw: {podOutput:.2f} deg", 
+                    f"[bold yellow]Lidar yaw: {lidarOutPutAngle:.2f} deg", 
+                    f"TV Heading: {rad2deg(usvPose.tvHeading):.2f} deg", 
+                    f"Obs yaw: {obsOutPut:.2f} deg"],
+        # 
+        "Power": ["[bold]Engine",
+                  f"L_cmd: {usvControl.rpmLeftSP:.2f} RPM | {rad2deg(usvControl.angleLeftSP):.2f} deg", 
+                  f"R_cmd: {usvControl.rpmRightSP:.2f} RPM | {rad2deg(usvControl.angleRightSP):.2f} deg", 
+                  f"L: {usvControl.rpmLeftEst:.2f} RPM | {rad2deg(usvControl.angleLeftEst):.2f} deg", 
+                  f"R: {usvControl.rpmRightEst:.2f} RPM | {rad2deg(usvControl.angleRightEst):.2f} deg",
+                  "",
+                  "[bold]Battery",
+                  f"1: {usvControl.battSOC[0]:.1f} % | ↓{usvControl.battCellVoltMin[0]:.3f} v", 
+                  f"2: {usvControl.battSOC[1]:.1f} % | ↓{usvControl.battCellVoltMin[1]:.3f} v", 
+                  f"3: {usvControl.battSOC[2]:.1f} % | ↓{usvControl.battCellVoltMin[2]:.3f} v", 
+                  f"4: {usvControl.battSOC[3]:.1f} % | ↓{usvControl.battCellVoltMin[3]:.3f} v"],
     }
 
     theTable = Table(show_header=True, header_style="bold", title_justify="center", title_style="bold magenta", caption_justify="left", box=box.HORIZONTALS)
-    theTable.title = "USV Info @ t = %.3f s" % dt
+    theTable.title = f"USV Info @ t = {dt:.3f} s"
     theTable.caption = " Message: " + latestMsg + "\n"
 
     maxRows = max(len(columnData) for columnData in tableData.values())
@@ -98,13 +132,20 @@ if __name__ == '__main__':
 
     usvPose = Pose()
     usvComm = Communication()
+    usvPathPlanner = PathPlanner()
+    usvGuidance = Guidance()
+    usvControl = Control()
 
     usvState = "STARTUP"
     uSP = float("nan")
     vSP = float("nan")
     psiSP = float("nan")
+    rSP = float("nan")
     xSP = float("nan")
     ySP = float("nan")
+    axbSP = float("nan")
+    aybSP = float("nan")
+    etaSP = float("nan")
 
     spinThread = threading.Thread(target=rospy.spin, daemon=True)
     spinThread.start()
@@ -112,7 +153,7 @@ if __name__ == '__main__':
     while True:
         try:
             dt = rospy.Time.now().to_sec() - t0
-            theTable = genTable(usvState, latestMsg, usvPose, usvComm, dt, uSP, vSP, psiSP, xSP, ySP) 
+            theTable = genTable(usvState, latestMsg, usvPose, usvControl, usvComm, dt, uSP, vSP, psiSP, rSP, xSP, ySP, axbSP, aybSP, etaSP) 
             console.print(theTable)
 
             rosRate.sleep()

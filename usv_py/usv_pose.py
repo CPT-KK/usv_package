@@ -73,8 +73,6 @@ class Pose():
     isPodValid = False
     isPodFindTV = False
     tvAnglePod = deg2rad(float("nan"))  # ENU 系下的吊舱角
-    podTimer = 0
-    podTolSec = 0.01
 
     # sUAV 量
     isSearchFindTV = False
@@ -259,9 +257,9 @@ class Pose():
                 self.isLidarFindTV = True   
 
             else:
-                rospy.logwarn("Pod and lidar lose detection for %.2fs", dt.to_sec())
+                rospy.logwarn(f"Pod and lidar lose detection for {dt.to_sec():.2f}")
 
-        elif (self.isPodFindTV):
+        elif (self.isPodFindTV) & (self.isSearchFindTV) & (self.isSearchPointRealTV):
             # 吊舱识别目标船方法
             # 如果此时吊舱扫描到目标船，则比对吊舱偏航角和船-物体方位角
             # 若在角度容许范围内，则认为此物体是目标船，否则，进入激光雷达位置预测判断
@@ -364,19 +362,20 @@ if __name__ == '__main__':
     while not rospy.is_shutdown():
         try:
             print("-----------------------------------------------")
-            print("Vel [%.2f, %.2f]m/s | Acc [%.2f, %.2f]m/s^2 | RPY [%.2f, %.2f, %.2f]deg | Yaw rate %.2fdeg/s" % (usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, rad2deg(usvPose.roll), rad2deg(usvPose.pitch), rad2deg(usvPose.psi), rad2deg(usvPose.r)))
+            print(f"Vel [{usvPose.vx:.2f}, {usvPose.vy:.2f}]m/s | Acc [{usvPose.axb:.2f}, {usvPose.ayb:.2f}]m/s^2 | RPY [{rad2deg(usvPose.roll):.2f}, {rad2deg(usvPose.pitch):.2f}, {rad2deg(usvPose.psi):.2f}]deg | Yaw rate {rad2deg(usvPose.r):.2f}deg/s")
 
             if (usvPose.isPodFindTV):
-                print("吊舱扫描到目标船 %.2f deg" % rad2deg(usvPose.tvAnglePod))
+                print(f"吊舱扫描到目标船 {rad2deg(usvPose.tvAnglePod):.2f} deg")
             else:
                 print("吊舱未扫描到目标船")
             
             if (usvPose.isLidarFindTV):
                 thisTVAngle = arctan(tan(wrapToPi(usvPose.tvHeading + usvPose.psi)))
-                print("激光雷达扫描到目标船 [%.2f, %.2f]m，方位 %.2f deg，朝向 %.2f deg " % (usvPose.tvX, usvPose.tvY, rad2deg(arctan2(usvPose.tvY, usvPose.tvX)), thisTVAngle))
-                print("无人船的位置 [%.2f, %.2f]m" % (usvPose.xLidar, usvPose.yLidar))
+                print(f"激光雷达扫描到目标船 [{usvPose.tvX:.2f}, {usvPose.tvY:.2f}]m，方位 {rad2deg(usvPose.tvAngleLidar):.2f} deg，朝向 {rad2deg(thisTVAngle):.2f} deg ")
+                print(f"无人船的位置 [{usvPose.xLidar:.2f}, {usvPose.yLidar:.2f}]m")
+
             elif (usvPose.objectNum > 0):
-                print("激光雷达扫描到 %d 个物体，但不认为它们是目标船" % usvPose.objectNum)
+                print(f"激光雷达扫描到 {usvPose.objectNum} 个物体，但不认为它们是目标船")
             else:
                 print("激光雷达未扫描到目标船")
 

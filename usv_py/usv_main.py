@@ -207,7 +207,7 @@ def main(args=None):
                     continue 
                 
                 # 接收 SUAV 的航向信息
-                latestMsg = "Following heading %.2f deg from sUAV." % rad2deg(usvPose.tvAngleEst)
+                latestMsg = f"Following heading {rad2deg(usvPose.tvAngleEst):.2f} deg from sUAV."
                 uSP = USP_SUAV_PURSUE
                 psiSP = usvPose.tvAngleEst     
                 
@@ -226,7 +226,7 @@ def main(args=None):
                     continue
 
                 # 使用吊舱的信息
-                latestMsg = "Following heading %.2f deg from pod" % rad2deg(usvPose.tvAnglePod)
+                latestMsg = f"Following heading {rad2deg(usvPose.tvAnglePod):.2f} deg from pod."
                 uSP = USP_POD_PURSUE
                 psiSP = usvPose.tvAnglePod
 
@@ -245,7 +245,7 @@ def main(args=None):
                     continue
                 
                 # 激光雷达找到目标船，则使用激光雷达的信息
-                latestMsg = "Following heading %.2f deg from Lidar. Distance to target: %.2f m" % (rad2deg(usvPose.tvAngleLidar), usvPose.tvDist)
+                latestMsg = f"Following heading {rad2deg(usvPose.tvAngleLidar):.2f} deg from Lidar. Distance to target: {usvPose.tvDist:.2f} m"
                 uSP = linearClip(DIST_LIDAR_PURSUE_LB, USP_LIDAR_PURSUE_LB, DIST_LIDAR_PURSUE_UB, USP_LIDAR_PURSUE_UB, usvPose.tvDist)
                 psiSP = usvPose.tvAngleLidar
 
@@ -261,7 +261,7 @@ def main(args=None):
                 # 计算避障所需航向角
                 uSP = USP_OBS_PURSUE
                 psiSP = usvPose.obsAngleLidar - ANGLE_AVOID_OBS   
-                latestMsg = "Obstacle detected. Follwing heading %.2f deg to avoid it." % usvPose.obsAngleLidar
+                latestMsg = f"Obstacle detected. Follwing heading {rad2deg(psiSP):.2f} deg to avoid it."
 
                 # 控制无人船
                 [uSP, rSP, axbSP, etaSP] = usvControl.moveUSV(uSP, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
@@ -303,7 +303,7 @@ def main(args=None):
                 tvInfo[1, tvInfoIdx] = usvPose.tvLength
                 tvInfo[2, tvInfoIdx] = usvPose.tvWidth
                 tvInfoIdx = tvInfoIdx + 1
-                latestMsg = "Estimating target vessel heading: %.2f deg. L: %.2f m. W: %.2f m." % (rad2deg(usvPose.tvHeading), usvPose.tvLength, usvPose.tvWidth)
+                latestMsg = f"Estimating target vessel heading: {rad2deg(usvPose.tvHeading):.2f} deg. L: {usvPose.tvLength:.2f} m. W: {usvPose.tvWidth:.2f} m."
 
                 # 如果测量段结束了，打印出测量段测量结果，进入变轨段
                 if (usvGuidance.currentIdx >= usvGuidance.endIdx):
@@ -327,7 +327,7 @@ def main(args=None):
                     tvLengthMean = mean(tvLengths)
                     tvWidthMean = mean(tvWidths)
         
-                    latestMsg = "Estimating finished with average heading %.2f deg. L: %.2f m. W: %.2f m. Begin final approach..." % (rad2deg(tvHeadingMean), tvLengthMean, tvWidthMean)
+                    latestMsg = f"Estimating finished with average heading {rad2deg(tvHeadingMean):.2f} deg. L: {tvLengthMean:.2f} m. W: {tvWidthMean:.2f} m. Begin final approach..."
                     usvState = "DOCK_APPROACH"
                     continue
 
@@ -368,7 +368,7 @@ def main(args=None):
                     psiSP = finalPsi
                     isDockAdjustPlan = True
 
-                latestMsg = "Approach finished. Stablizing USV @ [%.2f, %.2f], %.2f deg... [%.2f / %.2f]s" % (xSP, ySP, rad2deg(psiSP), rospy.Time.now().to_sec() - timer1, 5.0)
+                latestMsg = f"Approach finished. Stablizing USV @ [{xSP:.2f}, {ySP:.2f}], {rad2deg(psiSP):.2f} deg... [{rospy.Time.now().to_sec() - timer1:.2f} / {SECS_WAIT_DOCK_ADJUST_STEADY:.2f}]s"
 
                 # 保持静止
                 [uSP, vSP, rSP, axbSP, aybSP, etaSP] = usvControl.moveUSVVec(xSP, ySP, psiSP, usvPose.xLidar, usvPose.yLidar, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
@@ -394,7 +394,7 @@ def main(args=None):
 
                     isDockWaitArmPlan = True
 
-                latestMsg = "USV has been stablized. Measuring the highest point... [%.2f / %.2f]s." % (rospy.Time.now().to_sec() - timer1, SECS_WAIT_HEIGHT_SEARCH)
+                latestMsg = f"USV has been stablized. Measuring the highest point... [{rospy.Time.now().to_sec() - timer1:.2f} / {SECS_WAIT_HEIGHT_SEARCH:.2f}]s."
 
                 tvHighestXYZs[0, tvHighestInfoIdx] = usvPose.tvHighestX
                 tvHighestXYZs[1, tvHighestInfoIdx] = usvPose.tvHighestY
@@ -448,7 +448,7 @@ def main(args=None):
                     
                     isDockToObjAreaPlan = True
 
-                    latestMsg = "USV is aligning with the estimated object area center [%.2f, %.2f]..." % (xSP, ySP)
+                    latestMsg = f"USV is aligning with the estimated object area center [{xSP:.2f}, {ySP:.2f}]..."
                 
                 # 向目标区域对齐
                 [uSP, vSP, rSP, axbSP, aybSP, etaSP] = usvControl.moveUSVVec(xSP, ySP, psiSP, usvPose.xLidar, usvPose.yLidar, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
@@ -502,7 +502,7 @@ def main(args=None):
 
                     isDockAttachPlan = True
 
-                latestMsg = "Close enough. Try to attach. Need to stablize for [%.2f / %.2f]s" % (rospy.Time.now().to_sec() - timer1, SECS_WAIT_ATTACH_STEADY)
+                latestMsg = f"Close enough. Try to attach. Need to stablize for [{rospy.Time.now().to_sec() - timer1:.2f} / {SECS_WAIT_ATTACH_STEADY:.2f}]s"
                 
                 # 横向移动向大物体/目标船     
                 [uSP, vSP, rSP, axbSP, aybSP, etaSP] = usvControl.moveUSVVec(xSP, ySP, psiSP, usvPose.xLidar, usvPose.yLidar, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
@@ -539,7 +539,7 @@ def main(args=None):
 
             else:
                 # 程序不应该执行到这里
-                console.print("\n[red] >>>>>>> USV state: %s invalid. Check code." % (usvState))
+                console.print(f"\n[red] >>>>>>> USV state: {usvState} invalid. Check code.")
                 break
             
             rosRate.sleep()

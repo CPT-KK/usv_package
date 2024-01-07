@@ -122,12 +122,12 @@ def main(args=None):
     usvPose.tvEstPosY = -3
     usvPose.tvAngleEst = -0.25*pi
 
-    usvPose.isPodFindTV = True
-    usvPose.tvAnglePod = -0.25*pi
+    # usvPose.isPodFindTV = True
+    # usvPose.tvAnglePod = -0.25*pi
 
     usvPose.uDVL = 0
     usvPose.vDVL = 0
-    usvPose.psi = 0
+    usvPose.psi = deg2rad(0)
 
     while (not usvPose.isLidarFindTV):
         rosRate.sleep()
