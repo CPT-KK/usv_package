@@ -20,6 +20,10 @@ class Communication():
     largeObjY = 0
     largeObjAngle = 0
 
+    suavState = "EMPTY"
+    tuav1State = "EMPTY"
+    armState = "EMPTY"
+
     def __init__(self):
         # 订阅大物体定位的话题
         self.bigObjPosSub = rospy.Subscriber('/usv/largebox_pos', PoseStamped, self.bigObjCallback)
@@ -33,6 +37,11 @@ class Communication():
 
         # 创建发送数据链距离的话题
         self.usvDatalinkPub = rospy.Publisher('/usv/data_link/distance', Vector3Stamped, queue_size=2)
+
+        # 分系统状态
+        self.suavStateSub = rospy.Subscriber('/suav/state', String, self.suavStateCallback, queue_size=10)
+        self.tuav1StateSub = rospy.Subscriber('/tuav1/state', String, self.tuav1StateCallback, queue_size=10)
+        self.armStateSub = rospy.Subscriber('/arm/state', String, self.armStateCallback, queue_size=10)
 
     def __del__(self):
         pass
@@ -58,38 +67,47 @@ class Communication():
         self.largeObjAngle = arctan(self.largeObjY / self.largeObjX)
         self.isArmFindBigObj = True
 
-    def datalinkPub(self):
-        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
-            request_json = json.dumps({"get":"radioinfo"}).encode('utf-8')
-            s.sendto(request_json,('192.168.147.50', 9999))
-            s.settimeout(1.0)
+    def suavStateCallback(self, msg):
+        self.suavState = msg.data
+
+    def tuav1StateCallback(self, msg):
+        self.tuav1State = msg.data
+
+    def armStateCallback(self, msg):
+        self.armStateCallback = msg.data
+
+    # def datalinkPub(self):
+    #     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+    #         request_json = json.dumps({"get":"radioinfo"}).encode('utf-8')
+    #         s.sendto(request_json,('192.168.147.50', 9999))
+    #         s.settimeout(1.0)
             
-            try:
-                responce, _ = s.recvfrom(1024)
-                responce_str = responce.decode('utf-8')
+    #         try:
+    #             responce, _ = s.recvfrom(1024)
+    #             responce_str = responce.decode('utf-8')
 
-                match = re.search(r'{.*}',responce_str)
+    #             match = re.search(r'{.*}',responce_str)
 
-                if match:
-                    valid_json = match.group(0)
-                    try:
-                        responce_data = json.loads(valid_json)
+    #             if match:
+    #                 valid_json = match.group(0)
+    #                 try:
+    #                     responce_data = json.loads(valid_json)
 
-                    except json.JSONDecodeError as e:
-                        print(f"JSON decoding error: {e}")
+    #                 except json.JSONDecodeError as e:
+    #                     print(f"JSON decoding error: {e}")
 
-                for sender in responce_data["senders"]:
-                    dist = sender["dist"]
-                    ipAddr = sender["ipAddr"]
-                    print("dist:", dist, "ipAddr:", ipAddr)
+    #             for sender in responce_data["senders"]:
+    #                 dist = sender["dist"]
+    #                 ipAddr = sender["ipAddr"]
+    #                 print("dist:", dist, "ipAddr:", ipAddr)
 
-                out = Vector3Stamped()
-                out.header.stamp = rospy.Time.now()
-                out.vector.x = dist
-                self.usvDatalinkPub.publish(out)
+    #             out = Vector3Stamped()
+    #             out.header.stamp = rospy.Time.now()
+    #             out.vector.x = dist
+    #             self.usvDatalinkPub.publish(out)
 
-            except socket.timeout:
-                print("Timed out waiting for a Datalink packet.")
+    #         except socket.timeout:
+    #             print("Timed out waiting for a Datalink packet.")
         
 if __name__ == '__main__':
     # 以下代码为测试代码

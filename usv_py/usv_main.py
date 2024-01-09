@@ -171,16 +171,30 @@ def main(args=None):
             # 发送无人船的东西 
             usvComm.sendUSVState(usvState)
 
-            if usvState == "STARTUP":
+            if usvState == "SELF_CHECK":
                 # 单独为激光雷达设置启动检查
                 pubTopicList = sum(rospy.get_published_topics(), [])
                 usvPose.isLidarValid = ('/filter/target' in pubTopicList)
                     
-                if (usvPose.isImuValid) & (usvPose.isDvlValid) & (usvPose.isPodValid) & (usvPose.isLidarValid) & (not isnan(usvControl.angleLeftEst)) & (not isnan(usvControl.angleRightEst)) & (not isnan(usvControl.rpmLeftEst) & (not isnan(usvControl.rpmRightEst))):
-                    latestMsg = "Waiting sUAV to send heading..."
-                    usvState = "STANDBY"
+                if (usvPose.isImuValid) & (usvPose.isDvlValid) & (usvPose.isPodValid) & (usvPose.isLidarValid) & \
+                    (not isnan(usvControl.angleLeftEst)) & (not isnan(usvControl.angleRightEst)) & \
+                    (not isnan(usvControl.rpmLeftEst) & (not isnan(usvControl.rpmRightEst))):
+                    latestMsg = "Self check complete. Start checking comms..."
+                    usvState = "COMM_TEST"
                     continue
+            elif usvState == "COMM_TEST":
+                if (usvComm.suavState == "COMM_TEST" or usvComm.suavState == "READY") & \
+                   (usvComm.tuav1State == "COMM_TEST" or usvComm.tuav1State == "READY") & \
+                   (usvComm.armState == "COMM_TEST" or usvComm.armState == "READY"):
+                    latestMsg = "Waiting countdown..."
+                    usvState = "READY"
 
+            elif usvState == "READY":
+                if (usvComm.suavState == "COUNTDOWN"):
+                    latestMsg = "Waiting sUAV to provide headings..."
+                    usvState = "STANDBY"
+                pass
+            
             elif usvState == "STANDBY":
                 if (isTestEnable):
                     usvState = "DOCK_TOOBJAREA"
