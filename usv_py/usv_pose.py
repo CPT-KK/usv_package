@@ -75,7 +75,7 @@ class Pose():
     tvAnglePod = deg2rad(float("nan"))  # ENU 系下的吊舱角
 
     # sUAV 量
-    isSearchFindTV = True
+    isSearchFindTV = False
     isSearchPointRealTV = False # 搜索无人机会给多个点，用此标志位判断给的点是否为真的目标船
     tvEstPosX = float("nan")    # 相对于以无人船为原心的 ENU 的 X
     tvEstPosY = float("nan")    # 相对于以无人船为原心的 ENU 的 Y
@@ -341,7 +341,7 @@ class Pose():
     def tvOdomCallback(self, msg):
         self.tvEstPosX = msg.pose.position.x
         self.tvEstPosY = msg.pose.position.y
-        self.tvAngleEst = msg.pose.orientation.w
+        self.tvAngleEst = deg2rad(msg.pose.orientation.w)
         self.isSearchFindTV = True
         if (msg.header.frame_id == "target"):
             self.isSearchPointRealTV = True
