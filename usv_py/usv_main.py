@@ -34,29 +34,29 @@ ANGLE_AVOID_OBS = deg2rad(35.0)         # 避障时 USV 的航向附加量
 USP_DOCK_NEARBY = 1.6                   # DOCK_NEARBY 时 USV 的轴向速度
 DIST_TONEXT_DOCK_NEARBY = 12.0          # DOCK_NEARBY 时切换追踪点为轨迹下一点的距离
 
-USP_DOCK_MEASURE = 1.5                  # DOCK_MEASURE 时 USV 的轴向速度
+USP_DOCK_MEASURE = 1.8                  # DOCK_MEASURE 时 USV 的轴向速度
 DIST_TONEXT_DOCK_MEASURE = 8.0          # DOCK_MEASURE 时切换追踪点为轨迹下一点的距离
 ANGLE_DOCK_MEASURE_JUMP = deg2rad(20.0) # DOCK_MEASURE 时认为激光雷达估计目标船朝向可能跳变的角度判据
 
-USP_DOCK_APPROACH_UB = 1.5              # DOCK_APPROACH 时 USV 的轴向速度上界
-USP_DOCK_APPROACH_LB = 0.8              # DOCK_APPROACH 时 USV 的轴向速度下界
-DIST_TONEXT_DOCK_APPROACH = 6.0         # DOCK_APPROACH 时切换追踪点为轨迹下一点的距离
+USP_DOCK_APPROACH_UB = 1.8              # DOCK_APPROACH 时 USV 的轴向速度上界
+USP_DOCK_APPROACH_LB = 1.2              # DOCK_APPROACH 时 USV 的轴向速度下界
+DIST_TONEXT_DOCK_APPROACH = 8.0         # DOCK_APPROACH 时切换追踪点为轨迹下一点的距离
 
 SECS_WAIT_DOCK_ADJUST_STEADY = 5.0      # DOCK_ADJUST 时认为 USV 已经稳定前所需的秒数
 ANGLE_DOCK_STEADY_TOL = deg2rad(2)      # DOCK_ADJUST 时认为 USV 已经稳定的角度判据
-DIST_DOCK_STEADY_TOL = 1.0              # DOCK_ADJUST 时认为 USV 已经稳定的位置判据
-VEL_DOCK_STEADY_TOL = 0.25              # DOCK_ADJUST 时认为 USV 已经稳定的速度判据
+DIST_DOCK_STEADY_TOL = 2.5             # DOCK_ADJUST 时认为 USV 已经稳定的位置判据
+VEL_DOCK_STEADY_TOL = 0.4              # DOCK_ADJUST 时认为 USV 已经稳定的速度判据
 
 HEALTHY_Z_TOL = 1.5                     # 
 SECS_WAIT_HEIGHT_SEARCH = 10.0          # WAIT_ARM 时等待机械臂搜索大物体的秒数
 
-DIST_TOOBJAREA_SIDE = 2.5              # TOLARGEOBJ 时 USV 前往的大物体侧面点与船边的距离
+DIST_TOOBJAREA_SIDE = 3.5              # TOLARGEOBJ 时 USV 前往的大物体侧面点与船边的距离
 SECS_WAIT_TOOBJAREA_STEADY = 5.0       # TOLARGEOBJ 时认为 USV 已经稳定前所需的秒数
-DIST_TOLARGEOBJ_TOL = 1.5               # TOLARGEOBJ 时认为 USV 已经前往到大物体侧面点的位置判据
+DIST_TOLARGEOBJ_TOL = 2               # TOLARGEOBJ 时认为 USV 已经前往到大物体侧面点的位置判据
 
-DIST_TOVESSELCEN_SIDE = 2.5                # TOVESSEL 时 USV 前往的目标船侧面点与船边的距离
+DIST_TOVESSELCEN_SIDE = 3.5                # TOVESSEL 时 USV 前往的目标船侧面点与船边的距离
 SECS_WAIT_TOVESSCEN_STEADY = 5.0         # TOVESSEL 时认为 USV 已经稳定前所需的秒数
-DIST_TOVESSEL_TOL = 1.5                 # TOVESSEL 时认为 USV 已经前往到目标船侧面点的位置判据
+DIST_TOVESSEL_TOL = 2                # TOVESSEL 时认为 USV 已经前往到目标船侧面点的位置判据
 
 SECS_WAIT_ATTACH_STEADY = 5.0
 VEL_ATTACH_TOL = 0.08
@@ -125,7 +125,7 @@ def main(args=None):
     isTestEnable = False
 
     # 无人船状态
-    usvState = "STARTUP"
+    usvState = "SELF_CHECK"
 
     # 无人船当前正在使用的路径
     currPath = zeros((2000, 2))
@@ -180,7 +180,7 @@ def main(args=None):
                     (not isnan(usvControl.angleLeftEst)) & (not isnan(usvControl.angleRightEst)) & \
                     (not isnan(usvControl.rpmLeftEst) & (not isnan(usvControl.rpmRightEst))):
                     latestMsg = "Self check complete. Start checking comms..."
-                    usvState = "COMM_TEST"
+                    usvState = "STANDBY"
                     continue
             elif usvState == "COMM_TEST":
                 if (usvComm.suavState == "COMM_TEST" or usvComm.suavState == "READY") & \
@@ -197,7 +197,7 @@ def main(args=None):
             
             elif usvState == "STANDBY":
                 if (isTestEnable):
-                    usvState = "DOCK_TOOBJAREA"
+                    usvState = "TEST"
                     continue
                     
                 if (usvPose.isSearchFindTV):
@@ -207,7 +207,7 @@ def main(args=None):
             elif usvState == "PURSUE_SUAV":
                 # 如果吊舱识别，则进入到吊舱导引
                 if (usvPose.isPodFindTV):
-                    usvState == "PURSUE_POD"
+                    usvState = "PURSUE_POD"
                     continue
 
                 # 如果激光雷达识别，则进入到 LIDAR 导引
@@ -236,7 +236,7 @@ def main(args=None):
                 
                 # 如果吊舱没有识别，则退回到 SUAV 导引
                 if (not usvPose.isPodFindTV):
-                    usvState == "PURSUE_SUAV"
+                    usvState = "PURSUE_SUAV"
                     continue
 
                 # 使用吊舱的信息
@@ -462,7 +462,7 @@ def main(args=None):
                     
                     isDockToObjAreaPlan = True
 
-                    latestMsg = f"USV is aligning with the estimated object area center [{xSP:.2f}, {ySP:.2f}]..."
+                    latestMsg = f"USV is aligning with the estimated object area center [{xSP:.2f}, {ySP:.2f}] [{rospy.Time.now().to_sec() - timer1:.2f} / {SECS_WAIT_HEIGHT_SEARCH:.2f}]..."
                 
                 # 向目标区域对齐
                 [uSP, vSP, rSP, axbSP, aybSP, etaSP] = usvControl.moveUSVVec(xSP, ySP, psiSP, usvPose.xLidar, usvPose.yLidar, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
@@ -471,7 +471,7 @@ def main(args=None):
                 if (rospy.Time.now().to_sec() - timer1 > SECS_WAIT_TOOBJAREA_STEADY): 
                     usvState = "DOCK_ATTACH"
                     continue
-                elif (sqrt((usvPose.x - xSP) ** 2 + (usvPose.y - ySP) ** 2) < DIST_TOLARGEOBJ_TOL):
+                elif (sqrt((usvPose.xLidar - xSP) ** 2 + (usvPose.yLidar - ySP) ** 2) < DIST_TOLARGEOBJ_TOL):
                     pass
                 else:
                     # 如果不满足静止条件，需要重置 t1 计时器
@@ -489,7 +489,7 @@ def main(args=None):
 
                     isDockToVesselPlan = True
 
-                    latestMsg = "Failed to estimate the object area center. USV is aligning with the center of the target vessel..."
+                    latestMsg = f"Failed to estimate the object area center. USV is aligning with the center of the target vessel [{rospy.Time.now().to_sec() - timer1:.2f} / {SECS_WAIT_HEIGHT_SEARCH:.2f}]..."
 
                 # 向目标船中心对齐                 
                 [uSP, vSP, rSP, axbSP, aybSP, etaSP] = usvControl.moveUSVVec(xSP, ySP, psiSP, usvPose.xLidar, usvPose.yLidar, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
@@ -539,17 +539,20 @@ def main(args=None):
                 usvComm.sendTVPosFromLidar(-usvPose.xLidar, -usvPose.yLidar)
 
                 # 保持一定的推力
-                usvControl.thrustSet(RPM_FINAL, RPM_FINAL, deg2rad(90), deg2rad(90)) 
+                usvControl.thrustSet(RPM_FINAL, RPM_FINAL, deg2rad(94), deg2rad(94)) 
             
-            elif usvState == "TEST":              
+            elif usvState == "TEST":
+                uSP = 3.25            
                 if (isTestPlan == False):
                     # Move USV straight left for X m
-                    xSP = usvPose.x - 0.0 * cos(usvPose.psi - 0)
-                    ySP = usvPose.y - 0.0 * sin(usvPose.psi - 0)
+                    # xSP = usvPose.x - 0.0 * cos(usvPose.psi - 0)
+                    # ySP = usvPose.y - 0.0 * sin(usvPose.psi - 0)
+                    
                     psiSP = wrapToPi(usvPose.psi + deg2rad(0))
                     isTestPlan = True
 
-                [uSP, vSP, rSP, axbSP, aybSP, etaSP] = usvControl.moveUSVVec(xSP, ySP, psiSP, usvPose.x, usvPose.y, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
+                [uSP, rSP, axbSP, etaSP] = usvControl.moveUSV(uSP, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
+                # [uSP, vSP, rSP, axbSP, aybSP, etaSP] = usvControl.moveUSVVec(xSP, ySP, psiSP, usvPose.x, usvPose.y, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
 
             else:
                 # 程序不应该执行到这里

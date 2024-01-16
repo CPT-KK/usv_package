@@ -279,30 +279,30 @@ if __name__ == '__main__':
     lastTime = 10
     loopTimes = round(lastTime / (1 / rate))
 
-    rpmValue = 150
-    angleValue = deg2rad(15)
+    rpmValue = 400
+    angleValue = deg2rad(94.8)
     
-    # rospy.loginfo("Moving left torq...")
-    # for i in range(loopTimes):
-    #     usvControl.thrustSet(rpmValue, 0, 0, 0)
-    #     usvControl.thrustPub()
-    #     rosRate.sleep()
+    rospy.loginfo("Moving left torq...")
+    for i in range(loopTimes):
+        usvControl.thrustSet(rpmValue, rpmValue, angleValue, angleValue)
+        usvControl.thrustPub()
+        rosRate.sleep()
 
-    # rospy.loginfo("Moving right torq...")
-    # for i in range(loopTimes):
-    #     usvControl.thrustSet(0, rpmValue, 0, 0)
-    #     usvControl.thrustPub()
-    #     rosRate.sleep()
+    rospy.loginfo("Moving right torq...")
+    for i in range(loopTimes):
+        usvControl.thrustSet(rpmValue, rpmValue, angleValue, angleValue)
+        usvControl.thrustPub()
+        rosRate.sleep()
 
     rospy.loginfo("Moving left angle...")
     for i in range(loopTimes):
-        usvControl.thrustSet(0, 0, deg2rad(15), deg2rad(0))
+        usvControl.thrustSet(0, 0, angleValue, 0)
         usvControl.thrustPub()
         rosRate.sleep()
 
     rospy.loginfo("Moving right angle...")
     for i in range(loopTimes):
-        usvControl.thrustSet(0, 0, deg2rad(15), deg2rad(-15))
+        usvControl.thrustSet(0, 0, angleValue, angleValue)
         usvControl.thrustPub()
         rosRate.sleep()
 
