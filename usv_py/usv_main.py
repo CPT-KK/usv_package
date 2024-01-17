@@ -21,6 +21,7 @@ ROS_RATE = 10
 # 常量
 USP_SUAV_PURSUE = 3.25                  # 搜索无人机引导时 USV 的轴向速度
 USP_POD_PURSUE = 3.0                    # 吊舱引导时 USV 的轴向速度
+DIST_ALLOW_POD = 500.0                  # 吊舱引导时允许的吊舱距离
 
 USP_LIDAR_PURSUE_UB = 3.0               # 激光雷达引导时 USV 的轴向速度上界
 USP_LIDAR_PURSUE_LB = 1.7               # 激光雷达引导时 USV 的轴向速度下界
@@ -205,8 +206,11 @@ def main(args=None):
                     continue
 
             elif usvState == "PURSUE_SUAV":
+                if (sqrt(usvPose.tvEstPosX ** 2 + usvPose.tvEstPosY ** 2) > DIST_ALLOW_POD) & (usvPose.isPodResetting == False):
+                    usvPose.startPodReset()
+
                 # 如果吊舱识别，则进入到吊舱导引
-                if (usvPose.isPodFindTV):
+                if (usvPose.isPodFindTV) & ((sqrt(usvPose.tvEstPosX ** 2 + usvPose.tvEstPosY ** 2) <= DIST_ALLOW_POD)):
                     usvState = "PURSUE_POD"
                     continue
 
@@ -256,6 +260,7 @@ def main(args=None):
                 # 如果激光雷达没有识别，则退回到吊舱导引
                 if (not usvPose.isLidarFindTV):
                     usvState = "PURSUE_POD"
+                    usvPose.startPodReset()
                     continue
                 
                 # 激光雷达找到目标船，则使用激光雷达的信息
@@ -536,7 +541,9 @@ def main(args=None):
                     
                 latestMsg = "Attached completed. Take-off signal for tUAV has been sent."
                 usvComm.sendTakeOffFlag()
-                usvComm.sendTVPosFromLidar(-usvPose.xLidar, -usvPose.yLidar)
+                [deckCenterX, deckCenterY] = rotationZ(-usvPose.xLidar + finalX, -usvPose.yLidar + finalY, usvPose.psi)
+
+                usvComm.sendTVPosFromLidar(deckCenterX, deckCenterY, finalPsi - usvPose.psi)
 
                 # 保持一定的推力
                 usvControl.thrustSet(RPM_FINAL, RPM_FINAL, deg2rad(94), deg2rad(94)) 

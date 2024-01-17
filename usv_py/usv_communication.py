@@ -36,7 +36,7 @@ class Communication():
         self.usvStatePub = rospy.Publisher('/usv/state', String, queue_size=2)
 
         # 创建发送数据链距离的话题
-        self.usvDatalinkPub = rospy.Publisher('/usv/data_link/distance', Vector3Stamped, queue_size=2)
+        # self.usvDatalinkPub = rospy.Publisher('/usv/data_link/distance', Vector3Stamped, queue_size=2)
 
         # 分系统状态
         self.suavStateSub = rospy.Subscriber('/suav/state', String, self.suavStateCallback, queue_size=10)
@@ -49,8 +49,8 @@ class Communication():
     def sendTakeOffFlag(self):
         self.uavTakeOffFlagPub.publish(Int8(data=1))
     
-    def sendTVPosFromLidar(self, x, y):
-        self.tvPosFromLidarPub.publish(Pose2D(x=x, y=y, theta=arctan2(y, x)))
+    def sendTVPosFromLidar(self, x, y, psi):
+        self.tvPosFromLidarPub.publish(Pose2D(x=x, y=y, theta=psi))
 
     def sendUSVState(self, theState):
         self.usvStatePub.publish(String(data=theState))

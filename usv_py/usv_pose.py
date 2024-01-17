@@ -6,7 +6,7 @@ from numpy import arctan2, rad2deg, arctan, sqrt, deg2rad, zeros, argmax, argmin
 from numpy.linalg import norm
 from usv_math import rotationZ, wrapToPi
 
-from std_msgs.msg import Float64MultiArray
+from std_msgs.msg import Float64MultiArray, Int8
 from geometry_msgs.msg import PoseStamped, TwistStamped, Vector3Stamped, PoseArray, PoseStamped
 from nav_msgs.msg import Odometry
 from sensor_msgs.msg import Imu
@@ -73,6 +73,8 @@ class Pose():
     isPodValid = False
     isPodFindTV = False
     tvAnglePod = deg2rad(float("nan"))  # ENU 系下的吊舱角
+    podState = float("nan")
+    isPodResetting = False
 
     # sUAV 量
     isSearchFindTV = False
@@ -103,6 +105,7 @@ class Pose():
         self.dvlVelSub = rospy.Subscriber('/usv/dvl/velocity', Vector3Stamped, self.dvlCallback)
 
         # For Pod
+        self.podResetPub = rospy.Publisher('/usv/pod/servo_cmd', Int8, queue_size=1)
         self.podSub = rospy.Subscriber('/usv/pod/pod_servo_ctrl/data', Float64MultiArray, self.podCallback, queue_size=1)
 
         # For Lidar
@@ -160,14 +163,35 @@ class Pose():
         if (msg.data[0] == 1):
             self.isPodFindTV = True
             self.tvAnglePod = self.psi + msg.data[2]
+            self.podState = msg.data[3]
         else:
             self.isPodFindTV = False
             self.tvAnglePod = float("nan")
 
         self.isPodValid = True
 
-    def lidarCallback(self, msg):   
+    def podReset(self):
+        self.podResetPub.publish(Int8(data=1))
+
+    def podEnable(self):
+        self.podResetPub.publish(Int8(data=0))
+
+    def startPodReset(self):
+        if (self.isPodResetting):
+            self.isPodResetting = True
+        self.podResetThread = threading.Thread(target=self.podResetThreadFunc, daemon=True)
+        self.podResetThread.start()
         
+    def podResetThreadFunc(self):
+        while(self.podState == 2):
+            self.podResetPub.publish(Int8(data=1))
+
+        while(self.podState == 1):
+            self.podResetPub.publish(Int8(data=0))
+
+        self.isPodResetting = False
+
+    def lidarCallback(self, msg):          
         if (len(msg.poses) % 2 == 0):
             self.objectNum = int(len(msg.poses) / 2)
         else:
