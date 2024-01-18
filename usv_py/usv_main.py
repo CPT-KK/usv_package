@@ -560,7 +560,27 @@ def main(args=None):
                     # 如果不满足静止条件，需要重置 t1 计时器
                     timer1 = rospy.Time.now().to_sec()
 
+                # 超时
                 if (rospy.Time.now().to_sec() - timer0 > SECS_TIMEOUT_ATTACH_STEADY):
+                    isDockAttachPlan = False
+                    usvState = "DOCK_ATTACH_FAILSAFE"
+                    continue
+
+            elif usvState == "DOCK_ATTACH_FAILSAFE":
+                if (isDockAttachPlan == False):
+                    # 将当前时间写入 t1 计时器
+                    timer0 = rospy.Time.now().to_sec()
+                    timer1 = rospy.Time.now().to_sec()
+
+                    isDockAttachPlan = True
+
+                tvAngleLidarBody = usvPose.tvAngleLidar - usvPose.psi
+                if (usvControl.angleLeftEst <= deg2rad(89)) | (usvControl.angleRightEst <= deg2rad(89)):
+                    usvControl.thrustSet(0, 0, tvAngleLidarBody + deg2rad(4), tvAngleLidarBody + deg2rad(4))
+                else:
+                    usvControl.thrustSet(400, 400, tvAngleLidarBody + deg2rad(4), tvAngleLidarBody + deg2rad(4))
+
+                if (sqrt((usvPose.xLidar - xSP) ** 2 + (usvPose.yLidar - ySP) ** 2) < DIST_ATTACH_TOL): 
                     usvState = "DOCK_FINAL"
                     continue
 
@@ -574,8 +594,8 @@ def main(args=None):
                 usvComm.sendTVPosFromLidar(deckCenterX, deckCenterY, finalPsi - usvPose.psi)
 
                 # 保持一定的推力
-                usvControl.thrustSet(RPM_FINAL, RPM_FINAL, deg2rad(94), deg2rad(94)) 
-            
+                usvControl.thrustSet(RPM_FINAL, RPM_FINAL, deg2rad(94), deg2rad(94))     
+
             elif usvState == "TEST":
                 uSP = 3.25            
                 if (isTestPlan == False):
