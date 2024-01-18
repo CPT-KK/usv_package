@@ -282,7 +282,8 @@ class Pose():
                 self.tLidar = msg.header.stamp
 
                 # 将找到目标船标志位置为真
-                self.isLidarFindTV = True   
+                self.isLidarFindTV = True  
+                self.isLidarFindTVPrevious = True 
 
             else:
                 rospy.logwarn(f"Pod and lidar lose detection for {dt.to_sec():.2f}")
@@ -350,6 +351,30 @@ class Pose():
 
                 # 成功才记录此刻的时间戳
                 self.tLidar = msg.header.stamp
+
+        elif (self.isLidarFindTVPrevious) & (not self.isLidarFindTV):
+            tvIndex = argmin(objectDist)
+            
+            self.tvX = objectX[tvIndex, 0]
+            self.tvY = objectY[tvIndex, 0]
+            self.tvAngleLidar = objectAngle[tvIndex, 0]
+            self.tvDist = objectDist[tvIndex, 0]
+            self.tvLength = objectLength[tvIndex, 0]
+            self.tvWidth = objectWidth[tvIndex, 0]
+            self.tvHeading = objectHeading[tvIndex, 0]
+            self.tvHighestX = objectHighestX[tvIndex, 0] - self.tvX
+            self.tvHighestY = objectHighestY[tvIndex, 0] - self.tvY
+            self.tvHighestZ = objectHighestZ[tvIndex, 0]
+
+            # 根据目标船坐标计算无人船坐标
+            self.xLidar = -self.tvX
+            self.yLidar = -self.tvY
+
+            # 将找到目标船标志位置为真
+            self.isLidarFindTV = True
+
+            # 成功才记录此刻的时间戳
+            self.tLidar = msg.header.stamp
 
         else:
             # 此时激光雷达扫描到物体，但是吊舱和坐标比对均不认为物体是目标船
