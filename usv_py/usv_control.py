@@ -84,7 +84,7 @@ class Control():
 
     def moveUSV(self, uSP, psiSP, u, axb, psi, r):
         # 计算朝向角误差
-        psiErr = psiSP - psi
+        psiErr = wrapToPi(psiSP) - psi
 
         # 朝向角误差限幅
         psiErr = wrapToPi(psiErr)

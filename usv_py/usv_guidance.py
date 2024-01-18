@@ -76,7 +76,7 @@ class Guidance():
         yErrAngle = self.yErrPID.compute(arctan2(-yErr, self.delta))
 
         # 计算期望的朝向角：路径方向角 - 侧滑角 + 修正侧向误差的航向补偿角
-        psiSP = tanAngle - beta + yErrAngle 
+        psiSP = wrapToPi(tanAngle - clip(beta, deg2rad(-30), deg2rad(30)) + yErrAngle)
 
         # Debug 用输出
         # print("=============================================================================")
