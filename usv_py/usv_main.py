@@ -56,15 +56,15 @@ VEL_DOCK_STEADY_TOL = 0.4              # DOCK_ADJUST 时认为 USV 已经稳定�
 HEALTHY_Z_TOL = 1.5                     # 
 SECS_WAIT_HEIGHT_SEARCH = 10.0          # WAIT_ARM 时等待机械臂搜索大物体的秒数
 
-DIST_TOOBJAREA_SIDE = 3.5              # TOLARGEOBJ 时 USV 前往的大物体侧面点与船边的距离
+DIST_TOOBJAREA_SIDE = 2.5              # TOLARGEOBJ 时 USV 前往的大物体侧面点与船边的距离
 SECS_WAIT_TOOBJAREA_STEADY = 5.0       # TOLARGEOBJ 时认为 USV 已经稳定前所需的秒数
 SECS_TIMEOUT_TOOBJAREA_STEADY = 30.0
-DIST_TOLARGEOBJ_TOL = 2               # TOLARGEOBJ 时认为 USV 已经前往到大物体侧面点的位置判据
+DIST_TOLARGEOBJ_TOL = 1.5               # TOLARGEOBJ 时认为 USV 已经前往到大物体侧面点的位置判据
 
-DIST_TOVESSELCEN_SIDE = 3.5                # TOVESSEL 时 USV 前往的目标船侧面点与船边的距离
+DIST_TOVESSELCEN_SIDE = 2.5                # TOVESSEL 时 USV 前往的目标船侧面点与船边的距离
 SECS_WAIT_TOVESSCEN_STEADY = 5.0         # TOVESSEL 时认为 USV 已经稳定前所需的秒数
 SECS_TIMEOUT_TOVESSCEN_STEADY = 30.0
-DIST_TOVESSEL_TOL = 2                # TOVESSEL 时认为 USV 已经前往到目标船侧面点的位置判据
+DIST_TOVESSEL_TOL = 1.5                # TOVESSEL 时认为 USV 已经前往到目标船侧面点的位置判据
 
 SECS_WAIT_ATTACH_STEADY = 5.0
 SECS_TIMEOUT_ATTACH_STEADY = 30.0
@@ -88,6 +88,14 @@ def interuptFunc(signum, frame):
     console = Console()
     console.print("\n[red]>>>>>>> Ctrl + C pressed! Exiting...")
     exit()
+
+def updateTVHeading(existHeading, newHeading):
+    if (abs(newHeading - existHeading) <= deg2rad(30)):
+        return 0.6 * existHeading + 0.4 * newHeading
+    elif (abs(wrapToPi(newHeading + pi) - existHeading) <= deg2rad(30)):
+        return 0.6 * existHeading + 0.4 * wrapToPi(newHeading + pi)
+    else:
+        return existHeading
 
 def main(args=None):
     # 控制台输出初始化
@@ -425,6 +433,9 @@ def main(args=None):
                 # 保持静止
                 [uSP, vSP, rSP, axbSP, aybSP, etaSP] = usvControl.moveUSVVec(xSP, ySP, psiSP, usvPose.xLidar, usvPose.yLidar, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
 
+                # 更新航向值
+                tvHeadingMean = updateTVHeading(tvHeadingMean, usvPose.tvHeading)
+
                 # 等待船接近静止并保持 5.0s，进入 MEASURE_HIGHEST
                 if (rospy.Time.now().to_sec() - timer1 > SECS_WAIT_DOCK_ADJUST_STEADY):   
                     usvState = "MEASURE_HIGHEST"
@@ -460,6 +471,9 @@ def main(args=None):
                 
                 # 保持静止
                 [uSP, vSP, rSP, axbSP, aybSP, etaSP] = usvControl.moveUSVVec(xSP, ySP, psiSP, usvPose.xLidar, usvPose.yLidar, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
+
+                # 更新航向值
+                tvHeadingMean = updateTVHeading(tvHeadingMean, usvPose.tvHeading)
 
                 # 等待测量完成
                 if (rospy.Time.now().to_sec() - timer1 > SECS_WAIT_HEIGHT_SEARCH):
@@ -511,6 +525,9 @@ def main(args=None):
                 # 向目标区域对齐
                 [uSP, vSP, rSP, axbSP, aybSP, etaSP] = usvControl.moveUSVVec(xSP, ySP, psiSP, usvPose.xLidar, usvPose.yLidar, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
                 
+                # 更新航向值
+                tvHeadingMean = updateTVHeading(tvHeadingMean, usvPose.tvHeading)
+                    
                 # 如果与目标区域的轴向误差（？）小于给定距离并且持续 X 秒，则认为已经和目标区域对齐
                 if (rospy.Time.now().to_sec() - timer1 > SECS_WAIT_TOOBJAREA_STEADY): 
                     usvState = "DOCK_ATTACH"
@@ -544,6 +561,9 @@ def main(args=None):
                 # 向目标船中心对齐                 
                 [uSP, vSP, rSP, axbSP, aybSP, etaSP] = usvControl.moveUSVVec(xSP, ySP, psiSP, usvPose.xLidar, usvPose.yLidar, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
 
+                # 更新航向值
+                tvHeadingMean = updateTVHeading(tvHeadingMean, usvPose.tvHeading)
+
                 # 如果与目标船的距离小于给定距离并且持续 X 秒，则认为已经和目标船中心对齐
                 if (rospy.Time.now().to_sec() - timer1 > SECS_WAIT_TOVESSCEN_STEADY): 
                     usvState = "DOCK_ATTACH"
@@ -576,6 +596,9 @@ def main(args=None):
                 
                 # 横向移动向大物体/目标船     
                 [uSP, vSP, rSP, axbSP, aybSP, etaSP] = usvControl.moveUSVVec(xSP, ySP, psiSP, usvPose.xLidar, usvPose.yLidar, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
+
+                # 更新航向值
+                tvHeadingMean = updateTVHeading(tvHeadingMean, usvPose.tvHeading)
 
                 # 如果 USV 侧向速度小于 VEL_ATTACH_TOL，或者和给定点距离小于DIST_ATTACH_TOL，并且持续 SECS_WAIT_ATTACH_STEADY 秒，则认为已经固连
                 if (rospy.Time.now().to_sec() - timer1 > SECS_WAIT_ATTACH_STEADY): 

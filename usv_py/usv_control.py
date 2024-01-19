@@ -29,7 +29,7 @@ class Control():
     __rpmMax = 1000                 # 最大转速
     __rpmRotateMax = 800            # 用于转动的最大转速
     __angleMax = deg2rad(90)        # 舵角最大值
-    __angleMaxState0 = deg2rad(40)  # Control state 0 下的舵角最大值
+    __angleMaxState0 = deg2rad(25)  # Control state 0 下的舵角最大值
 
     # 无人船参数
     __MASS = 775.0          # 质量
@@ -136,9 +136,9 @@ class Control():
         [xErr, yErr] = rotationZ(xErr, yErr, psi)
 
         # 选择矢量控制器状态
-        if ((abs(yErr) > 2) | (sign(v * yErr) > 0 and abs(v) > 0.2)) & (self.vecCtrlState == 0):
+        if ((abs(yErr) > 2.2) | (sign(v * yErr) > 0 and abs(v) > 0.2)) & (self.vecCtrlState == 0):
             self.vecCtrlState = 1
-        elif (abs(yErr) <= 1) & (abs(ayb) <= 0.15) & (self.vecCtrlState == 1):
+        elif (abs(yErr) <= 1.5) & (self.vecCtrlState == 1):
             self.vecCtrlState = 0
 
         uSP = 0.0

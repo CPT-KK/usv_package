@@ -56,15 +56,15 @@ VEL_DOCK_STEADY_TOL = 0.4              # DOCK_ADJUST 时认为 USV 已经稳定�
 HEALTHY_Z_TOL = 1.5                     # 
 SECS_WAIT_HEIGHT_SEARCH = 10.0          # WAIT_ARM 时等待机械臂搜索大物体的秒数
 
-DIST_TOOBJAREA_SIDE = 3.5              # TOLARGEOBJ 时 USV 前往的大物体侧面点与船边的距离
+DIST_TOOBJAREA_SIDE = 2.5              # TOLARGEOBJ 时 USV 前往的大物体侧面点与船边的距离
 SECS_WAIT_TOOBJAREA_STEADY = 5.0       # TOLARGEOBJ 时认为 USV 已经稳定前所需的秒数
 SECS_TIMEOUT_TOOBJAREA_STEADY = 30.0
-DIST_TOLARGEOBJ_TOL = 2               # TOLARGEOBJ 时认为 USV 已经前往到大物体侧面点的位置判据
+DIST_TOLARGEOBJ_TOL = 1.5               # TOLARGEOBJ 时认为 USV 已经前往到大物体侧面点的位置判据
 
-DIST_TOVESSELCEN_SIDE = 3.5                # TOVESSEL 时 USV 前往的目标船侧面点与船边的距离
+DIST_TOVESSELCEN_SIDE = 2.5                # TOVESSEL 时 USV 前往的目标船侧面点与船边的距离
 SECS_WAIT_TOVESSCEN_STEADY = 5.0         # TOVESSEL 时认为 USV 已经稳定前所需的秒数
 SECS_TIMEOUT_TOVESSCEN_STEADY = 30.0
-DIST_TOVESSEL_TOL = 2                # TOVESSEL 时认为 USV 已经前往到目标船侧面点的位置判据
+DIST_TOVESSEL_TOL = 1.5                # TOVESSEL 时认为 USV 已经前往到目标船侧面点的位置判据
 
 SECS_WAIT_ATTACH_STEADY = 5.0
 SECS_TIMEOUT_ATTACH_STEADY = 30.0
@@ -173,9 +173,23 @@ def main():
     aybSP = float("nan")
     etaSP = float("nan")
 
+    while (True):
+        # 打印当前状态
+        dt = rospy.Time.now().to_sec() - t0
+        theTable = genTable(usvState, latestMsg, usvPose, usvControl, usvComm, dt, uSP, vSP, psiSP, rSP, xSP, ySP, axbSP, aybSP, etaSP) 
+        console.print(theTable)
+
+        if (usvPose.isImuValid) & (usvPose.isDvlValid) & (usvPose.isPodValid) & (not isnan(usvControl.angleLeftEst)) & (not isnan(usvControl.angleRightEst)) & (not isnan(usvControl.rpmLeftEst) & (not isnan(usvControl.rpmRightEst))):
+            break
+    
     usvPose.isLidarFindTVPrevious = True
 
     while (not usvPose.isLidarFindTV):
+        # 打印当前状态
+        dt = rospy.Time.now().to_sec() - t0
+        theTable = genTable(usvState, latestMsg, usvPose, usvControl, usvComm, dt, uSP, vSP, psiSP, rSP, xSP, ySP, axbSP, aybSP, etaSP) 
+        console.print(theTable)
+
         rosRate.sleep()
 
     semiFinalX = usvPose.xLidar
@@ -189,6 +203,8 @@ def main():
         dt = rospy.Time.now().to_sec() - t0
         theTable = genTable(usvState, latestMsg, usvPose, usvControl, usvComm, dt, uSP, vSP, psiSP, rSP, xSP, ySP, axbSP, aybSP, etaSP) 
         console.print(theTable)
+
+        usvData.saveData(usvPose, usvControl, usvComm, dt, uSP, vSP, psiSP, rSP, xSP, ySP, axbSP, aybSP, etaSP)
 
         if usvState == "DOCK_ADJUST":
             if (isDockAdjustPlan == False):
