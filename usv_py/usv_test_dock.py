@@ -203,7 +203,7 @@ def main():
                 psiSP = finalPsi
                 isDockAdjustPlan = True
 
-            latestMsg = f"Approach finished. Stablizing USV @ [{xSP:.2f}, {ySP:.2f}], {rad2deg(psiSP):.2f} deg... [{rospy.Time.now().to_sec() - timer1:.2f} / {SECS_WAIT_DOCK_ADJUST_STEADY:.2f}]s"
+            latestMsg = f"Approach finished. Stablizing USV @ [{xSP:.2f}, {ySP:.2f}]m, {rad2deg(psiSP):.2f} deg... [{rospy.Time.now().to_sec() - timer1:.2f} / {SECS_WAIT_DOCK_ADJUST_STEADY:.2f}]s"
 
             # 保持静止
             [uSP, vSP, rSP, axbSP, aybSP, etaSP] = usvControl.moveUSVVec(xSP, ySP, psiSP, usvPose.xLidar, usvPose.yLidar, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
@@ -289,7 +289,7 @@ def main():
                 
                 isDockToObjAreaPlan = True
 
-                latestMsg = f"USV is aligning with the estimated object area center [{xSP:.2f}, {ySP:.2f}] [{rospy.Time.now().to_sec() - timer1:.2f} / {SECS_WAIT_HEIGHT_SEARCH:.2f}]..."
+                latestMsg = f"USV is aligning with the estimated object area center [{xSP:.2f}, {ySP:.2f}]m [{rospy.Time.now().to_sec() - timer1:.2f} / {SECS_WAIT_HEIGHT_SEARCH:.2f}s]..."
             
             # 向目标区域对齐
             [uSP, vSP, rSP, axbSP, aybSP, etaSP] = usvControl.moveUSVVec(xSP, ySP, psiSP, usvPose.xLidar, usvPose.yLidar, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
@@ -386,9 +386,9 @@ def main():
 
             tvAngleLidarBody = usvPose.tvAngleLidar - usvPose.psi
             if (usvControl.angleLeftEst <= deg2rad(89)) | (usvControl.angleRightEst <= deg2rad(89)):
-                usvControl.thrustSet(0, 0, tvAngleLidarBody + deg2rad(2), tvAngleLidarBody + deg2rad(4))
+                usvControl.thrustSet(0, 0, tvAngleLidarBody + deg2rad(0.5), tvAngleLidarBody + deg2rad(4))
             else:
-                usvControl.thrustSet(RPM_ATTACH_FAILSAFE, RPM_ATTACH_FAILSAFE, tvAngleLidarBody + deg2rad(2), tvAngleLidarBody + deg2rad(4))
+                usvControl.thrustSet(RPM_ATTACH_FAILSAFE, RPM_ATTACH_FAILSAFE, tvAngleLidarBody + deg2rad(0.5), tvAngleLidarBody + deg2rad(4))
 
             if (sqrt((usvPose.xLidar - xSP) ** 2 + (usvPose.yLidar - ySP) ** 2) < DIST_ATTACH_TOL): 
                 usvState = "DOCK_FINAL"
@@ -404,7 +404,12 @@ def main():
             usvComm.sendTVPosFromLidar(deckCenterX, deckCenterY, finalPsi - usvPose.psi)
 
             # 保持一定的推力
-            usvControl.thrustSet(RPM_FINAL, RPM_FINAL, deg2rad(92), deg2rad(94))     
+            if (usvControl.angleLeftEst <= deg2rad(89)) | (usvControl.angleRightEst <= deg2rad(89)):
+                usvControl.thrustSet(0, 0, deg2rad(90.5), deg2rad(94))  
+            else:
+                usvControl.thrustSet(RPM_FINAL, RPM_FINAL, deg2rad(90.5), deg2rad(94))    
+
+        rosRate.sleep()
 
 if __name__ == '__main__':
     main()
