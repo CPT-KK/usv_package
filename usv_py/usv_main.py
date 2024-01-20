@@ -36,15 +36,15 @@ DIST_PURSUE_TO_APPROACH = 70.0          # 由 PURSUE 切换到 DOCK_NEARBY 的 U
 USP_OBS_PURSUE = 2.75                   # 避障时 USV 的轴向速度
 ANGLE_AVOID_OBS = deg2rad(35.0)         # 避障时 USV 的航向附加量
 
-USP_DOCK_NEARBY = 2                   # DOCK_NEARBY 时 USV 的轴向速度
+USP_DOCK_NEARBY = 1.8                   # DOCK_NEARBY 时 USV 的轴向速度
 DIST_TONEXT_DOCK_NEARBY = 12.0          # DOCK_NEARBY 时切换追踪点为轨迹下一点的距离
 
-USP_DOCK_MEASURE = 1.8                  # DOCK_MEASURE 时 USV 的轴向速度
+USP_DOCK_MEASURE = 1.5                  # DOCK_MEASURE 时 USV 的轴向速度
 DIST_TONEXT_DOCK_MEASURE = 10.0          # DOCK_MEASURE 时切换追踪点为轨迹下一点的距离
 ANGLE_DOCK_MEASURE_JUMP = deg2rad(20.0) # DOCK_MEASURE 时认为激光雷达估计目标船朝向可能跳变的角度判据
 
-USP_DOCK_APPROACH_UB = 1.8              # DOCK_APPROACH 时 USV 的轴向速度上界
-USP_DOCK_APPROACH_LB = 1.6              # DOCK_APPROACH 时 USV 的轴向速度下界
+USP_DOCK_APPROACH_UB = 1.5              # DOCK_APPROACH 时 USV 的轴向速度上界
+USP_DOCK_APPROACH_LB = 1.1              # DOCK_APPROACH 时 USV 的轴向速度下界
 DIST_TONEXT_DOCK_APPROACH = 10.0         # DOCK_APPROACH 时切换追踪点为轨迹下一点的距离
 
 SECS_WAIT_DOCK_ADJUST_STEADY = 5.0      # DOCK_ADJUST 时认为 USV 已经稳定前所需的秒数
@@ -53,7 +53,7 @@ ANGLE_DOCK_STEADY_TOL = deg2rad(2)      # DOCK_ADJUST 时认为 USV 已经稳定
 DIST_DOCK_STEADY_TOL = 2.5             # DOCK_ADJUST 时认为 USV 已经稳定的位置判据
 VEL_DOCK_STEADY_TOL = 0.4              # DOCK_ADJUST 时认为 USV 已经稳定的速度判据
 
-HEALTHY_Z_TOL = 1.5                     # 
+HEALTHY_Z_TOL = 1.2                     # 
 SECS_WAIT_HEIGHT_SEARCH = 10.0          # WAIT_ARM 时等待机械臂搜索大物体的秒数
 
 DIST_TOOBJAREA_SIDE = 2.5              # TOLARGEOBJ 时 USV 前往的大物体侧面点与船边的距离
@@ -90,12 +90,19 @@ def interuptFunc(signum, frame):
     exit()
 
 def updateTVHeading(existHeading, newHeading):
-    if (abs(newHeading - existHeading) <= deg2rad(30)):
-        return 0.6 * existHeading + 0.4 * newHeading
-    elif (abs(wrapToPi(newHeading + pi) - existHeading) <= deg2rad(30)):
-        return 0.6 * existHeading + 0.4 * wrapToPi(newHeading + pi)
+    newHeading2 = wrapToPi(newHeading + pi)
+    angleGap1 = abs(newHeading - existHeading)
+    angleGap2 = abs(newHeading2 - existHeading)
+
+    if (angleGap1 <= angleGap2):
+        angleGap = angleGap1
     else:
+        angleGap = angleGap2
+
+    if (angleGap > pi / 2):
         return existHeading
+    else:
+        return sin(angleGap) * existHeading + cos(angleGap) * newHeading
 
 def main(args=None):
     # 控制台输出初始化
@@ -193,6 +200,8 @@ def main(args=None):
 
             # 发送无人船的东西 
             usvComm.sendUSVState(usvState)
+
+
 
             if usvState == "SELF_CHECK":
                 # 单独为激光雷达设置启动检查
@@ -451,6 +460,10 @@ def main(args=None):
                     usvState = "MEASURE_HIGHEST"
                     continue
 
+            elif usvState == "DOCK_ADJUST_BACKUP":
+                xSP = 0 + (DIST_TOOBJAREA_SIDE + 0.5 * tvWidthMean) * cos(finalPsi - pi / 2)
+                ySP = 0 + (DIST_TOOBJAREA_SIDE + 0.5 * tvWidthMean) * sin(finalPsi - pi / 2)
+            
             elif usvState == "MEASURE_HIGHEST":
                 if (isDockWaitArmPlan == False):
                     # 将当前时间写入 t1 计时器
@@ -604,7 +617,7 @@ def main(args=None):
                 if (rospy.Time.now().to_sec() - timer1 > SECS_WAIT_ATTACH_STEADY): 
                     usvState = "DOCK_FINAL"
                     continue
-                elif (sqrt((usvPose.xLidar - xSP) ** 2 + (usvPose.yLidar - ySP) ** 2) < DIST_ATTACH_TOL) | (abs(usvPose.vDVL) < VEL_ATTACH_TOL):
+                elif (sqrt((usvPose.xLidar - xSP) ** 2 + (usvPose.yLidar - ySP) ** 2) < DIST_ATTACH_TOL):
                     pass
                 else:
                     # 如果不满足静止条件，需要重置 t1 计时器

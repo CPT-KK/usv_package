@@ -136,9 +136,9 @@ class Control():
         [xErr, yErr] = rotationZ(xErr, yErr, psi)
 
         # 选择矢量控制器状态
-        if ((abs(yErr) > 2.2) | (sign(v * yErr) > 0 and abs(v) > 0.2)) & (self.vecCtrlState == 0):
+        if ((abs(yErr) > 2.2) | (sign(v * yErr) > 0 and abs(v) > 0.2)) & (self.vecCtrlState == 0) & (abs(psiSP - psi) < deg2rad(12)):
             self.vecCtrlState = 1
-        elif (abs(yErr) <= 1.5) & (self.vecCtrlState == 1):
+        elif ((abs(yErr) <= 1.5) & (self.vecCtrlState == 1)) | (abs(psiSP - psi) >= deg2rad(12)):
             self.vecCtrlState = 0
 
         uSP = 0.0
