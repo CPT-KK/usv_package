@@ -20,7 +20,7 @@ ROS_RATE = 10
 
 # 常量
 USP_GOINT_OUT = 1.5
-SECS_GOING_OUT = 8
+SECS_GOING_OUT = 12
 
 USP_SUAV_PURSUE = 2.75                  # 搜索无人机引导时 USV 的轴向速度
 ANGLE_EST_POD_GAP = deg2rad(15)
@@ -53,21 +53,21 @@ ANGLE_DOCK_STEADY_TOL = deg2rad(2)      # DOCK_ADJUST 时认为 USV 已经稳定
 DIST_DOCK_STEADY_TOL = 2.5             # DOCK_ADJUST 时认为 USV 已经稳定的位置判据
 VEL_DOCK_STEADY_TOL = 0.4              # DOCK_ADJUST 时认为 USV 已经稳定的速度判据
 
-HEALTHY_Z_TOL = 1.5                     # 
+HEALTHY_Z_TOL = 1.2                     # 
 SECS_WAIT_HEIGHT_SEARCH = 10.0          # WAIT_ARM 时等待机械臂搜索大物体的秒数
 
-DIST_TOOBJAREA_SIDE = 2.5              # TOLARGEOBJ 时 USV 前往的大物体侧面点与船边的距离
+DIST_TOOBJAREA_SIDE = 2              # TOLARGEOBJ 时 USV 前往的大物体侧面点与船边的距离
 SECS_WAIT_TOOBJAREA_STEADY = 5.0       # TOLARGEOBJ 时认为 USV 已经稳定前所需的秒数
-SECS_TIMEOUT_TOOBJAREA_STEADY = 30.0
+SECS_TIMEOUT_TOOBJAREA_STEADY = 20.0
 DIST_TOLARGEOBJ_TOL = 1.5               # TOLARGEOBJ 时认为 USV 已经前往到大物体侧面点的位置判据
 
-DIST_TOVESSELCEN_SIDE = 2.5                # TOVESSEL 时 USV 前往的目标船侧面点与船边的距离
+DIST_TOVESSELCEN_SIDE = 2                # TOVESSEL 时 USV 前往的目标船侧面点与船边的距离
 SECS_WAIT_TOVESSCEN_STEADY = 5.0         # TOVESSEL 时认为 USV 已经稳定前所需的秒数
-SECS_TIMEOUT_TOVESSCEN_STEADY = 30.0
+SECS_TIMEOUT_TOVESSCEN_STEADY = 20.0
 DIST_TOVESSEL_TOL = 1.5                # TOVESSEL 时认为 USV 已经前往到目标船侧面点的位置判据
 
 SECS_WAIT_ATTACH_STEADY = 5.0
-SECS_TIMEOUT_ATTACH_STEADY = 30.0
+SECS_TIMEOUT_ATTACH_STEADY = 20.0
 VEL_ATTACH_TOL = 0.08
 DIST_ATTACH_TOL = 1.5
 
@@ -252,7 +252,6 @@ def main(args=None):
                     continue
                 else:
                     usvPose.podReset()
-                    usvPose.podEnable()
                     
                 # 如果激光雷达识别，则进入到 LIDAR 导引
                 if (usvPose.isLidarFindTV):

@@ -174,6 +174,12 @@ class Pose():
         self.podResetPub.publish(Int8(data=1))
         self.podResetPub.publish(Int8(data=1))
         self.podResetPub.publish(Int8(data=1))
+        self.podResetPub.publish(Int8(data=1))
+        self.podResetPub.publish(Int8(data=1))
+        self.podResetPub.publish(Int8(data=1))
+        self.podResetPub.publish(Int8(data=1))
+        self.podResetPub.publish(Int8(data=1))
+        self.podResetPub.publish(Int8(data=1))
 
     def podEnable(self):
         self.podResetPub.publish(Int8(data=0))

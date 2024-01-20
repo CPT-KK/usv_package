@@ -138,7 +138,7 @@ class Control():
         # 选择矢量控制器状态
         if ((abs(yErr) > 2.2) | (sign(v * yErr) > 0 and abs(v) > 0.2)) & (self.vecCtrlState == 0):
             self.vecCtrlState = 1
-        elif (abs(yErr) <= 1.5) & (self.vecCtrlState == 1):
+        elif (abs(yErr) <= 2) & (self.vecCtrlState == 1):
             self.vecCtrlState = 0
 
         uSP = 0.0
@@ -276,10 +276,10 @@ if __name__ == '__main__':
     rosRate = rospy.Rate(rate)
     usvControl = Control()
 
-    lastTime = 10
+    lastTime = 600
     loopTimes = round(lastTime / (1 / rate))
 
-    rpmValue = 400
+    rpmValue = 80
     angleValue = deg2rad(94.8)
     
     rospy.loginfo("Moving left torq...")
@@ -288,23 +288,23 @@ if __name__ == '__main__':
         usvControl.thrustPub()
         rosRate.sleep()
 
-    rospy.loginfo("Moving right torq...")
-    for i in range(loopTimes):
-        usvControl.thrustSet(rpmValue, rpmValue, angleValue, angleValue)
-        usvControl.thrustPub()
-        rosRate.sleep()
+    # rospy.loginfo("Moving right torq...")
+    # for i in range(loopTimes):
+    #     usvControl.thrustSet(rpmValue, rpmValue, angleValue, angleValue)
+    #     usvControl.thrustPub()
+    #     rosRate.sleep()
 
-    rospy.loginfo("Moving left angle...")
-    for i in range(loopTimes):
-        usvControl.thrustSet(0, 0, angleValue, 0)
-        usvControl.thrustPub()
-        rosRate.sleep()
+    # rospy.loginfo("Moving left angle...")
+    # for i in range(loopTimes):
+    #     usvControl.thrustSet(0, 0, angleValue, 0)
+    #     usvControl.thrustPub()
+    #     rosRate.sleep()
 
-    rospy.loginfo("Moving right angle...")
-    for i in range(loopTimes):
-        usvControl.thrustSet(0, 0, angleValue, angleValue)
-        usvControl.thrustPub()
-        rosRate.sleep()
+    # rospy.loginfo("Moving right angle...")
+    # for i in range(loopTimes):
+    #     usvControl.thrustSet(0, 0, angleValue, angleValue)
+    #     usvControl.thrustPub()
+    #     rosRate.sleep()
 
     rospy.loginfo("Stopping...")
     for i in range(loopTimes):
