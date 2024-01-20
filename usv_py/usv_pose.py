@@ -181,26 +181,6 @@ class Pose():
         self.podResetPub.publish(Int8(data=1))
         self.podResetPub.publish(Int8(data=1))
 
-    def podEnable(self):
-        self.podResetPub.publish(Int8(data=0))
-        self.podResetPub.publish(Int8(data=0))
-        self.podResetPub.publish(Int8(data=0))
-
-    def startPodReset(self):
-        if (self.isPodResetting == False):
-            self.isPodResetting = True
-        self.podResetThread = threading.Thread(target=self.podResetThreadFunc, daemon=True)
-        self.podResetThread.start()
-        
-    def podResetThreadFunc(self):
-        while(self.podState == 2):
-            self.podResetPub.publish(Int8(data=1))
-
-        while(self.podState <= 1):
-            self.podResetPub.publish(Int8(data=0))
-
-        self.isPodResetting = False
-
     def lidarCallback(self, msg):          
         if (len(msg.poses) % 2 == 0):
             self.objectNum = int(len(msg.poses) / 2)
