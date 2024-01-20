@@ -42,6 +42,7 @@ class Communication():
         self.suavStateSub = rospy.Subscriber('/suav/state', String, self.suavStateCallback, queue_size=10)
         self.tuav1StateSub = rospy.Subscriber('/tuav8/state', String, self.tuav1StateCallback, queue_size=10)
         self.armStateSub = rospy.Subscriber('/arm/state', String, self.armStateCallback, queue_size=10)
+        self.releaseAttachStructPub = rospy.Publisher('/servo_control_cmd', Int8, queue_size=10)
 
     def __del__(self):
         pass
@@ -75,6 +76,9 @@ class Communication():
 
     def armStateCallback(self, msg):
         self.armStateCallback = msg.data
+
+    def releaseAttachStruct(self, input):
+        self.releaseAttachStructPub.publish(Int8(data=input))
 
     # def datalinkPub(self):
     #     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:

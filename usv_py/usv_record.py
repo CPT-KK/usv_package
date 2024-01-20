@@ -45,11 +45,11 @@ def genTable(usvState, latestMsg, usvPose, usvControl, usvComm, dt, uSP, vSP, ps
                                   f"Dvl: {usvPose.isDvlValid}", f"Pod: {usvPose.isPodValid}", 
                                   f"Lidar: {usvPose.isLidarValid}", f"sUAV: {usvComm.suavState}", f"tUAV1: {usvComm.tuav1State}"],
         # 
-        "Motions": [f"u: {usvPose.uDVL:.2f} m/s", f"v: {usvPose.vDVL:.2f} m/s", 
+        "Motions": [f"[purple]u: {usvPose.uDVL:.2f} m/s", f"[reverse purple]v: {usvPose.vDVL:.2f} m/s", 
                     f"psi: {rad2deg(usvPose.psi):.2f} deg", f"r: {rad2deg(usvPose.r):.2f} deg/s", 
                     f"ax: {usvPose.axb:.2f} m/s^2", f"ay: {usvPose.ayb:.2f} m/s^2"],
         # 
-        "Setpoints": [f"uSP: {uSP:.2f} m/s", f"vSP: {vSP:.2f} m/s", 
+        "Setpoints": [f"[purple]uSP: {uSP:.2f} m/s", f"[reverse purple]vSP: {vSP:.2f} m/s", 
                       f"psiSP: {rad2deg(psiSP):.2f} deg", f"rSP: {rad2deg(rSP):.2f} deg/s", 
                       f"[bold bright_yellow]xSP: {xSP:.2f} m", f"[bold bright_yellow]ySP: {ySP:.2f} m", 
                       f"axbSP: {axbSP:.2f} m/s^2", f"aybSP: {aybSP:.2f} m/s^2", 

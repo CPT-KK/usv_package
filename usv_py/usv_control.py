@@ -17,7 +17,7 @@ class Control():
     __aybSPMax = 1.0        # 矢量控制器中 aybSP 的最大值
 
     __uSPMax = 4.0          # 差动控制器中 uSP 的最大值
-    __uSPVecMax = 1.0       # 矢量控制器中 uSP 的最大值
+    __uSPVecMax = 0.8       # 矢量控制器中 uSP 的最大值
     __vSPMax = 0.5          # 矢量控制器中 vSP 的最大值
     __rSPMax = deg2rad(8)   # 控制器中 rSP 的最大值
     
@@ -136,7 +136,7 @@ class Control():
         [xErr, yErr] = rotationZ(xErr, yErr, psi)
 
         # 选择矢量控制器状态
-        if ((abs(yErr) > 2.2) | (sign(v * yErr) > 0 and abs(v) > 0.2)) & (self.vecCtrlState == 0) & (abs(psiSP - psi) < deg2rad(12)):
+        if ((abs(yErr) > 2.2) | (sign(v * yErr) > 0 and abs(v) > 0.2)) & (self.vecCtrlState == 0) & (abs(psiSP - psi) < deg2rad(8)):
             self.vecCtrlState = 1
         elif ((abs(yErr) <= 1.5) & (self.vecCtrlState == 1)) | (abs(psiSP - psi) >= deg2rad(12)):
             self.vecCtrlState = 0
