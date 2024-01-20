@@ -43,7 +43,7 @@ def genTable(usvState, latestMsg, usvPose, usvControl, usvComm, dt, uSP, vSP, ps
     tableData = {
         f"[reverse]{usvState}" : [f"GPS: {usvPose.isGPSValid}", f"Imu: {usvPose.isImuValid}", 
                                   f"Dvl: {usvPose.isDvlValid}", f"Pod: {usvPose.isPodValid}", 
-                                  f"Lidar: {usvPose.isLidarValid}"],
+                                  f"Lidar: {usvPose.isLidarValid}", f"sUAV: {usvComm.suavState}", f"tUAV1: {usvComm.tuav1State}"],
         # 
         "Motions": [f"u: {usvPose.uDVL:.2f} m/s", f"v: {usvPose.vDVL:.2f} m/s", 
                     f"psi: {rad2deg(usvPose.psi):.2f} deg", f"r: {rad2deg(usvPose.r):.2f} deg/s", 
