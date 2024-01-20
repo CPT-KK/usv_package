@@ -53,8 +53,8 @@ ANGLE_DOCK_STEADY_TOL = deg2rad(2)      # DOCK_ADJUST 时认为 USV 已经稳定
 DIST_DOCK_STEADY_TOL = 2.5             # DOCK_ADJUST 时认为 USV 已经稳定的位置判据
 VEL_DOCK_STEADY_TOL = 0.4              # DOCK_ADJUST 时认为 USV 已经稳定的速度判据
 
-HEALTHY_Z_TOL = 1.5                     # 
-SECS_WAIT_HEIGHT_SEARCH = 10.0          # WAIT_ARM 时等待机械臂搜索大物体的秒数
+HEALTHY_Z_TOL = 1.2                     # 
+SECS_WAIT_HEIGHT_SEARCH = 10.0          # WAIT_HEIGHT_SEARCH 时等待秒数
 
 DIST_TOOBJAREA_SIDE = 2.5              # TOLARGEOBJ 时 USV 前往的大物体侧面点与船边的距离
 SECS_WAIT_TOOBJAREA_STEADY = 5.0       # TOLARGEOBJ 时认为 USV 已经稳定前所需的秒数
@@ -89,6 +89,13 @@ def interuptFunc(signum, frame):
     console.print("\n[red]>>>>>>> Ctrl + C pressed! Exiting...")
     exit()
 
+def updateTVHeading(existHeading, newHeading):
+    if (abs(newHeading - existHeading) <= deg2rad(30)):
+        return 0.6 * existHeading + 0.4 * newHeading
+    elif (abs(wrapToPi(newHeading + pi) - existHeading) <= deg2rad(30)):
+        return 0.6 * existHeading + 0.4 * wrapToPi(newHeading + pi)
+    else:
+        return existHeading
 
 def main():
     # 控制台输出初始化
