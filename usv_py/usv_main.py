@@ -19,13 +19,15 @@ from usv_record import genTable, USVData
 ROS_RATE = 10
 
 # 常量
+RPM_START = -160
+
 L_HALF = 1.75
 
 USP_GOINT_OUT = 1.5
 SECS_GOING_OUT = 12
 
 USP_SUAV_PURSUE = 2.75                  # 搜索无人机引导时 USV 的轴向速度
-ANGLE_EST_POD_GAP = deg2rad(15)
+ANGLE_EST_POD_GAP = deg2rad(30)
 USP_POD_PURSUE = 2.75                    # 吊舱引导时 USV 的轴向速度
 DIST_ALLOW_POD = 400.0                  # 吊舱引导时允许的吊舱距离
 
@@ -205,7 +207,7 @@ def main(args=None):
             console.print(theTable)
 
             # 写入当前状态到文件
-            usvData.saveData(usvPose, usvControl, usvComm, dt, uSP, vSP, psiSP, rSP, xSP, ySP, axbSP, aybSP, etaSP)
+            usvData.saveData(usvState, usvPose, usvControl, usvComm, dt, uSP, vSP, psiSP, rSP, xSP, ySP, axbSP, aybSP, etaSP)
 
             # 发送无人船的状态
             usvComm.sendUSVState(usvState)
@@ -220,23 +222,30 @@ def main(args=None):
                 pubTopicList = sum(rospy.get_published_topics(), [])
                 usvPose.isLidarValid = ('/filter/target' in pubTopicList)
 
-                if (usvPose.isImuValid) & (usvPose.isDvlValid) & (usvPose.isLidarValid) & \
+                if (usvPose.isImuValid) & (usvPose.isDvlValid) & (usvPose.isPodValid) & (usvPose.isLidarValid) & \
                     (not isnan(usvControl.angleLeftEst)) & (not isnan(usvControl.angleRightEst)) & \
                     (not isnan(usvControl.rpmLeftEst) & (not isnan(usvControl.rpmRightEst))):
                     latestMsg = "Self check complete. Start checking comms..."
                     usvState = "COMM_TEST" ####### ALERT #######
                     continue
+                
+                usvControl.thrustSet(RPM_START, RPM_START, 0, 0)
+                usvControl.thrustPub()
 
             elif usvState == "COMM_TEST":
-                if (usvComm.suavState == "COMM_TEST" or usvComm.suavState == "READY") & (usvComm.tuav1State == "COMM_TEST" or usvComm.tuav1State == "READY"):
+                if (usvComm.suavState == "COMM_TEST" or usvComm.suavState == "READY" or usvComm.suavState == "COUNTDOWN") & (usvComm.tuav1State == "COMM_TEST" or usvComm.tuav1State == "READY" or usvComm.tuav1State == "WAIT"):
                     latestMsg = "Waiting sUAV countdown..."
                     usvState = "READY"
+
+                usvControl.thrustSet(RPM_START, RPM_START, 0, 0)
+                usvControl.thrustPub()
 
             elif usvState == "READY":
                 if (usvComm.suavState == "COUNTDOWN"):
                     latestMsg = "Waiting sUAV to provide headings..."
                     usvState = "STANDBY"
-                pass
+                usvControl.thrustSet(RPM_START, RPM_START, 0, 0)
+                usvControl.thrustPub()
             
             elif usvState == "STANDBY":
                 if (isTestEnable):
@@ -247,7 +256,10 @@ def main(args=None):
                     usvState = "GOING_OUT"
                     latestMsg = "USV is going out from the bay..."
                     continue
-            
+                
+                usvControl.thrustSet(RPM_START, RPM_START, 0, 0)
+                usvControl.thrustPub()
+                
             elif usvState == "GOING_OUT":
                 if (isGoindOutPlan == False):
                     timer1 = rospy.Time.now().to_sec()
@@ -300,15 +312,23 @@ def main(args=None):
                 
                 # 如果吊舱没有识别，则退回到 SUAV 导引
                 if (not usvPose.isPodFindTV):
-                    usvState = "PURSUE_SUAV"
+                    usvState = "PURSUE_POD_LOST"
                     continue
 
-                # 使用吊舱的信息
-                latestMsg = f"Following heading {rad2deg(usvPose.tvAnglePod):.2f} deg from pod."
+                # 使用吊舱的角度控制无人船
+                latestMsg = f"Following heading {rad2deg(usvPose.tvAnglePod):.2f} deg from pod."    
                 uSP = USP_POD_PURSUE
                 psiSP = usvPose.tvAnglePod
+                [uSP, rSP, axbSP, etaSP] = usvControl.moveUSV(uSP, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
+                
+            elif usvState == "PURSUE_POD_LOST":
+                if (usvPose.isPodFindTV):
+                    usvState = "PURSUE_POD"
+                    continue
 
-                # 控制无人船
+                # 让无人船以吊舱最后发现目标船的角度停下来
+                latestMsg = f"Pod lost the target. Stopping and wait."
+                uSP = 0
                 [uSP, rSP, axbSP, etaSP] = usvControl.moveUSV(uSP, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
 
             elif usvState == "PURSUE_LIDAR":
@@ -320,11 +340,10 @@ def main(args=None):
                 # 如果激光雷达没有识别，则退回到吊舱导引
                 if (not usvPose.isLidarFindTV):
                     usvState = "PURSUE_POD"
-                    usvPose.startPodReset()
                     continue
                 
                 # 激光雷达找到目标船，则使用激光雷达的信息
-                latestMsg = f"Following heading {rad2deg(usvPose.tvAngleLidar):.2f} deg from Lidar. Distance to target: {usvPose.tvDist:.2f}/{DIST_PURSUE_TO_APPROACH} m"
+                latestMsg = f"Following heading {rad2deg(usvPose.tvAngleLidar):.2f} deg from Lidar. Distance {usvPose.tvDist:.2f}/{DIST_PURSUE_TO_APPROACH}m to dock."
                 uSP = linearClip(DIST_LIDAR_PURSUE_LB, USP_LIDAR_PURSUE_LB, DIST_LIDAR_PURSUE_UB, USP_LIDAR_PURSUE_UB, usvPose.tvDist)
                 psiSP = usvPose.tvAngleLidar
 
@@ -406,7 +425,6 @@ def main(args=None):
                     tvLengthMean = mean(tvLengths)
                     tvWidthMean = mean(tvWidths)
         
-                    latestMsg = f"Estimating finished with average heading {rad2deg(tvHeadingMean):.2f} deg. L: {tvLengthMean:.2f} m. W: {tvWidthMean:.2f} m. Path [{usvGuidance.currentIdx} >> {usvGuidance.endIdx}]. Begin final approach..."
                     usvState = "DOCK_APPROACH"
                     continue
 
@@ -419,6 +437,8 @@ def main(args=None):
                     semiFinalY = currPath[-1, 1]
                     finalPsi = arctan2(currPath[-1, 1] - currPath[-2, 1], currPath[-1, 0] - currPath[-2, 0])
                     isDockApproachPlan = True
+
+                latestMsg = f"Estimating finished with average heading {rad2deg(tvHeadingMean):.2f} deg. L: {tvLengthMean:.2f} m. W: {tvWidthMean:.2f} m. Path [{usvGuidance.currentIdx} >> {usvGuidance.endIdx}]. Begin final approach."
 
                 # 读取激光雷达信息（这个时候应该能保证读到目标船吧？），生成控制指令
                 uSP = linearClip(0, USP_DOCK_APPROACH_UB, usvGuidance.endIdx, USP_DOCK_APPROACH_LB, usvGuidance.currentIdx)
@@ -446,7 +466,7 @@ def main(args=None):
                     
                     isDockAdjustPlan = True
 
-                latestMsg = f"Approach finished. Stablizing USV @ [{xSP:.2f}, {ySP:.2f}]m, {rad2deg(psiSP):.2f} deg. Time: [{rospy.Time.now().to_sec() - timer1:.2f}/{SECS_WAIT_DOCK_STEADY:.2f}/{rospy.Time.now().to_sec() - timer0:.2f}]s. Tol: [{sqrt((usvPose.xLidar - xSP) ** 2 + (usvPose.yLidar - ySP) ** 2):.2f}/{DIST_DOCK_STEADY_TOL:.2f}]m"
+                latestMsg = f"Approach finished. Try to stablize at [{xSP:.2f}, {ySP:.2f}]m, {rad2deg(psiSP):.2f} deg. Err and tol are [{sqrt((usvPose.xLidar - xSP) ** 2 + (usvPose.yLidar - ySP) ** 2):.2f}/{DIST_DOCK_STEADY_TOL:.2f}]m. Time [{rospy.Time.now().to_sec() - timer1:.2f}/{SECS_WAIT_DOCK_STEADY:.2f}/{rospy.Time.now().to_sec() - timer0:.2f}]s."
 
                 # 保持静止
                 xSP = semiFinalX
@@ -457,7 +477,7 @@ def main(args=None):
                 # 更新航向值
                 finalPsi = updateTVHeading(finalPsi, usvPose.tvHeading)
 
-                # 等待船接近静止并保持 5.0s，进入 MEASURE_HIGHEST
+                # 等待船接近静止并保持 SECS_WAIT_DOCK_STEADY s，进入 MEASURE_HIGHEST
                 if (rospy.Time.now().to_sec() - timer1 > SECS_WAIT_DOCK_STEADY):   
                     usvState = "MEASURE_HIGHEST"
                     continue
@@ -649,6 +669,7 @@ def main(args=None):
                     usvControl.thrustSet(0, 0, deg2rad(90.5), deg2rad(93))
                 else:
                     usvControl.thrustSet(RPM_ATTACH_FAILSAFE, RPM_ATTACH_FAILSAFE, deg2rad(90.5), deg2rad(93))
+                usvControl.thrustPub()
 
                 if (sqrt((usvPose.xLidar - xSP) ** 2 + (usvPose.yLidar - ySP) ** 2) <= DIST_ATTACH_FAILSAFE_TOL):
                     isReleaseAttachStruct = 1
@@ -675,6 +696,7 @@ def main(args=None):
                     usvControl.thrustSet(0, 0, deg2rad(90.5), deg2rad(93))  
                 else:
                     usvControl.thrustSet(RPM_FINAL, RPM_FINAL, deg2rad(90.5), deg2rad(93))    
+                usvControl.thrustPub()
 
             elif usvState == "TEST":
                 uSP = 2.75            
