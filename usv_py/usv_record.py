@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import rospy, time, threading
+import rospy, time, threading, logging
 
 from usv_pose import Pose
 from usv_path_planner import PathPlanner
@@ -7,10 +7,18 @@ from usv_guidance import Guidance
 from usv_control import Control
 from usv_communication import Communication
 
-from numpy import rad2deg
+from numpy import rad2deg, array, isnan
 from rich.table import Table
 from rich import box
 from rich.console import Console
+from rich.logging import RichHandler
+
+
+def bool2okstr(boolVal):
+    if (boolVal):
+        return "[bold green]√[/bold green]"
+    else:
+        return "[bold red]X[/bold red]"
 
 def genTable(usvState, latestMsg, usvPose, usvControl, usvComm, dt, uSP, vSP, psiSP, rSP, xSP, ySP, axbSP, aybSP, etaSP):    
     if (usvPose.isSearchFindTV):
@@ -39,31 +47,52 @@ def genTable(usvState, latestMsg, usvPose, usvControl, usvComm, dt, uSP, vSP, ps
     else:
         obsOutPut = float("nan")
 
+    isMotorValid = ~isnan(array([usvControl.rpmLeftEst, usvControl.rpmRightEst, usvControl.angleLeftEst, usvControl.angleRightEst]))
+
     # 构造表格数据
     tableData = {
-        f"[reverse]{usvState}" : [f"GPS: {usvPose.isGPSValid}", f"Imu: {usvPose.isImuValid}", 
-                                  f"Dvl: {usvPose.isDvlValid}", f"Pod: {usvPose.isPodValid}", 
-                                  f"Lidar: {usvPose.isLidarValid}", f"sUAV: {usvComm.suavState}", f"tUAV1: {usvComm.tuav1State}"],
+        f"[reverse]{usvState}" : [
+            f"GPS: {bool2okstr(usvPose.isGPSValid)}, Imu: {bool2okstr(usvPose.isImuValid)}", 
+            f"Dvl: {bool2okstr(usvPose.isDvlValid)}, Pod: {bool2okstr(usvPose.isPodValid)}", 
+            f"Lidar: {bool2okstr(usvPose.isLidarValid)}",
+            "",
+            f"Thrust: {bool2okstr(isMotorValid[0])}, {bool2okstr(isMotorValid[1])}",
+            f"Angle: {bool2okstr(isMotorValid[2])}, {bool2okstr(isMotorValid[3])}",
+            "",
+            "[bold]S.S state:",
+            f"sUAV: {usvComm.suavState}", f"tUAV1: {usvComm.tuav1State}"
+        ],
         # 
-        "Motions": [f"[purple]u: {usvPose.uDVL:.2f} m/s", f"[reverse purple]v: {usvPose.vDVL:.2f} m/s", 
-                    f"[cyan]psi: {rad2deg(usvPose.psi):.2f} deg", f"[reverse cyan]r: {rad2deg(usvPose.r):.2f} deg/s", 
-                    f"ax: {usvPose.axb:.2f} m/s^2", f"ay: {usvPose.ayb:.2f} m/s^2"],
+        "Motions": [
+            f"[reverse purple]u: {usvPose.uDVL:.2f} m/s", f"[reverse purple]v: {usvPose.vDVL:.2f} m/s", 
+            "",
+            f"[reverse cyan]psi: {rad2deg(usvPose.psi):.2f} deg", f"[reverse cyan]r: {rad2deg(usvPose.r):.2f} deg/s",
+            "",
+            f"[reverse green]x: {xLidarOutput:.2f} m", f"[reverse green]y: {yLidarOutput:.2f} m", 
+            "",
+            f"ax: {usvPose.axb:.2f} m/s^2", f"ay: {usvPose.ayb:.2f} m/s^2"],
         # 
-        "Setpoints": [f"[purple]uSP: {uSP:.2f} m/s", f"[reverse purple]vSP: {vSP:.2f} m/s", 
-                      f"[cyan]psiSP: {rad2deg(psiSP):.2f} deg", f"[reverse cyan]rSP: {rad2deg(rSP):.2f} deg/s", 
-                      f"[bold bright_yellow]xSP: {xSP:.2f} m", f"[reverse bold bright_yellow]ySP: {ySP:.2f} m", 
-                      f"axbSP: {axbSP:.2f} m/s^2", f"aybSP: {aybSP:.2f} m/s^2", 
-                      f"etaSP: {rad2deg(etaSP):.2f} deg/s^2"],
+        "Setpoints": [f"[reverse purple]uSP: {uSP:.2f} m/s", f"[reverse purple]vSP: {vSP:.2f} m/s",
+                      "",
+                      f"[reverse cyan]psiSP: {rad2deg(psiSP):.2f} deg", f"[reverse cyan]rSP: {rad2deg(rSP):.2f} deg/s", 
+                      "",
+                      f"[reverse green]xSP: {xSP:.2f} m", f"[reverse green]ySP: {ySP:.2f} m", 
+                      "",
+                      f"axbSP: {axbSP:.2f} m/s^2", f"aybSP: {aybSP:.2f} m/s^2"],
         # 
-        "Sensors": [f"x(GPS): {usvPose.x:.2f} m", f"y(GPS): {usvPose.y:.2f} m", 
-                    f"Lidar dist: {lidarOutPutDist:.2f} m", 
-                    f"[bold bright_yellow]x(Lidar): {xLidarOutput:.2f} m", 
-                    f"[reverse bold bright_yellow]y(Lidar): {yLidarOutput:.2f} m", 
-                    f"x(sUAV): {usvPose.tvEstPosX:.2f} m", f"y(sUAV): {usvPose.tvEstPosY:.2f} m", 
-                    f"[bold yellow]sUAV yaw: {sUAVOutput:.2f} deg", 
-                    f"[bold yellow]Pod yaw: {podOutput:.2f} deg", 
-                    f"[bold yellow]Lidar yaw: {lidarOutPutAngle:.2f} deg", 
-                    f"TV Heading: {rad2deg(usvPose.tvHeading):.2f} deg", 
+        "Sensors": [f"[reverse magenta]sUAV yaw: {sUAVOutput:.2f} deg", 
+                    f"[reverse magenta]sUAV XY: ({usvPose.tvEstPosX:.2f}, {usvPose.tvEstPosY:.2f})m", 
+                    "",
+                    f"Pod lock: {bool2okstr(usvPose.isPodFindTV)}",
+                    f"[reverse red]Pod yaw: {podOutput:.2f} deg", 
+                    "",
+                    f"Lidar lock: {bool2okstr(usvPose.isLidarFindTV)}",
+                    f"[reverse yellow]Lidar yaw: {lidarOutPutAngle:.2f} deg",   
+                    f"[reverse yellow]Lidar dist: {lidarOutPutDist:.2f} m", 
+                    "",
+                    f"[reverse blue]TV L&W: {usvPose.tvLength:.2f} m, {usvPose.tvWidth:.2f} m",
+                    f"[reverse blue]TV Heading: {rad2deg(usvPose.tvHeading):.2f} deg", 
+                    "",
                     f"Obs yaw: {obsOutPut:.2f} deg"],
         # 
         "Power": ["[bold]Engine",
@@ -95,11 +124,10 @@ def genTable(usvState, latestMsg, usvPose, usvControl, usvComm, dt, uSP, vSP, ps
         rowData = [columnData[i] if i < len(columnData) else "" for columnData in tableData.values()]
         theTable.add_row(*rowData)
 
-
     return theTable
 
 class USVData():
-    element = ["USV_State", "t", "x_GPS", "y_GPS", "psi", "u", "v", "r", "uSP", "vSP", "psiSP", "rSP", "xSP", "ySP", "axbSP", "aybSP", "etaSP", "x_DVL", "y_DVL", "u_DVL", "v_DVL", "ax", "ay", "az", "roll", "pitch", "x_Lidar", "y_Lidar", "search_tv_x", "search_tv_y", "search_angle", "pod_angle", "lidar_angle", "target_vessel_heading", "target_vessel_length", "target_vessel_width", "obs_x", "obs_y", "obs_angle", "rpm_left_cmd", "rpm_right_cmd", "angle_left_cmd", "angle_right_cmd", "rpm_left", "rpm_right", "angle_left", "angle_right", "battery_1_SOC", "battery_2_SOC", "battery_3_SOC", "battery_4_SOC", "battery_1_cell_volt_min", "battery_2_cell_volt_min", "battery_3_cell_volt_min", "battery_4_cell_volt_min"]
+    element = ["USV_State", "t", "x_GPS", "y_GPS", "psi", "u", "v", "r", "uSP", "vSP", "psiSP", "rSP", "xSP", "ySP", "axbSP", "aybSP", "etaSP", "x_DVL", "y_DVL", "u_DVL", "v_DVL", "ax", "ay", "az", "roll", "pitch", "x_Lidar", "y_Lidar", "search_tv_x", "search_tv_y", "search_angle", "pod_angle", "pod_state", "lidar_object_num", "lidar_angle", "target_vessel_heading", "target_vessel_length", "target_vessel_width", "target_vessel_highest_x", "target_vessel_highest_y", "target_vessel_highest_z", "obs_x", "obs_y", "obs_angle", "rpm_left_cmd", "rpm_right_cmd", "angle_left_cmd", "angle_right_cmd", "rpm_left", "rpm_right", "angle_left", "angle_right", "battery_1_SOC", "battery_2_SOC", "battery_3_SOC", "battery_4_SOC", "battery_1_cell_volt_min", "battery_2_cell_volt_min", "battery_3_cell_volt_min", "battery_4_cell_volt_min"]
     elementStr = " ".join(element)
     elementTemplate = "%s " + "%.5f " * (len(element) - 2) + "%.5f"
 
@@ -118,7 +146,7 @@ class USVData():
             self.thisTime = rospy.Time.now().to_sec()
             
             with open(self.fileNameStr, 'a') as f:          
-                f.write(self.elementTemplate % (usvState, dt, usvPose.x, usvPose.y, usvPose.psi, usvPose.u, usvPose.v, usvPose.r, uSP, vSP, psiSP, rSP, xSP, ySP, axbSP, aybSP, etaSP, usvPose.xDVL, usvPose.yDVL, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.azb, usvPose.roll, usvPose.pitch, usvPose.xLidar, usvPose.yLidar, usvPose.tvEstPosX, usvPose.tvEstPosY, usvPose.tvAngleEst, usvPose.tvAnglePod, usvPose.tvAngleLidar, usvPose.tvHeading, usvPose.tvLength, usvPose.tvWidth, usvPose.obsX, usvPose.obsY, usvPose.obsAngleLidar, usvControl.rpmLeftSP, usvControl.rpmRightSP, usvControl.angleLeftSP, usvControl.angleRightSP, usvControl.rpmLeftEst, usvControl.rpmRightEst, usvControl.angleLeftEst, usvControl.angleRightEst, usvControl.battSOC[0], usvControl.battSOC[1], usvControl.battSOC[2], usvControl.battSOC[3], usvControl.battCellVoltMin[0], usvControl.battCellVoltMin[1], usvControl.battCellVoltMin[2], usvControl.battCellVoltMin[3]) + '\n')
+                f.write(self.elementTemplate % (usvState, dt, usvPose.x, usvPose.y, usvPose.psi, usvPose.u, usvPose.v, usvPose.r, uSP, vSP, psiSP, rSP, xSP, ySP, axbSP, aybSP, etaSP, usvPose.xDVL, usvPose.yDVL, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.azb, usvPose.roll, usvPose.pitch, usvPose.xLidar, usvPose.yLidar, usvPose.tvEstPosX, usvPose.tvEstPosY, usvPose.tvAngleEst, usvPose.tvAnglePod, usvPose.podState, usvPose.objectNum, usvPose.tvAngleLidar, usvPose.tvHeading, usvPose.tvLength, usvPose.tvWidth, usvPose.tvHighestX, usvPose.tvHighestY, usvPose.tvHighestZ, usvPose.obsX, usvPose.obsY, usvPose.obsAngleLidar, usvControl.rpmLeftSP, usvControl.rpmRightSP, usvControl.angleLeftSP, usvControl.angleRightSP, usvControl.rpmLeftEst, usvControl.rpmRightEst, usvControl.angleLeftEst, usvControl.angleRightEst, usvControl.battSOC[0], usvControl.battSOC[1], usvControl.battSOC[2], usvControl.battSOC[3], usvControl.battCellVoltMin[0], usvControl.battCellVoltMin[1], usvControl.battCellVoltMin[2], usvControl.battCellVoltMin[3]) + '\n')
        
 
 if __name__ == '__main__':
