@@ -24,7 +24,7 @@ RPM_START = -160
 L_HALF = 1.75
 
 USP_GOINT_OUT = 1.5
-SECS_GOING_OUT = 12
+SECS_GOING_OUT = 15
 
 USP_SUAV_PURSUE = 2.75                  # 搜索无人机引导时 USV 的轴向速度
 ANGLE_EST_POD_GAP = deg2rad(30)
@@ -68,8 +68,16 @@ DIST_TOVESSEL_TOL = 1.5                # TOVESSEL 时认为 USV 已经前往到�
 SECS_TIMEOUT_ATTACH = 7.0
 DIST_ATTACH_TOL = 1
 RPM_ATTACH = 200.0
+ANGLE_LEFT_ATTACH = deg2rad(90.5)
+ANGLE_RIGHT_ATTACH = deg2rad(95)
+
+RPM_KEEP = 120.0
+ANGLE_LEFT_KEEP = deg2rad(90.5)
+ANGLE_RIGHT_KEEP = deg2rad(95)
 
 RPM_FINAL = 100.0
+ANGLE_LEFT_FINAL = deg2rad(90.5)
+ANGLE_RIGHT_FINAL = deg2rad(95)
 
 @atexit.register 
 def clean():
@@ -201,6 +209,7 @@ def main(args=None):
             # 发送小物体搬运所需
             usvComm.sendTVPosFromLidar(deckCenterX, deckCenterY, deckPsi)
 
+            # 发送控制固连结构是否释放信号
             usvComm.releaseAttachStruct(isReleaseAttachStruct)
 
             if usvState == "SELF_CHECK":
@@ -238,7 +247,7 @@ def main(args=None):
                     usvState = "TEST"
                     continue
                     
-                if (usvPose.isSearchFindTV):
+                if (usvComm.suavState == "DOCK"):
                     usvState = "GOING_OUT"
                     latestMsg = "USV is going out from the bay..."
                     continue
@@ -252,12 +261,15 @@ def main(args=None):
                     psiSP = usvPose.psi
                     isGoindOutPlan = True
 
-                uSP = USP_GOINT_OUT    
+                if (rospy.Time.now().to_sec() - timer1 <= SECS_GOING_OUT):
+                    uSP = USP_GOINT_OUT
+                else:
+                    uSP = 0
                 
                 # 控制无人船
                 [uSP, rSP, axbSP, etaSP] = usvControl.moveUSV(uSP, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
 
-                if (rospy.Time.now().to_sec() - timer1 > SECS_GOING_OUT):
+                if (usvComm.suavState == "GUIDE"):
                     usvState = "PURSUE_SUAV"
                     continue
 
@@ -528,20 +540,15 @@ def main(args=None):
 
                 
                 if (usvControl.angleLeftEst <= deg2rad(89)) | (usvControl.angleRightEst <= deg2rad(89)):
-                    usvControl.thrustSet(0, 0, deg2rad(90.5), deg2rad(95))
+                    usvControl.thrustSet(0, 0, ANGLE_LEFT_ATTACH, ANGLE_RIGHT_ATTACH)
                 else:
-                    usvControl.thrustSet(RPM_ATTACH, RPM_ATTACH, deg2rad(90.5), deg2rad(95))
+                    usvControl.thrustSet(RPM_ATTACH, RPM_ATTACH, ANGLE_LEFT_ATTACH, ANGLE_RIGHT_ATTACH)
                 usvControl.thrustPub()
 
-                if (sqrt((usvPose.xLidar - xSP) ** 2 + (usvPose.yLidar - ySP) ** 2) <= DIST_ATTACH_TOL):
+                # 固连成功判据：距离，或者超时
+                if (sqrt((usvPose.xLidar - xSP) ** 2 + (usvPose.yLidar - ySP) ** 2) <= DIST_ATTACH_TOL) | (rospy.Time.now().to_sec() - timer0 > SECS_TIMEOUT_ATTACH):
                     isReleaseAttachStruct = 1
-                    usvState = "DOCK_FINAL"
-                    continue
-                
-                # 超时
-                if (rospy.Time.now().to_sec() - timer0 > SECS_TIMEOUT_ATTACH):
-                    isReleaseAttachStruct = 1
-                    usvState = "DOCK_FINAL"
+                    usvState = "MEASURE_HIGHEST"
                     continue
 
             elif usvState == "MEASURE_HIGHEST":
@@ -551,21 +558,20 @@ def main(args=None):
 
                     isDockWaitArmPlan = True
 
-                latestMsg = f"USV has been stablized. Measuring the highest point... [{rospy.Time.now().to_sec() - timer1:.2f} / {SECS_WAIT_HEIGHT_SEARCH:.2f}]s."
+                latestMsg = f"Attach finished. Measuring the highest point... [{rospy.Time.now().to_sec() - timer1:.2f} / {SECS_WAIT_HEIGHT_SEARCH:.2f}]s."
 
+                # 保持一定的推力
+                if (usvControl.angleLeftEst <= deg2rad(89)) | (usvControl.angleRightEst <= deg2rad(89)):
+                    usvControl.thrustSet(0, 0, ANGLE_LEFT_KEEP, ANGLE_RIGHT_KEEP)  
+                else:
+                    usvControl.thrustSet(RPM_KEEP, RPM_KEEP, ANGLE_LEFT_KEEP, ANGLE_RIGHT_KEEP)    
+                usvControl.thrustPub()
+
+                # 记录最高点信息
                 tvHighestXYZs[0, tvHighestInfoIdx] = usvPose.tvHighestX
                 tvHighestXYZs[1, tvHighestInfoIdx] = usvPose.tvHighestY
                 tvHighestXYZs[2, tvHighestInfoIdx] = usvPose.tvHighestZ
                 tvHighestInfoIdx = tvHighestInfoIdx + 1
-                
-                # 保持静止
-                xSP = semiFinalX
-                ySP = semiFinalY
-                psiSP = finalPsi
-                [uSP, vSP, rSP, axbSP, aybSP, etaSP] = usvControl.moveUSVVec(xSP, ySP, psiSP, usvPose.xLidar, usvPose.yLidar, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
-
-                # 更新航向值
-                finalPsi = updateTVHeading(finalPsi, usvPose.tvHeading)
 
                 # 等待测量完成
                 if (rospy.Time.now().to_sec() - timer1 > SECS_WAIT_HEIGHT_SEARCH):
@@ -588,31 +594,31 @@ def main(args=None):
                             finalX = (0.5 * tvLengthMean + tvHighestXMean2) / 2
                             finalY = 0.0
                         [finalX, finalY] = rotationZ(finalX, finalY, -finalPsi)
-                        usvState = "DOCK_TOVESSCEN"
-                        continue
                     else: 
-                        # 最高点测量不健康，向目标船中心泊近
+                        # 最高点测量不健康，设置为目标船中心
                         finalX = 0.0
                         finalY = 0.0
-                        usvState = "DOCK_TOVESSCEN"
-                        continue
+
+                    usvState = "DOCK_FINAL"
+                    continue
                 else:
                     pass
 
             elif usvState == "DOCK_FINAL":
                 # DOCK_FINAL 是一个死循环
                     
-                latestMsg = "Attached completed. Take-off signal for tUAV has been sent."
+                latestMsg = f"Attached completed. Take-off signal for tUAV has been sent. Real-time deck point [{deckCenterX:.2f}, {deckCenterY:.2f}, {deckPsi:.2f}]m"
                 usvComm.sendTakeOffFlag()
 
+                # 计算给小物体搬运的坐标点
                 [deckCenterX, deckCenterY] = rotationZ(-usvPose.xLidar + finalX, -usvPose.yLidar + finalY, usvPose.psi)
                 deckPsi = finalPsi - usvPose.psi
                 
                 # 保持一定的推力
                 if (usvControl.angleLeftEst <= deg2rad(89)) | (usvControl.angleRightEst <= deg2rad(89)):
-                    usvControl.thrustSet(0, 0, deg2rad(90.5), deg2rad(93))  
+                    usvControl.thrustSet(0, 0, ANGLE_LEFT_FINAL, ANGLE_RIGHT_FINAL)
                 else:
-                    usvControl.thrustSet(RPM_FINAL, RPM_FINAL, deg2rad(90.5), deg2rad(93))    
+                    usvControl.thrustSet(RPM_FINAL, RPM_FINAL, ANGLE_LEFT_FINAL, ANGLE_RIGHT_FINAL)    
                 usvControl.thrustPub()
 
             elif usvState == "TEST":
