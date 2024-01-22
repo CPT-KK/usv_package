@@ -180,6 +180,10 @@ def main():
     etaSP = float("nan")
 
     while (True):
+        # 单独为激光雷达设置启动检查
+        pubTopicList = sum(rospy.get_published_topics(), [])
+        usvPose.isLidarValid = ('/filter/target' in pubTopicList)
+
         # 打印当前状态
         dt = rospy.Time.now().to_sec() - t0
         theTable = genTable(usvState, latestMsg, usvPose, usvControl, usvComm, dt, uSP, vSP, psiSP, rSP, xSP, ySP, axbSP, aybSP, etaSP) 
@@ -201,8 +205,8 @@ def main():
     semiFinalX = usvPose.xLidar
     semiFinalY = usvPose.yLidar
     finalPsi = usvPose.psi
-    tvLengthMean = 12
-    tvWidthMean = 4.5
+    tvLengthMean = 12.5
+    tvWidthMean = 5
 
     while (not rospy.is_shutdown()):
         # 打印当前状态
@@ -210,7 +214,17 @@ def main():
         theTable = genTable(usvState, latestMsg, usvPose, usvControl, usvComm, dt, uSP, vSP, psiSP, rSP, xSP, ySP, axbSP, aybSP, etaSP) 
         console.print(theTable)
 
-        usvData.saveData(usvPose, usvControl, usvComm, dt, uSP, vSP, psiSP, rSP, xSP, ySP, axbSP, aybSP, etaSP)
+        # 写入当前状态到文件
+        usvData.saveData(usvState, usvPose, usvControl, usvComm, dt, uSP, vSP, psiSP, rSP, xSP, ySP, axbSP, aybSP, etaSP)
+
+        # 发送无人船的状态
+        usvComm.sendUSVState(usvState)
+
+        # 发送小物体搬运所需
+        usvComm.sendTVPosFromLidar(deckCenterX, deckCenterY, deckPsi)
+
+        # 发送控制固连结构是否释放信号
+        usvComm.releaseAttachStruct(isReleaseAttachStruct)
 
         if usvState == "DOCK_STEADY":
             if (isDockAdjustPlan == False):
@@ -289,15 +303,14 @@ def main():
                 timer0 = rospy.Time.now().to_sec()
                 timer1 = rospy.Time.now().to_sec()
 
-                xSP = 0 + (0.5 * tvWidthMean + L_HALF) * cos(finalPsi - pi / 2)
-                ySP = 0 + (0.5 * tvWidthMean + L_HALF) * sin(finalPsi - pi / 2)
-                psiSP = finalPsi  
-
                 isDockAttachPlan = True
-            
-            latestMsg = f"Attaching to the target vessel. Tol: [{sqrt((usvPose.xLidar - xSP) ** 2 + (usvPose.yLidar - ySP) ** 2):.2f}/{DIST_ATTACH_TOL:.2f}]"
 
-            
+            # 计算与目标船的侧向距离
+            finalPsi = updateTVHeading(finalPsi, usvPose.tvHeading)
+            [tvXBody, tvYBody] = rotationZ(usvPose.tvX, usvPose.tvY, finalPsi)
+            tvYBody = abs(tvYBody)
+            latestMsg = f"Attaching to the target vessel. Tol: [{tvYBody:.2f}/{DIST_ATTACH_TOL + 0.5 * tvWidthMean + L_HALF:.2f}]"
+
             if (usvControl.angleLeftEst <= deg2rad(89)) | (usvControl.angleRightEst <= deg2rad(89)):
                 usvControl.thrustSet(0, 0, ANGLE_LEFT_ATTACH, ANGLE_RIGHT_ATTACH)
             else:
@@ -305,7 +318,7 @@ def main():
             usvControl.thrustPub()
 
             # 固连成功判据：距离，或者超时
-            if (sqrt((usvPose.xLidar - xSP) ** 2 + (usvPose.yLidar - ySP) ** 2) <= DIST_ATTACH_TOL) | (rospy.Time.now().to_sec() - timer0 > SECS_TIMEOUT_ATTACH):
+            if (tvYBody <= DIST_ATTACH_TOL + 0.5 * tvWidthMean + L_HALF) | (rospy.Time.now().to_sec() - timer0 > SECS_TIMEOUT_ATTACH):
                 isReleaseAttachStruct = 1
                 usvState = "MEASURE_HIGHEST"
                 continue
