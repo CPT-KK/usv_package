@@ -40,6 +40,7 @@ class Communication():
 
         # 分系统状态
         self.suavStateSub = rospy.Subscriber('/suav/state', String, self.suavStateCallback, queue_size=10)
+        self.tuav1StateSub = rospy.Subscriber('/tuav6/state', String, self.tuav1StateCallback, queue_size=10)
         self.tuav1StateSub = rospy.Subscriber('/tuav8/state', String, self.tuav1StateCallback, queue_size=10)
         self.armStateSub = rospy.Subscriber('/arm/state', String, self.armStateCallback, queue_size=10)
         self.releaseAttachStructPub = rospy.Publisher('/servo_control_cmd', Int8, queue_size=10)
