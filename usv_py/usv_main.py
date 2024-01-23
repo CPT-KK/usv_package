@@ -67,7 +67,7 @@ DIST_TOVESSEL_TOL = 1.5                # TOVESSEL 时认为 USV 已经前往到�
 
 SECS_TIMEOUT_ATTACH = 10.0
 SECS_WAIT_ATTACH = 3.0
-DIST_ATTACH_TOL = 0.5
+DIST_ATTACH_TOL = 0.75
 RPM_ATTACH = 200.0
 RPM_ATTACH_UB = 300.0
 RPM_ATTACH_LB = 120.0
@@ -220,7 +220,6 @@ def main(args=None):
                     latestMsg = "Self check complete. Start checking comms..."
                     usvState = "PURSUE_POD" ####### ALERT #######
                     continue
-                 
 
                 # usvControl.thrustSet(RPM_START, RPM_START, 0, 0)
                 # usvControl.thrustPub()
@@ -466,7 +465,9 @@ def main(args=None):
                     
                     isDockAdjustPlan = True
 
-                latestMsg = f"Try to stablize at [{xSP:.2f}, {ySP:.2f}]m, {rad2deg(psiSP):.2f} deg. Err and tol are [{sqrt((usvPose.xLidar - xSP) ** 2 + (usvPose.yLidar - ySP) ** 2):.2f}/{DIST_DOCK_STEADY_TOL:.2f}]m. Time [{rospy.Time.now().to_sec() - timer1:.2f}/{SECS_WAIT_DOCK_STEADY:.2f}/{rospy.Time.now().to_sec() - timer0:.2f}]s."
+                latestMsg = f"Try to stablize at [{xSP:.2f}, {ySP:.2f}]m, {rad2deg(psiSP):.2f} deg. Err/Tol: [{sqrt((usvPose.xLidar - xSP) ** 2 + (usvPose.yLidar - ySP) ** 2):.2f}/{DIST_DOCK_STEADY_TOL:.2f}]m."
+                
+                # "Dur/Tol/Timeout: [{rospy.Time.now().to_sec() - timer1:.2f}/{SECS_WAIT_DOCK_STEADY:.2f}/{rospy.Time.now().to_sec() - timer0:.2f}]s."
 
                 # 更新航向值
                 finalPsi = updateTVHeading(finalPsi, usvPose.tvHeading)
@@ -477,15 +478,20 @@ def main(args=None):
                 psiSP = finalPsi
                 [uSP, vSP, rSP, axbSP, aybSP, etaSP] = usvControl.moveUSVVec(xSP, ySP, psiSP, usvPose.xLidar, usvPose.yLidar, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
                 
-                # 等待船接近静止并保持 SECS_WAIT_DOCK_STEADY s，进入下一状态
-                if (rospy.Time.now().to_sec() - timer1 > SECS_WAIT_DOCK_STEADY):   
+                # 一旦船靠近到阈值以下范围，进入固连
+                if (sqrt((usvPose.xLidar - xSP) ** 2 + (usvPose.yLidar - ySP) ** 2) <= DIST_DOCK_STEADY_TOL):   
                     usvState = "DOCK_ATTACH"
                     continue
-                elif (abs(usvPose.psi - psiSP) <= ANGLE_DOCK_STEADY_TOL) & (sqrt((usvPose.xLidar - xSP) ** 2 + (usvPose.yLidar - ySP) ** 2) <= DIST_DOCK_STEADY_TOL):
-                    pass
-                else:
-                    # 如果不满足静止条件，需要重置 t1 计时器
-                    timer1 = rospy.Time.now().to_sec()
+                
+                # 等待船接近静止并保持 SECS_WAIT_DOCK_STEADY s，进入下一状态
+                # if (rospy.Time.now().to_sec() - timer1 > SECS_WAIT_DOCK_STEADY):   
+                #     usvState = "DOCK_ATTACH"
+                #     continue
+                # elif (sqrt((usvPose.xLidar - xSP) ** 2 + (usvPose.yLidar - ySP) ** 2) <= DIST_DOCK_STEADY_TOL):
+                #     pass
+                # else:
+                #     # 如果不满足静止条件，需要重置 t1 计时器
+                #     timer1 = rospy.Time.now().to_sec()
 
                 # 超时
                 if (rospy.Time.now().to_sec() - timer0 > SECS_TIMEOUT_DOCK_STEADY):
@@ -510,7 +516,7 @@ def main(args=None):
 
                 # 计算目标船的在无人船船体系下坐标
                 finalPsi = updateTVHeading(finalPsi, usvPose.tvHeading)
-                [tvXBody, tvYBody] = rotationZ(usvPose.tvX, usvPose.tvY, finalPsi)
+                [tvXBody, tvYBody] = rotationZ(usvPose.tvX, usvPose.tvY, usvPose.psi)
                 lateralDist = abs(tvYBody)
 
                 # 计算推力方向并根据推力正负限制在±90之间，第一次是正方向推力（0-90度），以后都为正，反之亦然
@@ -556,7 +562,6 @@ def main(args=None):
                 if (isDockWaitArmPlan == False):
                     # 将当前时间写入 t1 计时器
                     timer1 = rospy.Time.now().to_sec()
-
                     isDockWaitArmPlan = True
 
                 latestMsg = f"Attach finished. Measuring the highest point... [{rospy.Time.now().to_sec() - timer1:.2f} / {SECS_WAIT_HEIGHT_SEARCH:.2f}]s."
@@ -613,24 +618,13 @@ def main(args=None):
                 usvControl.thrustSet(0, 0, ANGLE_LEFT_ATTACH, ANGLE_RIGHT_ATTACH)
                 usvControl.thrustPub()
 
-                # if (usvControl.angleLeftEst <= deg2rad(89)) | (usvControl.angleRightEst <= deg2rad(89)):
-                #     usvControl.thrustSet(0, 0, ANGLE_LEFT_FINAL, ANGLE_RIGHT_FINAL)
-                # else:
-                #     usvControl.thrustSet(RPM_FINAL, RPM_FINAL, ANGLE_LEFT_FINAL, ANGLE_RIGHT_FINAL)    
-                # usvControl.thrustPub()
-
             elif usvState == "TEST":
                 uSP = 2.75            
-                if (isTestPlan == False):
-                    # Move USV straight left for X m
-                    # xSP = usvPose.x - 0.0 * cos(usvPose.psi - 0)
-                    # ySP = usvPose.y - 0.0 * sin(usvPose.psi - 0)
-                    
+                if (isTestPlan == False):              
                     psiSP = wrapToPi(usvPose.psi + deg2rad(0))
                     isTestPlan = True
 
                 [uSP, rSP, axbSP, etaSP] = usvControl.moveUSV(uSP, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
-                # [uSP, vSP, rSP, axbSP, aybSP, etaSP] = usvControl.moveUSVVec(xSP, ySP, psiSP, usvPose.x, usvPose.y, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
 
             else:
                 # 程序不应该执行到这里
