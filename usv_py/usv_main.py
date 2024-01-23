@@ -74,13 +74,9 @@ RPM_ATTACH_LB = 120.0
 ANGLE_LEFT_ATTACH = deg2rad(90.5)
 ANGLE_RIGHT_ATTACH = deg2rad(95)
 
-RPM_KEEP = 120.0
-ANGLE_LEFT_KEEP = deg2rad(90.5)
-ANGLE_RIGHT_KEEP = deg2rad(95)
-
-RPM_FINAL = 100.0
-ANGLE_LEFT_FINAL = deg2rad(90.5)
-ANGLE_RIGHT_FINAL = deg2rad(95)
+RPM_FINAL = 0.0
+ANGLE_LEFT_FINAL = deg2rad(0)
+ANGLE_RIGHT_FINAL = deg2rad(0)
 
 # 控制台输出
 console = Console(record=True)
@@ -616,7 +612,7 @@ def main(args=None):
                 deckyaw = finalyaw - usvPose.yaw
                 
                 # 保持一定的推力
-                usvControl.thrustSet(0, 0, ANGLE_LEFT_ATTACH, ANGLE_RIGHT_ATTACH)
+                usvControl.thrustSet(RPM_FINAL, RPM_FINAL, ANGLE_LEFT_FINAL, ANGLE_RIGHT_FINAL)
                 usvControl.thrustPub()
 
             elif usvState == "TEST":
