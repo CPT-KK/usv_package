@@ -136,6 +136,7 @@ def main(args=None):
     
     # 初始化标志位
     isObsAvoidEnable = True
+    isInitalBackStableEnable = False
 
     isGoindOutPlan = False
     isDockNearbyPlan = False
@@ -216,9 +217,10 @@ def main(args=None):
                     latestMsg = "Self check complete. Start checking comms..."
                     usvState = "COMM_TEST" ####### ALERT #######
                     continue
-
-                # usvControl.thrustSet(RPM_START, RPM_START, 0, 0)
-                # usvControl.thrustPub()
+                
+                if (isInitalBackStableEnable):
+                    usvControl.thrustSet(RPM_START, RPM_START, 0, 0)
+                    usvControl.thrustPub()
 
             elif usvState == "COMM_TEST":
                 if (usvComm.suavState == "COMM_TEST" or usvComm.suavState == "READY" or usvComm.suavState == "COUNTDOWN") & (usvComm.tuav1State == "COMM_TEST" or usvComm.tuav1State == "READY" or usvComm.tuav1State == "WAIT"):
@@ -233,8 +235,9 @@ def main(args=None):
                     latestMsg = "Waiting sUAV to provide headings..."
                     usvState = "STANDBY"
 
-                usvControl.thrustSet(RPM_START, RPM_START, 0, 0)
-                usvControl.thrustPub()
+                if (isInitalBackStableEnable):
+                    usvControl.thrustSet(RPM_START, RPM_START, 0, 0)
+                    usvControl.thrustPub()
             
             elif usvState == "STANDBY":
                 if (isTestEnable):
@@ -246,8 +249,9 @@ def main(args=None):
                     latestMsg = "USV is going out from the bay..."
                     continue
                 
-                # usvControl.thrustSet(RPM_START, RPM_START, 0, 0)
-                # usvControl.thrustPub()
+                if (isInitalBackStableEnable):
+                    usvControl.thrustSet(RPM_START, RPM_START, 0, 0)
+                    usvControl.thrustPub()
                 
             elif usvState == "GOING_OUT":
                 if (isGoindOutPlan == False):
