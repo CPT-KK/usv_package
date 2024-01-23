@@ -204,7 +204,7 @@ def main():
 
     semiFinalX = usvPose.xLidar
     semiFinalY = usvPose.yLidar
-    finalPsi = usvPose.psi
+    finalPsi = usvPose.yaw
     tvLengthMean = 12.5
     tvWidthMean = 4.5
 
@@ -276,8 +276,8 @@ def main():
             usvComm.sendTakeOffFlag()
 
             # 计算给小物体搬运的坐标点
-            [deckCenterX, deckCenterY] = rotationZ(-usvPose.xLidar + finalX, -usvPose.yLidar + finalY, usvPose.psi)
-            deckPsi = finalPsi - usvPose.psi
+            [deckCenterX, deckCenterY] = rotationZ(-usvPose.xLidar + finalX, -usvPose.yLidar + finalY, usvPose.yaw)
+            deckPsi = finalPsi - usvPose.yaw
             
             # 保持一定的推力
             usvControl.thrustSet(0, 0, ANGLE_LEFT_ATTACH, ANGLE_RIGHT_ATTACH)

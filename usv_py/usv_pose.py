@@ -26,10 +26,10 @@ class Pose():
 
     roll = float("nan")
     pitch = float("nan")
-    psi = float("nan")
+    yaw = float("nan")
     beta = float("nan")
     r = float("nan")
-    psiOffset = deg2rad(0)
+    yawOffset = deg2rad(0)
 
     isGPSValid = False
     isImuValid = False
@@ -126,7 +126,7 @@ class Pose():
         self.u = odomMsg.twist.twist.linear.x
         self.v = odomMsg.twist.twist.linear.y
 
-        [self.vx, self.vy]  = rotationZ(self.u, self.v, -self.psi)
+        [self.vx, self.vy]  = rotationZ(self.u, self.v, -self.yaw)
 
         if (norm([self.vx, self.vy]) < 0.1):
             self.beta = 0
@@ -142,7 +142,7 @@ class Pose():
         self.r = imuMsg.angular_velocity.z
         [self.roll, self.pitch, psiRaw] = euler_from_quaternion([imuMsg.orientation.x, imuMsg.orientation.y, imuMsg.orientation.z, imuMsg.orientation.w])
 
-        self.psi = psiRaw + self.psiOffset
+        self.yaw = psiRaw + self.yawOffset
         self.isImuValid = True
     
     def dvlPosCallback(self, dvlMsg):
@@ -162,7 +162,7 @@ class Pose():
     def podCallback(self, msg):
         if (msg.data[0] == 1):
             self.isPodFindTV = True
-            self.tvAnglePod = self.psi + msg.data[2]
+            self.tvAnglePod = self.yaw + msg.data[2]
             self.podState = msg.data[3]
         else:
             self.isPodFindTV = False
@@ -235,7 +235,7 @@ class Pose():
                 return
 
             # 根据无人船上一时刻的位置坐标 [xLidar, yLidar] 预测这一时刻的坐标 [xLidarEst, yLidarEst]
-            [vx, vy] = rotationZ(self.uDVL, self.vDVL, -self.psi)
+            [vx, vy] = rotationZ(self.uDVL, self.vDVL, -self.yaw)
             xLidarEst = self.xLidar + dt.to_sec() * vx
             yLidarEst = self.yLidar + dt.to_sec() * vy
 
@@ -368,13 +368,13 @@ class Pose():
             distMinIdx = argmin(objectDist)
 
             # 使用距离 obsDistTol 和角度 obsAngleTol 判断最近的那个 object 是否为障碍物                                   
-            if (objectDist[distMinIdx, 0] < self.obsDistTol) & (abs(objectAngle[distMinIdx, 0] - self.psi) < self.obsAngleTol):
+            if (objectDist[distMinIdx, 0] < self.obsDistTol) & (abs(objectAngle[distMinIdx, 0] - self.yaw) < self.obsAngleTol):
                 self.obsX = objectX[distMinIdx, 0]
                 self.obsY = objectY[distMinIdx, 0]
                 self.obsDist = objectDist[distMinIdx, 0]
                 self.obsAngleLidar = objectAngle[distMinIdx, 0]
                 self.isLidarFindObs = True
-            elif (objectDist[distMinIdx, 0] > self.obsDistTol) | (abs(objectAngle[distMinIdx, 0] - self.psi) > 2.0 * self.obsAngleTol):
+            elif (objectDist[distMinIdx, 0] > self.obsDistTol) | (abs(objectAngle[distMinIdx, 0] - self.yaw) > 2.0 * self.obsAngleTol):
                 self.isLidarFindObs = False
 
     def tvOdomCallback(self, msg):
@@ -401,7 +401,7 @@ if __name__ == '__main__':
     while not rospy.is_shutdown():
         try:
             print("-----------------------------------------------")
-            print(f"Vel [{usvPose.uDVL:.2f}, {usvPose.vDVL:.2f}]m/s | Acc [{usvPose.axb:.2f}, {usvPose.ayb:.2f}]m/s^2 | RPY [{rad2deg(usvPose.roll):.2f}, {rad2deg(usvPose.pitch):.2f}, {rad2deg(usvPose.psi):.2f}]deg | Yaw rate {rad2deg(usvPose.r):.2f}deg/s")
+            print(f"Vel [{usvPose.uDVL:.2f}, {usvPose.vDVL:.2f}]m/s | Acc [{usvPose.axb:.2f}, {usvPose.ayb:.2f}]m/s^2 | RPY [{rad2deg(usvPose.roll):.2f}, {rad2deg(usvPose.pitch):.2f}, {rad2deg(usvPose.yaw):.2f}]deg | Yaw rate {rad2deg(usvPose.r):.2f}deg/s")
 
             if (usvPose.isPodFindTV):
                 print(f"吊舱扫描到目标船 {rad2deg(usvPose.tvAnglePod):.2f} deg")
@@ -409,7 +409,7 @@ if __name__ == '__main__':
                 print("吊舱未扫描到目标船")
             
             if (usvPose.isLidarFindTV):
-                thisTVAngle = arctan(tan(wrapToPi(usvPose.tvHeading + usvPose.psi)))
+                thisTVAngle = arctan(tan(wrapToPi(usvPose.tvHeading + usvPose.yaw)))
                 print(f"激光雷达扫描到目标船 [{usvPose.tvX:.2f}, {usvPose.tvY:.2f}]m，距离 {usvPose.tvDist:.2f}m，方位 {rad2deg(usvPose.tvAngleLidar):.2f} deg，朝向 {rad2deg(thisTVAngle):.2f} deg ")
                 print(f"无人船的位置 [{usvPose.xLidar:.2f}, {usvPose.yLidar:.2f}]m")
 

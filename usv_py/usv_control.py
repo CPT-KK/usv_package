@@ -71,7 +71,7 @@ class Control():
 
         # PID 初始化
         self.__uPID = PID(0.8, 0.06, -0.012)
-        self.__psiPID = PID(0.23, 0.0002, -0.02)
+        self.__yawPID = PID(0.23, 0.0002, -0.02)
         self.__rPID = PID(14, 0.5, -0.1)
 
         self.__xPID = PID(0.35, 0.00, 0.0)
@@ -82,18 +82,18 @@ class Control():
     def __del__(self):
         pass
 
-    def moveUSV(self, uSP, psiSP, u, axb, psi, r):
+    def moveUSV(self, uSP, yawSP, u, axb, yaw, r):
         # 计算朝向角误差
-        psiErr = wrapToPi(psiSP) - psi
+        yawErr = wrapToPi(yawSP) - yaw
 
         # 朝向角误差限幅
-        psiErr = wrapToPi(psiErr)
+        yawErr = wrapToPi(yawErr)
 
-        # 根据 psiErr 的值，计算可行的 uSP (避免速度太大，转弯转不过来)
-        if (abs(psiErr) > pi / 4):
+        # 根据 yawErr 的值，计算可行的 uSP (避免速度太大，转弯转不过来)
+        if (abs(yawErr) > pi / 4):
             uSP = 0
         else:
-            uSP = uSP * (0.1 + 0.9 * (1 - abs(psiErr) / (pi / 4)))  
+            uSP = uSP * (0.1 + 0.9 * (1 - abs(yawErr) / (pi / 4)))  
 
         # 轴向速度限幅
         uSP = clip(uSP, -self.__uSPMax, self.__uSPMax)
@@ -108,7 +108,7 @@ class Control():
         axbSP = clip(axbSP, -self.__axbSPMax, self.__axbSPMax)
 
         # 计算期望朝向角速度
-        rSP = self.__psiPID.compute(psiErr, r)
+        rSP = self.__yawPID.compute(yawErr, r)
 
         # 期望朝向角速度限幅
         rSP = clip(rSP, -self.__rSPMax, self.__rSPMax)
@@ -127,18 +127,18 @@ class Control():
 
         return [uSP, rSP, axbSP, etaSP]
 
-    def moveUSVVec(self, xSP, ySP, psiSP, x, y, u, v, axb, ayb, psi, r):
+    def moveUSVVec(self, xSP, ySP, yawSP, x, y, u, v, axb, ayb, yaw, r):
         # 计算 x y 误差
         xErr = xSP - x
         yErr = ySP - y
 
         # x y 误差转船体系
-        [xErr, yErr] = rotationZ(xErr, yErr, psi)
+        [xErr, yErr] = rotationZ(xErr, yErr, yaw)
 
         # 选择矢量控制器状态
-        if ((abs(yErr) > 2.2) | (sign(v * yErr) > 0 and abs(v) > 0.2)) & (self.vecCtrlState == 0) & (abs(psiSP - psi) < deg2rad(8)):
+        if ((abs(yErr) > 2.2) | (sign(v * yErr) > 0 and abs(v) > 0.2)) & (self.vecCtrlState == 0) & (abs(yawSP - yaw) < deg2rad(8)):
             self.vecCtrlState = 1
-        elif ((abs(yErr) <= 1.5) & (self.vecCtrlState == 1)) | (abs(psiSP - psi) >= deg2rad(12)):
+        elif ((abs(yErr) <= 1.5) & (self.vecCtrlState == 1)) | (abs(yawSP - yaw) >= deg2rad(12)):
             self.vecCtrlState = 0
 
         uSP = 0.0
@@ -170,9 +170,9 @@ class Control():
             aybSP = clip(aybSP, -self.__aybSPMax, self.__aybSPMax)
 
             # 计算并修正航向误差
-            psiErr = psiSP - psi
-            psiErr = wrapToPi(psiErr)
-            rSP = self.__psiPID.compute(psiErr, r)
+            yawErr = yawSP - yaw
+            yawErr = wrapToPi(yawErr)
+            rSP = self.__yawPID.compute(yawErr, r)
             rSP = clip(rSP, -self.__rSPMax, self.__rSPMax)
             rErr = rSP - r
             etaSP = self.__rPID.compute(rErr)

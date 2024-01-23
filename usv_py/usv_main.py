@@ -174,7 +174,7 @@ def main(args=None):
     # Set point 量
     uSP = float("nan")
     vSP = float("nan")
-    psiSP = float("nan")
+    yawSP = float("nan")
     rSP = float("nan")
     xSP = float("nan")
     ySP = float("nan")
@@ -185,7 +185,7 @@ def main(args=None):
     # 甲板中心的坐标和无人船到甲板的方向角（无人船船体坐标系下）
     deckCenterX = 0
     deckCenterY = 0
-    deckPsi = 0
+    deckyaw = 0
 
     isReleaseAttachStruct = 0
 
@@ -194,17 +194,17 @@ def main(args=None):
         try:
             # 打印当前状态
             dt = rospy.Time.now().to_sec() - t0
-            theTable = genTable(usvState, latestMsg, usvPose, usvControl, usvComm, dt, uSP, vSP, psiSP, rSP, xSP, ySP, axbSP, aybSP, etaSP) 
+            theTable = genTable(usvState, latestMsg, usvPose, usvControl, usvComm, dt, uSP, vSP, yawSP, rSP, xSP, ySP, axbSP, aybSP, etaSP) 
             console.print(theTable)
 
             # 写入当前状态到文件
-            usvData.saveData(usvState, usvPose, usvControl, usvComm, dt, uSP, vSP, psiSP, rSP, xSP, ySP, axbSP, aybSP, etaSP)
+            usvData.saveData(usvState, usvPose, usvControl, usvComm, dt, uSP, vSP, yawSP, rSP, xSP, ySP, axbSP, aybSP, etaSP)
 
             # 发送无人船的状态
             usvComm.sendUSVState(usvState)
 
             # 发送小物体搬运所需
-            usvComm.sendTVPosFromLidar(deckCenterX, deckCenterY, deckPsi)
+            usvComm.sendTVPosFromLidar(deckCenterX, deckCenterY, deckyaw)
 
             # 发送控制固连结构是否释放信号
             usvComm.releaseAttachStruct(isReleaseAttachStruct)
@@ -218,7 +218,7 @@ def main(args=None):
                     (not isnan(usvControl.angleLeftEst)) & (not isnan(usvControl.angleRightEst)) & \
                     (not isnan(usvControl.rpmLeftEst) & (not isnan(usvControl.rpmRightEst))):
                     latestMsg = "Self check complete. Start checking comms..."
-                    usvState = "PURSUE_POD" ####### ALERT #######
+                    usvState = "COMM_TEST" ####### ALERT #######
                     continue
 
                 # usvControl.thrustSet(RPM_START, RPM_START, 0, 0)
@@ -229,13 +229,14 @@ def main(args=None):
                     latestMsg = "Waiting sUAV countdown..."
                     usvState = "READY"
 
-                usvControl.thrustSet(RPM_START, RPM_START, 0, 0)
-                usvControl.thrustPub()
+                # usvControl.thrustSet(RPM_START, RPM_START, 0, 0)
+                # usvControl.thrustPub()
 
             elif usvState == "READY":
                 if (usvComm.suavState == "COUNTDOWN"):
                     latestMsg = "Waiting sUAV to provide headings..."
                     usvState = "STANDBY"
+
                 usvControl.thrustSet(RPM_START, RPM_START, 0, 0)
                 usvControl.thrustPub()
             
@@ -249,13 +250,13 @@ def main(args=None):
                     latestMsg = "USV is going out from the bay..."
                     continue
                 
-                usvControl.thrustSet(RPM_START, RPM_START, 0, 0)
-                usvControl.thrustPub()
+                # usvControl.thrustSet(RPM_START, RPM_START, 0, 0)
+                # usvControl.thrustPub()
                 
             elif usvState == "GOING_OUT":
                 if (isGoindOutPlan == False):
                     timer1 = rospy.Time.now().to_sec()
-                    psiSP = usvPose.psi
+                    yawSP = usvPose.yaw
                     isGoindOutPlan = True
 
                 if (rospy.Time.now().to_sec() - timer1 <= SECS_GOING_OUT):
@@ -264,7 +265,7 @@ def main(args=None):
                     uSP = 0
                 
                 # 控制无人船
-                [uSP, rSP, axbSP, etaSP] = usvControl.moveUSV(uSP, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
+                [uSP, rSP, axbSP, etaSP] = usvControl.moveUSV(uSP, yawSP, usvPose.uDVL, usvPose.axb, usvPose.yaw, usvPose.r)
 
                 if (usvComm.suavState == "GUIDE"):
                     usvState = "PURSUE_SUAV"
@@ -294,10 +295,10 @@ def main(args=None):
                 # 接收 SUAV 的航向信息
                 latestMsg = f"Following heading {rad2deg(usvPose.tvAngleEst):.2f} deg from sUAV."
                 uSP = USP_SUAV_PURSUE
-                psiSP = usvPose.tvAngleEst     
+                yawSP = usvPose.tvAngleEst     
                 
                 # 控制无人船
-                [uSP, rSP, axbSP, etaSP] = usvControl.moveUSV(uSP, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
+                [uSP, rSP, axbSP, etaSP] = usvControl.moveUSV(uSP, yawSP, usvPose.uDVL, usvPose.axb, usvPose.yaw, usvPose.r)
 
             elif usvState == "PURSUE_POD":
                 # 如果激光雷达识别，则进入到 LIDAR 导引
@@ -307,15 +308,15 @@ def main(args=None):
                 
                 # 如果吊舱没有识别，则退回到 SUAV 导引
                 if (not usvPose.isPodFindTV):
-                    psiSP = usvPose.psi
+                    yawSP = usvPose.yaw
                     usvState = "PURSUE_POD_LOST"
                     continue
 
                 # 使用吊舱的角度控制无人船
                 latestMsg = f"Following heading {rad2deg(usvPose.tvAnglePod):.2f} deg from pod."    
                 uSP = USP_POD_PURSUE
-                psiSP = usvPose.tvAnglePod
-                [uSP, rSP, axbSP, etaSP] = usvControl.moveUSV(uSP, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
+                yawSP = usvPose.tvAnglePod
+                [uSP, rSP, axbSP, etaSP] = usvControl.moveUSV(uSP, yawSP, usvPose.uDVL, usvPose.axb, usvPose.yaw, usvPose.r)
                 
             elif usvState == "PURSUE_POD_LOST":
                 if (usvPose.isPodFindTV):
@@ -326,7 +327,7 @@ def main(args=None):
                 # 让无人船以吊舱最后发现目标船的角度停下来
                 latestMsg = f"Pod lost the target. Stopping and wait."
                 uSP = 0
-                [uSP, rSP, axbSP, etaSP] = usvControl.moveUSV(uSP, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
+                [uSP, rSP, axbSP, etaSP] = usvControl.moveUSV(uSP, yawSP, usvPose.uDVL, usvPose.axb, usvPose.yaw, usvPose.r)
 
             elif usvState == "PURSUE_LIDAR":
                 # 如果激光雷达识别，且距离小于给定值，则进入 Dock 段
@@ -342,10 +343,10 @@ def main(args=None):
                 # 激光雷达找到目标船，则使用激光雷达的信息
                 latestMsg = f"Following heading {rad2deg(usvPose.tvAngleLidar):.2f} deg from Lidar. Distance {usvPose.tvDist:.2f}/{DIST_PURSUE_TO_APPROACH}m to dock."
                 uSP = linearClip(DIST_LIDAR_PURSUE_LB, USP_LIDAR_PURSUE_LB, DIST_LIDAR_PURSUE_UB, USP_LIDAR_PURSUE_UB, usvPose.tvDist)
-                psiSP = usvPose.tvAngleLidar
+                yawSP = usvPose.tvAngleLidar
 
                 # 控制无人船
-                [uSP, rSP, axbSP, etaSP] = usvControl.moveUSV(uSP, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
+                [uSP, rSP, axbSP, etaSP] = usvControl.moveUSV(uSP, yawSP, usvPose.uDVL, usvPose.axb, usvPose.yaw, usvPose.r)
                 
             elif usvState == "PURSUE_OBS":
                 # 判断是否还需要避障，如果不需要，则回到 PURSUE_SUAV
@@ -355,11 +356,11 @@ def main(args=None):
 
                 # 计算避障所需航向角
                 uSP = USP_OBS_PURSUE
-                psiSP = usvPose.obsAngleLidar - ANGLE_AVOID_OBS   
-                latestMsg = f"Obstacle detected. Follwing heading {rad2deg(psiSP):.2f} deg to avoid it."
+                yawSP = usvPose.obsAngleLidar - ANGLE_AVOID_OBS   
+                latestMsg = f"Obstacle detected. Follwing heading {rad2deg(yawSP):.2f} deg to avoid it."
 
                 # 控制无人船
-                [uSP, rSP, axbSP, etaSP] = usvControl.moveUSV(uSP, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
+                [uSP, rSP, axbSP, etaSP] = usvControl.moveUSV(uSP, yawSP, usvPose.uDVL, usvPose.axb, usvPose.yaw, usvPose.r)
         
             elif usvState == "DOCK_NEARBY":
                 if (isDockNearbyPlan == False):
@@ -372,10 +373,10 @@ def main(args=None):
                 
                 # 读取激光雷达信息（这个时候应该能保证读到目标船吧？），生成控制指令
                 uSP = USP_DOCK_NEARBY
-                [psiSP, xSP, ySP] = usvGuidance.guidance(DIST_TONEXT_DOCK_NEARBY, usvPose.xLidar, usvPose.yLidar, usvPose.psi, usvPose.betaDVL)
+                [yawSP, xSP, ySP] = usvGuidance.guidance(DIST_TONEXT_DOCK_NEARBY, usvPose.xLidar, usvPose.yLidar, usvPose.yaw, usvPose.betaDVL)
 
                 # 控制无人船
-                [uSP, rSP, axbSP, etaSP] = usvControl.moveUSV(uSP, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
+                [uSP, rSP, axbSP, etaSP] = usvControl.moveUSV(uSP, yawSP, usvPose.uDVL, usvPose.axb, usvPose.yaw, usvPose.r)
 
                 if (usvGuidance.currentIdx >= usvGuidance.endIdx):
                     usvState = "DOCK_MEASURE"
@@ -390,10 +391,10 @@ def main(args=None):
 
                 # 读取激光雷达信息（这个时候应该能保证读到目标船吧？），生成控制指令
                 uSP = USP_DOCK_MEASURE
-                [psiSP, xSP, ySP] = usvGuidance.guidance(DIST_TONEXT_DOCK_MEASURE, usvPose.xLidar, usvPose.yLidar, usvPose.psi, usvPose.betaDVL)
+                [yawSP, xSP, ySP] = usvGuidance.guidance(DIST_TONEXT_DOCK_MEASURE, usvPose.xLidar, usvPose.yLidar, usvPose.yaw, usvPose.betaDVL)
 
                 # 控制无人船
-                [uSP, rSP, axbSP, etaSP] = usvControl.moveUSV(uSP, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
+                [uSP, rSP, axbSP, etaSP] = usvControl.moveUSV(uSP, yawSP, usvPose.uDVL, usvPose.axb, usvPose.yaw, usvPose.r)
 
                 # 读取目标船的测量信息，若满足要求，则读取并保存目标船朝向角（ENU下）
                 tvInfo[0, tvInfoIdx] = usvPose.tvHeading
@@ -434,17 +435,17 @@ def main(args=None):
                     usvGuidance.setPath(currPath)
                     semiFinalX = currPath[-1, 0]
                     semiFinalY = currPath[-1, 1]
-                    finalPsi = arctan2(currPath[-1, 1] - currPath[-2, 1], currPath[-1, 0] - currPath[-2, 0])
+                    finalyaw = arctan2(currPath[-1, 1] - currPath[-2, 1], currPath[-1, 0] - currPath[-2, 0])
                     isDockApproachPlan = True
 
                 latestMsg = f"Estimating finished with average heading {rad2deg(tvHeadingMean):.2f} deg. L: {tvLengthMean:.2f} m. W: {tvWidthMean:.2f} m. Path [{usvGuidance.currentIdx} >> {usvGuidance.endIdx}]. Begin final approach."
 
                 # 读取激光雷达信息（这个时候应该能保证读到目标船吧？），生成控制指令
                 uSP = linearClip(0, USP_DOCK_APPROACH_UB, usvGuidance.endIdx, USP_DOCK_APPROACH_LB, usvGuidance.currentIdx)
-                [psiSP, xSP, ySP] = usvGuidance.guidance(DIST_TONEXT_DOCK_APPROACH, usvPose.xLidar, usvPose.yLidar, usvPose.psi, usvPose.betaDVL)
+                [yawSP, xSP, ySP] = usvGuidance.guidance(DIST_TONEXT_DOCK_APPROACH, usvPose.xLidar, usvPose.yLidar, usvPose.yaw, usvPose.betaDVL)
 
                 # 控制无人船
-                [uSP, rSP, axbSP, etaSP] = usvControl.moveUSV(uSP, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
+                [uSP, rSP, axbSP, etaSP] = usvControl.moveUSV(uSP, yawSP, usvPose.uDVL, usvPose.axb, usvPose.yaw, usvPose.r)
 
                 if (usvGuidance.currentIdx >= usvGuidance.endIdx):
                     usvState = "DOCK_STEADY"
@@ -465,18 +466,18 @@ def main(args=None):
                     
                     isDockAdjustPlan = True
 
-                latestMsg = f"Try to stablize at [{xSP:.2f}, {ySP:.2f}]m, {rad2deg(psiSP):.2f} deg. Err/Tol: [{sqrt((usvPose.xLidar - xSP) ** 2 + (usvPose.yLidar - ySP) ** 2):.2f}/{DIST_DOCK_STEADY_TOL:.2f}]m."
+                latestMsg = f"Try to stablize at [{xSP:.2f}, {ySP:.2f}]m, {rad2deg(yawSP):.2f} deg. Err/Tol: [{sqrt((usvPose.xLidar - xSP) ** 2 + (usvPose.yLidar - ySP) ** 2):.2f}/{DIST_DOCK_STEADY_TOL:.2f}]m."
                 
                 # "Dur/Tol/Timeout: [{rospy.Time.now().to_sec() - timer1:.2f}/{SECS_WAIT_DOCK_STEADY:.2f}/{rospy.Time.now().to_sec() - timer0:.2f}]s."
 
                 # 更新航向值
-                finalPsi = updateTVHeading(finalPsi, usvPose.tvHeading)
+                finalyaw = updateTVHeading(finalyaw, usvPose.tvHeading)
 
                 # 保持静止
-                xSP = 0 + (0.5 * tvWidthMean + L_HALF) * cos(finalPsi - pi / 2)
-                ySP = 0 + (0.5 * tvWidthMean + L_HALF) * sin(finalPsi - pi / 2)
-                psiSP = finalPsi
-                [uSP, vSP, rSP, axbSP, aybSP, etaSP] = usvControl.moveUSVVec(xSP, ySP, psiSP, usvPose.xLidar, usvPose.yLidar, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.psi, usvPose.r)
+                xSP = 0 + (0.5 * tvWidthMean + L_HALF) * cos(finalyaw - pi / 2)
+                ySP = 0 + (0.5 * tvWidthMean + L_HALF) * sin(finalyaw - pi / 2)
+                yawSP = finalyaw
+                [uSP, vSP, rSP, axbSP, aybSP, etaSP] = usvControl.moveUSVVec(xSP, ySP, yawSP, usvPose.xLidar, usvPose.yLidar, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.yaw, usvPose.r)
                 
                 # 一旦船靠近到阈值以下范围，进入固连
                 if (sqrt((usvPose.xLidar - xSP) ** 2 + (usvPose.yLidar - ySP) ** 2) <= DIST_DOCK_STEADY_TOL):   
@@ -504,8 +505,8 @@ def main(args=None):
                     timer0 = rospy.Time.now().to_sec()
                     timer1 = rospy.Time.now().to_sec()
 
-                    finalPsi = updateTVHeading(finalPsi, usvPose.tvHeading)
-                    [tvXBody, _] = rotationZ(usvPose.tvX, usvPose.tvY, finalPsi)
+                    finalyaw = updateTVHeading(finalyaw, usvPose.tvHeading)
+                    [tvXBody, _] = rotationZ(usvPose.tvX, usvPose.tvY, finalyaw)
 
                     if (tvXBody >= 0):
                         isThrustPositive = True
@@ -515,8 +516,8 @@ def main(args=None):
                     isDockAttachPlan = True
 
                 # 计算目标船的在无人船船体系下坐标
-                finalPsi = updateTVHeading(finalPsi, usvPose.tvHeading)
-                [tvXBody, tvYBody] = rotationZ(usvPose.tvX, usvPose.tvY, usvPose.psi)
+                finalyaw = updateTVHeading(finalyaw, usvPose.tvHeading)
+                [tvXBody, tvYBody] = rotationZ(usvPose.tvX, usvPose.tvY, usvPose.yaw)
                 lateralDist = abs(tvYBody)
 
                 # 计算推力方向并根据推力正负限制在±90之间，第一次是正方向推力（0-90度），以后都为正，反之亦然
@@ -585,14 +586,14 @@ def main(args=None):
                         # 最高点测量健康，向最高点映射到船中轴线上的点泊近
                         # 注意：这里的 rotationZ 是要对点（向量）进行旋转，即求取点在旋转后的坐标（同一坐标系下），
                         # 而不是同一个点在不同坐标系下的表示，故取负号
-                        [tvHighestXMean2, _] = rotationZ(tvHighestXMean, tvHighestYMean, finalPsi)
+                        [tvHighestXMean2, _] = rotationZ(tvHighestXMean, tvHighestYMean, finalyaw)
                         if (tvHighestXMean2 >= 0):
                             finalX = (-0.5 * tvLengthMean + tvHighestXMean2) / 2
                             finalY = 0.0
                         else:
                             finalX = (0.5 * tvLengthMean + tvHighestXMean2) / 2
                             finalY = 0.0
-                        [finalX, finalY] = rotationZ(finalX, finalY, -finalPsi)
+                        [finalX, finalY] = rotationZ(finalX, finalY, -finalyaw)
                     else: 
                         # 最高点测量不健康，设置为目标船中心
                         finalX = 0.0
@@ -606,13 +607,13 @@ def main(args=None):
             elif usvState == "DOCK_FINAL":
                 # DOCK_FINAL 是一个死循环
                     
-                latestMsg = f"Attached completed. Take-off signal for tUAV has been sent. Real-time deck point [{deckCenterX:.2f}, {deckCenterY:.2f}, {deckPsi:.2f}]m"
+                latestMsg = f"Attached completed. Take-off signal for tUAV has been sent. Real-time deck point [{deckCenterX:.2f}, {deckCenterY:.2f}, {deckyaw:.2f}]m"
                 
                 usvComm.sendTakeOffFlag()
 
                 # 计算给小物体搬运的坐标点
-                [deckCenterX, deckCenterY] = rotationZ(-usvPose.xLidar + finalX, -usvPose.yLidar + finalY, usvPose.psi)
-                deckPsi = finalPsi - usvPose.psi
+                [deckCenterX, deckCenterY] = rotationZ(-usvPose.xLidar + finalX, -usvPose.yLidar + finalY, usvPose.yaw)
+                deckyaw = finalyaw - usvPose.yaw
                 
                 # 保持一定的推力
                 usvControl.thrustSet(0, 0, ANGLE_LEFT_ATTACH, ANGLE_RIGHT_ATTACH)
@@ -621,10 +622,10 @@ def main(args=None):
             elif usvState == "TEST":
                 uSP = 2.75            
                 if (isTestPlan == False):              
-                    psiSP = wrapToPi(usvPose.psi + deg2rad(0))
+                    yawSP = wrapToPi(usvPose.yaw + deg2rad(0))
                     isTestPlan = True
 
-                [uSP, rSP, axbSP, etaSP] = usvControl.moveUSV(uSP, psiSP, usvPose.uDVL, usvPose.axb, usvPose.psi, usvPose.r)
+                [uSP, rSP, axbSP, etaSP] = usvControl.moveUSV(uSP, yawSP, usvPose.uDVL, usvPose.axb, usvPose.yaw, usvPose.r)
 
             else:
                 # 程序不应该执行到这里

@@ -127,7 +127,7 @@ def main(args=None):
 
     usvPose.uDVL = 0
     usvPose.vDVL = 0
-    usvPose.psi = deg2rad(0)
+    usvPose.yaw = deg2rad(0)
 
     while (not usvPose.isLidarFindTV):
         rosRate.sleep()

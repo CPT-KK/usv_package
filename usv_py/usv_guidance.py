@@ -18,7 +18,7 @@ class Guidance():
     # 避障安全距离
     usvSafeR = 20.0
 
-    psiSP = 0.0
+    yawSP = 0.0
     uSP = 0.0
     vSP = 0.0
     delta = 2.5 * 6.0
@@ -47,7 +47,7 @@ class Guidance():
 
         self.isPathInit = True
 
-    def guidance(self, dist2Next, x, y, psi, beta):
+    def guidance(self, dist2Next, x, y, yaw, beta):
         if (self.isPathInit == False):
             return [None, None]
         
@@ -76,7 +76,7 @@ class Guidance():
         yErrAngle = self.yErrPID.compute(arctan2(-yErr, self.delta))
 
         # 计算期望的朝向角：路径方向角 - 侧滑角 + 修正侧向误差的航向补偿角
-        psiSP = wrapToPi(tanAngle - clip(beta, deg2rad(-30), deg2rad(30)) + yErrAngle)
+        yawSP = wrapToPi(tanAngle - clip(beta, deg2rad(-30), deg2rad(30)) + yErrAngle)
 
         # Debug 用输出
         # print("=============================================================================")
@@ -85,7 +85,7 @@ class Guidance():
         # print("theta: %5.2f, beta: %5.2f, yErr: %5.2f" % (tanAngle, beta, yErr))
 
         # 返回制导指令
-        return [psiSP, xSP, ySP]
+        return [yawSP, xSP, ySP]
 
     def guidanceVec(self, dist2Next, vel2Next, x, y):
         if (self.isPathInit == False):
@@ -115,16 +115,16 @@ class Guidance():
 
         # 计算为了修正侧向误差的航向补偿角
         yErrAngle = self.yErrPID.compute(arctan2(-yErr, self.delta))
-        psiSP = tanAngle + yErrAngle 
+        yawSP = tanAngle + yErrAngle 
 
         # 返回制导指令
-        return [xSP, ySP, psiSP]
+        return [xSP, ySP, yawSP]
     
-    def guidanceOBS(self, obsX, obsY, lineSightOBS, psi, beta, uSP):
+    def guidanceOBS(self, obsX, obsY, lineSightOBS, yaw, beta, uSP):
         # 求障碍物与无人船的距离
         distOBS = norm([obsX,obsY])
 
         # 求无人船的期望朝向角
-        psiSP = - beta - arctan2(self.usvSafeR,distOBS) + lineSightOBS + psi
+        yawSP = - beta - arctan2(self.usvSafeR,distOBS) + lineSightOBS + yaw
 
-        return [uSP, psiSP]
+        return [uSP, yawSP]
