@@ -162,7 +162,7 @@ class Pose():
     def podCallback(self, msg):
         if (msg.data[0] == 1):
             self.isPodFindTV = True
-            self.tvAnglePod = self.yaw + msg.data[2]
+            self.tvAnglePod = wrapToPi(self.yaw + msg.data[2])
             self.podState = msg.data[3]
         else:
             self.isPodFindTV = False

@@ -44,7 +44,7 @@ USP_DOCK_NEARBY = 1.8                   # DOCK_NEARBY 时 USV 的轴向速度
 DIST_TONEXT_DOCK_NEARBY = 12.0          # DOCK_NEARBY 时切换追踪点为轨迹下一点的距离
 
 USP_DOCK_MEASURE = 1.5                  # DOCK_MEASURE 时 USV 的轴向速度
-DIST_TONEXT_DOCK_MEASURE = 10.0          # DOCK_MEASURE 时切换追踪点为轨迹下一点的距离
+DIST_TONEXT_DOCK_MEASURE = 12.0          # DOCK_MEASURE 时切换追踪点为轨迹下一点的距离
 ANGLE_DOCK_MEASURE_JUMP = deg2rad(20.0) # DOCK_MEASURE 时认为激光雷达估计目标船朝向可能跳变的角度判据
 
 USP_DOCK_APPROACH_UB = 1.5              # DOCK_APPROACH 时 USV 的轴向速度上界
@@ -60,14 +60,9 @@ VEL_DOCK_STEADY_TOL = 0.4              # DOCK_STEADY 时认为 USV 已经稳定�
 HEALTHY_Z_TOL = 1.2                     # 
 SECS_WAIT_HEIGHT_SEARCH = 10.0          # WAIT_ARM 时等待机械臂搜索大物体的秒数
 
-DIST_TOVESSELCEN_SIDE = 2                # TOVESSEL 时 USV 前往的目标船侧面点与船边的距离
-SECS_WAIT_TOVESSCEN = 5.0         # TOVESSEL 时认为 USV 已经稳定前所需的秒数
-SECS_TIMEOUT_TOVESSCEN = 60.0
-DIST_TOVESSEL_TOL = 1.5                # TOVESSEL 时认为 USV 已经前往到目标船侧面点的位置判据
-
 SECS_TIMEOUT_ATTACH = 10.0
 SECS_WAIT_ATTACH = 3.0
-DIST_ATTACH_TOL = 0.75
+DIST_ATTACH_TOL = 0.5
 RPM_ATTACH = 200.0
 RPM_ATTACH_UB = 300.0
 RPM_ATTACH_LB = 120.0
@@ -98,9 +93,9 @@ def updateTVHeading(existHeading, newHeading):
     angleGap2 = abs(newHeading2 - existHeading)
 
     if (angleGap1 <= angleGap2):
-        return sin(angleGap1) * existHeading + cos(angleGap1) * newHeading
+        return wrapToPi(newHeading)
     else:
-        return sin(angleGap2) * existHeading + cos(angleGap2) * newHeading2
+        return wrapToPi(newHeading2)
 
 def main(args=None):
     # 控制台输出初始化
@@ -145,6 +140,7 @@ def main(args=None):
     isDockAdjustPlan = False
     isDockWaitArmPlan = False
     isDockAttachPlan = False
+    isDockFinalPlan = False
     isTestPlan = False
 
     isTestEnable = False
@@ -191,7 +187,9 @@ def main(args=None):
         try:
             # 打印当前状态
             dt = rospy.Time.now().to_sec() - t0
-            theTable = genTable(usvState, latestMsg, usvPose, usvControl, usvComm, dt, uSP, vSP, yawSP, rSP, xSP, ySP, axbSP, aybSP, etaSP) 
+            theTable = genTable(usvState, latestMsg, usvPose, usvControl, usvComm, dt, uSP, vSP, yawSP, rSP, xSP, ySP, axbSP, aybSP, etaSP)
+            
+            console.clear()
             console.print(theTable)
 
             # 写入当前状态到文件
@@ -215,7 +213,7 @@ def main(args=None):
                     (not isnan(usvControl.angleLeftEst)) & (not isnan(usvControl.angleRightEst)) & \
                     (not isnan(usvControl.rpmLeftEst) & (not isnan(usvControl.rpmRightEst))):
                     latestMsg = "Self check complete. Start checking comms..."
-                    usvState = "COMM_TEST" ####### ALERT #######
+                    usvState = "PURSUE_POD" ####### ALERT #######
                     continue
                 
                 if (isInitalBackStableEnable):
@@ -223,7 +221,7 @@ def main(args=None):
                     usvControl.thrustPub()
 
             elif usvState == "COMM_TEST":
-                if (usvComm.suavState == "COMM_TEST" or usvComm.suavState == "READY" or usvComm.suavState == "COUNTDOWN") & (usvComm.tuav1State == "COMM_TEST" or usvComm.tuav1State == "READY" or usvComm.tuav1State == "WAIT"):
+                if (usvComm.suavState == "COMM_TEST" or usvComm.suavState == "READY" or usvComm.suavState == "COUNTDOWN" or usvComm.suavState == "GUIDE") & (usvComm.tuav1State == "COMM_TEST" or usvComm.tuav1State == "READY" or usvComm.tuav1State == "WAIT"):
                     latestMsg = "Waiting sUAV countdown..."
                     usvState = "READY"
 
@@ -528,7 +526,7 @@ def main(args=None):
                     thrustAngle = -pi / 2
 
                 # 计算推力大小
-                thrustRPM = linearClip(5, 10, RPM_ATTACH_LB, RPM_ATTACH_UB, usvPose.tvDist) 
+                thrustRPM = RPM_ATTACH_UB 
 
                 latestMsg = f"Attaching to the target vessel. Tol: [{lateralDist:.2f}/{DIST_ATTACH_TOL + 0.5 * tvWidthMean + L_HALF:.2f}]"
 
@@ -607,7 +605,7 @@ def main(args=None):
             elif usvState == "DOCK_FINAL":
                 # DOCK_FINAL 是一个死循环
                     
-                latestMsg = f"Attached completed. Take-off signal for tUAV has been sent. Real-time deck point [{deckCenterX:.2f}, {deckCenterY:.2f}, {deckyaw:.2f}]m"
+                latestMsg = f"Attached completed. Take-off signal for tUAV has been sent. Real-time deck point [{deckCenterX:.2f}, {deckCenterY:.2f}]m {rad2deg(deckyaw):.2f}deg"
                 
                 usvComm.sendTakeOffFlag()
 

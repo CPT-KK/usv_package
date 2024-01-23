@@ -60,24 +60,18 @@ VEL_DOCK_STEADY_TOL = 0.4              # DOCK_STEADY 时认为 USV 已经稳定�
 HEALTHY_Z_TOL = 1.2                     # 
 SECS_WAIT_HEIGHT_SEARCH = 10.0          # WAIT_ARM 时等待机械臂搜索大物体的秒数
 
-DIST_TOVESSELCEN_SIDE = 2                # TOVESSEL 时 USV 前往的目标船侧面点与船边的距离
-SECS_WAIT_TOVESSCEN = 5.0         # TOVESSEL 时认为 USV 已经稳定前所需的秒数
-SECS_TIMEOUT_TOVESSCEN = 20.0
-DIST_TOVESSEL_TOL = 1.5                # TOVESSEL 时认为 USV 已经前往到目标船侧面点的位置判据
-
-SECS_TIMEOUT_ATTACH = 7.0
-DIST_ATTACH_TOL = 1
+SECS_TIMEOUT_ATTACH = 10.0
+SECS_WAIT_ATTACH = 3.0
+DIST_ATTACH_TOL = 0.75
 RPM_ATTACH = 200.0
+RPM_ATTACH_UB = 300.0
+RPM_ATTACH_LB = 120.0
 ANGLE_LEFT_ATTACH = deg2rad(90.5)
 ANGLE_RIGHT_ATTACH = deg2rad(95)
 
-RPM_KEEP = 120.0
-ANGLE_LEFT_KEEP = deg2rad(90.5)
-ANGLE_RIGHT_KEEP = deg2rad(95)
-
-RPM_FINAL = 100.0
-ANGLE_LEFT_FINAL = deg2rad(90.5)
-ANGLE_RIGHT_FINAL = deg2rad(95)
+RPM_FINAL = 0.0
+ANGLE_LEFT_FINAL = deg2rad(0)
+ANGLE_RIGHT_FINAL = deg2rad(0)
 
 @atexit.register 
 def clean():
@@ -89,12 +83,14 @@ def interuptFunc(signum, frame):
     exit()
 
 def updateTVHeading(existHeading, newHeading):
-    if (abs(newHeading - existHeading) <= deg2rad(30)):
-        return 0.6 * existHeading + 0.4 * newHeading
-    elif (abs(wrapToPi(newHeading + pi) - existHeading) <= deg2rad(30)):
-        return 0.6 * existHeading + 0.4 * wrapToPi(newHeading + pi)
+    newHeading2 = wrapToPi(newHeading + pi)
+    angleGap1 = abs(newHeading - existHeading)
+    angleGap2 = abs(newHeading2 - existHeading)
+
+    if (angleGap1 <= angleGap2):
+        return wrapToPi(newHeading)
     else:
-        return existHeading
+        return wrapToPi(newHeading2)
 
 def main():
     # 控制台输出初始化
@@ -146,7 +142,7 @@ def main():
     isTestEnable = False
 
     # 无人船状态
-    usvState = "MEASURE_HIGHEST"
+    usvState = "DOCK_STEADY"
 
     # 无人船当前正在使用的路径
     currPath = zeros((2000, 2))
@@ -171,7 +167,7 @@ def main():
     # Set point 量
     uSP = float("nan")
     vSP = float("nan")
-    psiSP = float("nan")
+    yawSP = float("nan")
     rSP = float("nan")
     xSP = float("nan")
     ySP = float("nan")
@@ -186,7 +182,7 @@ def main():
 
         # 打印当前状态
         dt = rospy.Time.now().to_sec() - t0
-        theTable = genTable(usvState, latestMsg, usvPose, usvControl, usvComm, dt, uSP, vSP, psiSP, rSP, xSP, ySP, axbSP, aybSP, etaSP) 
+        theTable = genTable(usvState, latestMsg, usvPose, usvControl, usvComm, dt, uSP, vSP, yawSP, rSP, xSP, ySP, axbSP, aybSP, etaSP) 
         console.print(theTable)
 
         if (usvPose.isImuValid) & (usvPose.isDvlValid) & (usvPose.isPodValid) & (not isnan(usvControl.angleLeftEst)) & (not isnan(usvControl.angleRightEst)) & (not isnan(usvControl.rpmLeftEst) & (not isnan(usvControl.rpmRightEst))):
@@ -197,33 +193,130 @@ def main():
     while (not usvPose.isLidarFindTV):
         # 打印当前状态
         dt = rospy.Time.now().to_sec() - t0
-        theTable = genTable(usvState, latestMsg, usvPose, usvControl, usvComm, dt, uSP, vSP, psiSP, rSP, xSP, ySP, axbSP, aybSP, etaSP) 
+        theTable = genTable(usvState, latestMsg, usvPose, usvControl, usvComm, dt, uSP, vSP, yawSP, rSP, xSP, ySP, axbSP, aybSP, etaSP) 
         console.print(theTable)
 
         rosRate.sleep()
 
     semiFinalX = usvPose.xLidar
     semiFinalY = usvPose.yLidar
-    finalPsi = usvPose.yaw
+    finalyaw = usvPose.yaw
     tvLengthMean = 12.5
     tvWidthMean = 4.5
 
+    deckCenterX = 0
+    deckCenterY = 0
+    deckyaw = 0
     while (not rospy.is_shutdown()):
         # 打印当前状态
         dt = rospy.Time.now().to_sec() - t0
-        theTable = genTable(usvState, latestMsg, usvPose, usvControl, usvComm, dt, uSP, vSP, psiSP, rSP, xSP, ySP, axbSP, aybSP, etaSP) 
+        theTable = genTable(usvState, latestMsg, usvPose, usvControl, usvComm, dt, uSP, vSP, yawSP, rSP, xSP, ySP, axbSP, aybSP, etaSP) 
         console.print(theTable)
 
         # 写入当前状态到文件
-        usvData.saveData(usvState, usvPose, usvControl, usvComm, dt, uSP, vSP, psiSP, rSP, xSP, ySP, axbSP, aybSP, etaSP)
+        usvData.saveData(usvState, usvPose, usvControl, usvComm, dt, uSP, vSP, yawSP, rSP, xSP, ySP, axbSP, aybSP, etaSP)
 
         # 发送无人船的状态
         usvComm.sendUSVState(usvState)
 
         # 发送小物体搬运所需
-        usvComm.sendTVPosFromLidar(deckCenterX, deckCenterY, deckPsi)
+        usvComm.sendTVPosFromLidar(deckCenterX, deckCenterY, deckyaw)
+        
+        if usvState == "DOCK_STEADY":
+            if (isDockAdjustPlan == False):
+                # 将当前时间写入 t1 计时器
+                timer0 = rospy.Time.now().to_sec()
+                timer1 = rospy.Time.now().to_sec()
 
-        if usvState == "MEASURE_HIGHEST":
+                # 使用上一段路径的最后一个点作为自稳点
+                # 使用上一段路径最后两个点的切线方向作为 USV 航向
+                
+                isDockAdjustPlan = True
+
+            latestMsg = f"Try to stablize at [{xSP:.2f}, {ySP:.2f}]m, {rad2deg(yawSP):.2f} deg. Err/Tol: [{sqrt((usvPose.xLidar - xSP) ** 2 + (usvPose.yLidar - ySP) ** 2):.2f}/{DIST_DOCK_STEADY_TOL:.2f}]m."
+            
+            # "Dur/Tol/Timeout: [{rospy.Time.now().to_sec() - timer1:.2f}/{SECS_WAIT_DOCK_STEADY:.2f}/{rospy.Time.now().to_sec() - timer0:.2f}]s."
+
+            # 更新航向值
+            finalyaw = updateTVHeading(finalyaw, usvPose.tvHeading)
+
+            # 保持静止
+            xSP = 0 + (0.5 * tvWidthMean + L_HALF) * cos(finalyaw - pi / 2)
+            ySP = 0 + (0.5 * tvWidthMean + L_HALF) * sin(finalyaw - pi / 2)
+            yawSP = finalyaw
+            [uSP, vSP, rSP, axbSP, aybSP, etaSP] = usvControl.moveUSVVec(xSP, ySP, yawSP, usvPose.xLidar, usvPose.yLidar, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.yaw, usvPose.r)
+            
+            # 一旦船靠近到阈值以下范围，进入固连
+            if (sqrt((usvPose.xLidar - xSP) ** 2 + (usvPose.yLidar - ySP) ** 2) <= DIST_DOCK_STEADY_TOL):   
+                usvState = "DOCK_ATTACH"
+                continue
+
+            # 超时
+            if (rospy.Time.now().to_sec() - timer0 > SECS_TIMEOUT_DOCK_STEADY):
+                usvState = "DOCK_ATTACH"
+                continue
+        
+        elif usvState == "DOCK_ATTACH":
+            if (isDockAttachPlan == False):
+                # 将当前时间写入 t1 计时器
+                timer0 = rospy.Time.now().to_sec()
+                timer1 = rospy.Time.now().to_sec()
+
+                finalyaw = updateTVHeading(finalyaw, usvPose.tvHeading)
+                [tvXBody, _] = rotationZ(usvPose.tvX, usvPose.tvY, finalyaw)
+
+                if (tvXBody >= 0):
+                    isThrustPositive = True
+                else:
+                    isThrustPositive = False
+
+                isDockAttachPlan = True
+
+            # 计算目标船的在无人船船体系下坐标
+            finalyaw = updateTVHeading(finalyaw, usvPose.tvHeading)
+            [tvXBody, tvYBody] = rotationZ(usvPose.tvX, usvPose.tvY, usvPose.yaw)
+            lateralDist = abs(tvYBody)
+
+            # 计算推力方向并根据推力正负限制在±90之间，第一次是正方向推力（0-90度），以后都为正，反之亦然
+            thrustAngle = arctan(tvYBody / tvXBody)
+            if (thrustAngle < 0) & (isThrustPositive):
+                thrustAngle = pi / 2
+            elif (thrustAngle > 0) & (not isThrustPositive):
+                thrustAngle = -pi / 2
+
+            # 计算推力大小
+            thrustRPM = linearClip(5, 10, RPM_ATTACH_LB, RPM_ATTACH_UB, usvPose.tvDist) 
+
+            latestMsg = f"Attaching to the target vessel. Tol: [{lateralDist:.2f}/{DIST_ATTACH_TOL + 0.5 * tvWidthMean + L_HALF:.2f}]"
+
+            if (isThrustPositive):
+                usvControl.thrustSet(thrustRPM, thrustRPM, thrustAngle, thrustAngle)
+            else:
+                usvControl.thrustSet(-thrustRPM, -thrustRPM, thrustAngle, thrustAngle)
+            usvControl.thrustPub()
+
+            # if (usvControl.angleLeftEst <= deg2rad(89)) | (usvControl.angleRightEst <= deg2rad(89)):
+            #     usvControl.thrustSet(0, 0, ANGLE_LEFT_ATTACH, ANGLE_RIGHT_ATTACH)
+            # else:
+            #     usvControl.thrustSet(RPM_ATTACH, RPM_ATTACH, ANGLE_LEFT_ATTACH, ANGLE_RIGHT_ATTACH)
+            # usvControl.thrustPub()
+
+            # 固连成功判据：距离，或者超时
+            if (rospy.Time.now().to_sec() - timer1 > SECS_WAIT_ATTACH):   
+                usvState = "MEASURE_HIGHEST"
+                continue
+            elif (tvYBody <= DIST_ATTACH_TOL + 0.5 * tvWidthMean + L_HALF):
+                pass
+            else:
+                # 如果不满足静止条件，需要重置 t1 计时器
+                timer1 = rospy.Time.now().to_sec()
+
+            # 超时
+            if (rospy.Time.now().to_sec() - timer0 > SECS_TIMEOUT_ATTACH):
+                usvState = "MEASURE_HIGHEST"
+                continue
+
+        elif usvState == "MEASURE_HIGHEST":
             if (isDockWaitArmPlan == False):
                 # 将当前时间写入 t1 计时器
                 timer1 = rospy.Time.now().to_sec()
@@ -250,14 +343,14 @@ def main():
                     # 最高点测量健康，向最高点映射到船中轴线上的点泊近
                     # 注意：这里的 rotationZ 是要对点（向量）进行旋转，即求取点在旋转后的坐标（同一坐标系下），
                     # 而不是同一个点在不同坐标系下的表示，故取负号
-                    [tvHighestXMean2, _] = rotationZ(tvHighestXMean, tvHighestYMean, finalPsi)
+                    [tvHighestXMean2, _] = rotationZ(tvHighestXMean, tvHighestYMean, finalyaw)
                     if (tvHighestXMean2 >= 0):
                         finalX = (-0.5 * tvLengthMean + tvHighestXMean2) / 2
                         finalY = 0.0
                     else:
                         finalX = (0.5 * tvLengthMean + tvHighestXMean2) / 2
                         finalY = 0.0
-                    [finalX, finalY] = rotationZ(finalX, finalY, -finalPsi)
+                    [finalX, finalY] = rotationZ(finalX, finalY, -finalyaw)
                 else: 
                     # 最高点测量不健康，设置为目标船中心
                     finalX = 0.0
@@ -271,16 +364,16 @@ def main():
         elif usvState == "DOCK_FINAL":
             # DOCK_FINAL 是一个死循环
                 
-            latestMsg = f"Attached completed. Take-off signal for tUAV has been sent. Real-time deck point [{deckCenterX:.2f}, {deckCenterY:.2f}, {deckPsi:.2f}]m"
+            latestMsg = f"Attached completed. Take-off signal for tUAV has been sent. Real-time deck point [{deckCenterX:.2f}, {deckCenterY:.2f}]m {rad2deg(deckyaw):.2f}deg"
             
             usvComm.sendTakeOffFlag()
 
             # 计算给小物体搬运的坐标点
             [deckCenterX, deckCenterY] = rotationZ(-usvPose.xLidar + finalX, -usvPose.yLidar + finalY, usvPose.yaw)
-            deckPsi = finalPsi - usvPose.yaw
+            deckyaw = finalyaw - usvPose.yaw
             
             # 保持一定的推力
-            usvControl.thrustSet(0, 0, ANGLE_LEFT_ATTACH, ANGLE_RIGHT_ATTACH)
+            usvControl.thrustSet(RPM_FINAL, RPM_FINAL, ANGLE_LEFT_FINAL, ANGLE_RIGHT_FINAL)
             usvControl.thrustPub()
 
         rosRate.sleep()

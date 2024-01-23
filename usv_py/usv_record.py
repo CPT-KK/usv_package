@@ -70,45 +70,52 @@ def genTable(usvState, latestMsg, usvPose, usvControl, usvComm, dt, uSP, vSP, ya
             "",
             f"[reverse green]x: {xLidarOutput:.2f} m", f"[reverse green]y: {yLidarOutput:.2f} m", 
             "",
-            f"ax: {usvPose.axb:.2f} m/s^2", f"ay: {usvPose.ayb:.2f} m/s^2"],
+            f"ax: {usvPose.axb:.2f} m/s^2", f"ay: {usvPose.ayb:.2f} m/s^2"
+        ],
         # 
-        "Setpoints": [f"[reverse purple]uSP: {uSP:.2f} m/s", f"[reverse purple]vSP: {vSP:.2f} m/s",
-                      "",
-                      f"[reverse cyan]yawSP: {rad2deg(yawSP):.2f} deg", f"[reverse cyan]rSP: {rad2deg(rSP):.2f} deg/s", 
-                      "",
-                      f"[reverse green]xSP: {xSP:.2f} m", f"[reverse green]ySP: {ySP:.2f} m", 
-                      "",
-                      f"axbSP: {axbSP:.2f} m/s^2", f"aybSP: {aybSP:.2f} m/s^2"],
+        "Setpoints": [
+            f"[reverse purple]uSP: {uSP:.2f} m/s", f"[reverse purple]vSP: {vSP:.2f} m/s",
+            "",
+            f"[reverse cyan]yawSP: {rad2deg(yawSP):.2f} deg", f"[reverse cyan]rSP: {rad2deg(rSP):.2f} deg/s", 
+            "",
+            f"[reverse green]xSP: {xSP:.2f} m", f"[reverse green]ySP: {ySP:.2f} m", 
+            "",
+            f"axbSP: {axbSP:.2f} m/s^2", f"aybSP: {aybSP:.2f} m/s^2"
+        ],
+# 
+        "Sensors": [
+            f"[reverse magenta]sUAV yaw: {sUAVOutput:.2f} deg", 
+            f"[reverse magenta]sUAV XY: ({usvPose.tvEstPosX:.2f}, {usvPose.tvEstPosY:.2f})m", 
+            "",
+            f"Pod lock: {bool2okstr(usvPose.isPodFindTV)}",
+            f"[reverse red]Pod yaw: {podOutput:.2f} deg", 
+            "",
+            f"Lidar lock: {bool2okstr(usvPose.isLidarFindTV)}",
+            f"[reverse yellow]Lidar yaw: {lidarOutPutAngle:.2f} deg",   
+            f"[reverse yellow]Lidar dist: {lidarOutPutDist:.2f} m", 
+            "",
+            f"[reverse blue]TV L&W: {usvPose.tvLength:.2f} m, {usvPose.tvWidth:.2f} m",
+            f"[reverse blue]TV Heading: {rad2deg(usvPose.tvHeading):.2f} deg", 
+            "",
+            f"Obs yaw: {obsOutPut:.2f} deg"
+        ],
         # 
-        "Sensors": [f"[reverse magenta]sUAV yaw: {sUAVOutput:.2f} deg", 
-                    f"[reverse magenta]sUAV XY: ({usvPose.tvEstPosX:.2f}, {usvPose.tvEstPosY:.2f})m", 
-                    "",
-                    f"Pod lock: {bool2okstr(usvPose.isPodFindTV)}",
-                    f"[reverse red]Pod yaw: {podOutput:.2f} deg", 
-                    "",
-                    f"Lidar lock: {bool2okstr(usvPose.isLidarFindTV)}",
-                    f"[reverse yellow]Lidar yaw: {lidarOutPutAngle:.2f} deg",   
-                    f"[reverse yellow]Lidar dist: {lidarOutPutDist:.2f} m", 
-                    "",
-                    f"[reverse blue]TV L&W: {usvPose.tvLength:.2f} m, {usvPose.tvWidth:.2f} m",
-                    f"[reverse blue]TV Heading: {rad2deg(usvPose.tvHeading):.2f} deg", 
-                    "",
-                    f"Obs yaw: {obsOutPut:.2f} deg"],
-        # 
-        "Power": ["[bold]Engine",
-                  f"L_cmd: {usvControl.rpmLeftSP:.2f} RPM | {rad2deg(usvControl.angleLeftSP):.2f} deg", 
-                  f"R_cmd: {usvControl.rpmRightSP:.2f} RPM | {rad2deg(usvControl.angleRightSP):.2f} deg", 
-                  f"L: {usvControl.rpmLeftEst:.2f} RPM | {rad2deg(usvControl.angleLeftEst):.2f} deg", 
-                  f"R: {usvControl.rpmRightEst:.2f} RPM | {rad2deg(usvControl.angleRightEst):.2f} deg",
-                  "",
-                  "[bold]Battery",
-                  f"1: {usvControl.battSOC[0]:.1f} % | ↓{usvControl.battCellVoltMin[0]:.3f} v", 
-                  f"2: {usvControl.battSOC[1]:.1f} % | ↓{usvControl.battCellVoltMin[1]:.3f} v", 
-                  f"3: {usvControl.battSOC[2]:.1f} % | ↓{usvControl.battCellVoltMin[2]:.3f} v", 
-                  f"4: {usvControl.battSOC[3]:.1f} % | ↓{usvControl.battCellVoltMin[3]:.3f} v"],
+        "Power": [
+            "[bold]Engine",
+            f"L_cmd: {usvControl.rpmLeftSP:.2f} RPM | {rad2deg(usvControl.angleLeftSP):.2f} deg", 
+            f"R_cmd: {usvControl.rpmRightSP:.2f} RPM | {rad2deg(usvControl.angleRightSP):.2f} deg", 
+            f"L: {usvControl.rpmLeftEst:.2f} RPM | {rad2deg(usvControl.angleLeftEst):.2f} deg", 
+            f"R: {usvControl.rpmRightEst:.2f} RPM | {rad2deg(usvControl.angleRightEst):.2f} deg",
+            "",
+            "[bold]Battery",
+            f"1: {usvControl.battSOC[0]:.1f} % | ↓{usvControl.battCellVoltMin[0]:.3f} v", 
+            f"2: {usvControl.battSOC[1]:.1f} % | ↓{usvControl.battCellVoltMin[1]:.3f} v", 
+            f"3: {usvControl.battSOC[2]:.1f} % | ↓{usvControl.battCellVoltMin[2]:.3f} v", 
+            f"4: {usvControl.battSOC[3]:.1f} % | ↓{usvControl.battCellVoltMin[3]:.3f} v"
+        ],
     }
 
-    theTable = Table(show_header=True, header_style="bold", title_justify="center", title_style="bold magenta", caption_justify="left", box=box.HORIZONTALS)
+    theTable = Table(show_header=True, header_style="bold", title_justify="center", title_style="bold white", caption_justify="left", box=box.HORIZONTALS, caption_style="white")
     theTable.title = f"USV Info @ t = {dt:.3f} s"
     theTable.caption = " Message: " + latestMsg + "\n"
 
