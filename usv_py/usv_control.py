@@ -77,7 +77,7 @@ class Control():
         self.__xPID = PID(0.35, 0.00, 0.0)
         self.__yPID = PID(0.2, 0.00, 0.0)
         self.__vxPID = PID(1.0, 0.00, -0.0)
-        self.__vyPID = PID(4.0, 0.00, -0.0)
+        self.__vyPID = PID(2.0, 0.00, -0.0)
 
     def __del__(self):
         pass
