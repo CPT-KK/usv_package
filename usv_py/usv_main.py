@@ -215,7 +215,7 @@ def main(args=None):
                     (not isnan(usvControl.angleLeftEst)) & (not isnan(usvControl.angleRightEst)) & \
                     (not isnan(usvControl.rpmLeftEst) & (not isnan(usvControl.rpmRightEst))):
                     latestMsg = "Self check complete. Start checking comms..."
-                    usvState = "PURSUE_POD" ####### ALERT #######
+                    usvState = "COMM_TEST" ####### ALERT #######
                     continue
                 
                 if (isInitalBackStableEnable):
