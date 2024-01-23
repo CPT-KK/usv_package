@@ -20,7 +20,7 @@ def bool2okstr(boolVal):
     else:
         return "[bold red]X[/bold red]"
 
-def genTable(usvState, latestMsg, usvPose, usvControl, usvComm, dt, uSP, vSP, psiSP, rSP, xSP, ySP, axbSP, aybSP, etaSP):    
+def genTable(usvState, latestMsg, usvPose, usvControl, usvComm, dt, uSP, vSP, yawSP, rSP, xSP, ySP, axbSP, aybSP, etaSP):    
     if (usvPose.isSearchFindTV):
         sUAVOutput = rad2deg(usvPose.tvAngleEst)
     else:
@@ -66,7 +66,7 @@ def genTable(usvState, latestMsg, usvPose, usvControl, usvComm, dt, uSP, vSP, ps
         "Motions": [
             f"[reverse purple]u: {usvPose.uDVL:.2f} m/s", f"[reverse purple]v: {usvPose.vDVL:.2f} m/s", 
             "",
-            f"[reverse cyan]psi: {rad2deg(usvPose.psi):.2f} deg", f"[reverse cyan]r: {rad2deg(usvPose.r):.2f} deg/s",
+            f"[reverse cyan]yaw: {rad2deg(usvPose.yaw):.2f} deg", f"[reverse cyan]r: {rad2deg(usvPose.r):.2f} deg/s",
             "",
             f"[reverse green]x: {xLidarOutput:.2f} m", f"[reverse green]y: {yLidarOutput:.2f} m", 
             "",
@@ -74,7 +74,7 @@ def genTable(usvState, latestMsg, usvPose, usvControl, usvComm, dt, uSP, vSP, ps
         # 
         "Setpoints": [f"[reverse purple]uSP: {uSP:.2f} m/s", f"[reverse purple]vSP: {vSP:.2f} m/s",
                       "",
-                      f"[reverse cyan]psiSP: {rad2deg(psiSP):.2f} deg", f"[reverse cyan]rSP: {rad2deg(rSP):.2f} deg/s", 
+                      f"[reverse cyan]yawSP: {rad2deg(yawSP):.2f} deg", f"[reverse cyan]rSP: {rad2deg(rSP):.2f} deg/s", 
                       "",
                       f"[reverse green]xSP: {xSP:.2f} m", f"[reverse green]ySP: {ySP:.2f} m", 
                       "",
@@ -127,7 +127,7 @@ def genTable(usvState, latestMsg, usvPose, usvControl, usvComm, dt, uSP, vSP, ps
     return theTable
 
 class USVData():
-    element = ["USV_State", "t", "x_GPS", "y_GPS", "psi", "u", "v", "r", "uSP", "vSP", "psiSP", "rSP", "xSP", "ySP", "axbSP", "aybSP", "etaSP", "x_DVL", "y_DVL", "u_DVL", "v_DVL", "ax", "ay", "az", "roll", "pitch", "x_Lidar", "y_Lidar", "search_tv_x", "search_tv_y", "search_angle", "pod_angle", "pod_state", "lidar_object_num", "lidar_angle", "target_vessel_heading", "target_vessel_length", "target_vessel_width", "target_vessel_highest_x", "target_vessel_highest_y", "target_vessel_highest_z", "obs_x", "obs_y", "obs_angle", "rpm_left_cmd", "rpm_right_cmd", "angle_left_cmd", "angle_right_cmd", "rpm_left", "rpm_right", "angle_left", "angle_right", "battery_1_SOC", "battery_2_SOC", "battery_3_SOC", "battery_4_SOC", "battery_1_cell_volt_min", "battery_2_cell_volt_min", "battery_3_cell_volt_min", "battery_4_cell_volt_min"]
+    element = ["USV_State", "t", "x_GPS", "y_GPS", "yaw", "u", "v", "r", "uSP", "vSP", "yawSP", "rSP", "xSP", "ySP", "axbSP", "aybSP", "etaSP", "x_DVL", "y_DVL", "u_DVL", "v_DVL", "ax", "ay", "az", "roll", "pitch", "x_Lidar", "y_Lidar", "search_tv_x", "search_tv_y", "search_angle", "pod_angle", "pod_state", "lidar_object_num", "lidar_angle", "target_vessel_heading", "target_vessel_length", "target_vessel_width", "target_vessel_highest_x", "target_vessel_highest_y", "target_vessel_highest_z", "obs_x", "obs_y", "obs_angle", "rpm_left_cmd", "rpm_right_cmd", "angle_left_cmd", "angle_right_cmd", "rpm_left", "rpm_right", "angle_left", "angle_right", "battery_1_SOC", "battery_2_SOC", "battery_3_SOC", "battery_4_SOC", "battery_1_cell_volt_min", "battery_2_cell_volt_min", "battery_3_cell_volt_min", "battery_4_cell_volt_min"]
     elementStr = " ".join(element)
     elementTemplate = "%s " + "%.5f " * (len(element) - 2) + "%.5f"
 
@@ -140,13 +140,13 @@ class USVData():
         self.recordInterval = 0.25 # unit: sec
         self.thisTime = rospy.Time.now().to_sec()
 
-    def saveData(self, usvState, usvPose, usvControl, usvComm, dt, uSP, vSP, psiSP, rSP, xSP, ySP, axbSP, aybSP, etaSP):       
+    def saveData(self, usvState, usvPose, usvControl, usvComm, dt, uSP, vSP, yawSP, rSP, xSP, ySP, axbSP, aybSP, etaSP):       
         # 如果时间大于记录间隔，才记录
         if (rospy.Time.now().to_sec() - self.thisTime >= self.recordInterval):
             self.thisTime = rospy.Time.now().to_sec()
             
             with open(self.fileNameStr, 'a') as f:          
-                f.write(self.elementTemplate % (usvState, dt, usvPose.x, usvPose.y, usvPose.psi, usvPose.u, usvPose.v, usvPose.r, uSP, vSP, psiSP, rSP, xSP, ySP, axbSP, aybSP, etaSP, usvPose.xDVL, usvPose.yDVL, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.azb, usvPose.roll, usvPose.pitch, usvPose.xLidar, usvPose.yLidar, usvPose.tvEstPosX, usvPose.tvEstPosY, usvPose.tvAngleEst, usvPose.tvAnglePod, usvPose.podState, usvPose.objectNum, usvPose.tvAngleLidar, usvPose.tvHeading, usvPose.tvLength, usvPose.tvWidth, usvPose.tvHighestX, usvPose.tvHighestY, usvPose.tvHighestZ, usvPose.obsX, usvPose.obsY, usvPose.obsAngleLidar, usvControl.rpmLeftSP, usvControl.rpmRightSP, usvControl.angleLeftSP, usvControl.angleRightSP, usvControl.rpmLeftEst, usvControl.rpmRightEst, usvControl.angleLeftEst, usvControl.angleRightEst, usvControl.battSOC[0], usvControl.battSOC[1], usvControl.battSOC[2], usvControl.battSOC[3], usvControl.battCellVoltMin[0], usvControl.battCellVoltMin[1], usvControl.battCellVoltMin[2], usvControl.battCellVoltMin[3]) + '\n')
+                f.write(self.elementTemplate % (usvState, dt, usvPose.x, usvPose.y, usvPose.yaw, usvPose.u, usvPose.v, usvPose.r, uSP, vSP, yawSP, rSP, xSP, ySP, axbSP, aybSP, etaSP, usvPose.xDVL, usvPose.yDVL, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.azb, usvPose.roll, usvPose.pitch, usvPose.xLidar, usvPose.yLidar, usvPose.tvEstPosX, usvPose.tvEstPosY, usvPose.tvAngleEst, usvPose.tvAnglePod, usvPose.podState, usvPose.objectNum, usvPose.tvAngleLidar, usvPose.tvHeading, usvPose.tvLength, usvPose.tvWidth, usvPose.tvHighestX, usvPose.tvHighestY, usvPose.tvHighestZ, usvPose.obsX, usvPose.obsY, usvPose.obsAngleLidar, usvControl.rpmLeftSP, usvControl.rpmRightSP, usvControl.angleLeftSP, usvControl.angleRightSP, usvControl.rpmLeftEst, usvControl.rpmRightEst, usvControl.angleLeftEst, usvControl.angleRightEst, usvControl.battSOC[0], usvControl.battSOC[1], usvControl.battSOC[2], usvControl.battSOC[3], usvControl.battCellVoltMin[0], usvControl.battCellVoltMin[1], usvControl.battCellVoltMin[2], usvControl.battCellVoltMin[3]) + '\n')
        
 
 if __name__ == '__main__':
@@ -167,7 +167,7 @@ if __name__ == '__main__':
     usvState = "STARTUP"
     uSP = float("nan")
     vSP = float("nan")
-    psiSP = float("nan")
+    yawSP = float("nan")
     rSP = float("nan")
     xSP = float("nan")
     ySP = float("nan")
@@ -181,7 +181,7 @@ if __name__ == '__main__':
     while True:
         try:
             dt = rospy.Time.now().to_sec() - t0
-            theTable = genTable(usvState, latestMsg, usvPose, usvControl, usvComm, dt, uSP, vSP, psiSP, rSP, xSP, ySP, axbSP, aybSP, etaSP) 
+            theTable = genTable(usvState, latestMsg, usvPose, usvControl, usvComm, dt, uSP, vSP, yawSP, rSP, xSP, ySP, axbSP, aybSP, etaSP) 
             console.print(theTable)
 
             rosRate.sleep()

@@ -140,9 +140,9 @@ class Pose():
         self.ayb = imuMsg.linear_acceleration.y
         self.azb = imuMsg.linear_acceleration.z
         self.r = imuMsg.angular_velocity.z
-        [self.roll, self.pitch, psiRaw] = euler_from_quaternion([imuMsg.orientation.x, imuMsg.orientation.y, imuMsg.orientation.z, imuMsg.orientation.w])
+        [self.roll, self.pitch, yawRaw] = euler_from_quaternion([imuMsg.orientation.x, imuMsg.orientation.y, imuMsg.orientation.z, imuMsg.orientation.w])
 
-        self.yaw = psiRaw + self.yawOffset
+        self.yaw = yawRaw + self.yawOffset
         self.isImuValid = True
     
     def dvlPosCallback(self, dvlMsg):
