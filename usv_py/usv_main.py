@@ -6,6 +6,7 @@ import atexit
 import signal
 from rich.console import Console
 from numpy import zeros, rad2deg, deg2rad, pi, abs, mean, sin, cos, tan, arctan, arctan2, std, sqrt, isnan
+from numpy.linalg import norm
 
 from usv_pose import Pose
 from usv_path_planner import PathPlanner
@@ -99,6 +100,26 @@ def updateTVHeading(existHeading, newHeading):
     else:
         return wrapToPi(newHeading2)
 
+def calcHighest(tvHighestXMean, tvHighestYMean, tvHighestZMean, tvLengthMean, yawf):
+    if (tvHighestZMean >= HEALTHY_Z_TOL):   
+        # 最高点测量健康，向最高点映射到船中轴线上的点泊近
+        # 注意：这里的 rotationZ 是要对点（向量）进行旋转，即求取点在旋转后的坐标（同一坐标系下），
+        # 而不是同一个点在不同坐标系下的表示，故取负号
+        [tvHighestXMean2, _] = rotationZ(tvHighestXMean, tvHighestYMean, yawf)
+        if (tvHighestXMean2 >= 0):
+            xf = (-0.5 * tvLengthMean + tvHighestXMean2) / 2
+            yf = 0.0
+        else:
+            xf = (0.5 * tvLengthMean + tvHighestXMean2) / 2
+            yf = 0.0
+        [xf, yf] = rotationZ(xf, yf, -yawf)
+    else: 
+        # 最高点测量不健康，设置为目标船中心
+        xf = 0.0
+        yf = 0.0
+
+    return [xf, yf]
+
 def main(args=None):
     # 控制台输出初始化
     latestMsg = "Waiting USV self-check to complete..."
@@ -140,7 +161,7 @@ def main(args=None):
     isDockMeasurePlan = False
     isDockApproachPlan = False
     isDockAdjustPlan = False
-    isDockWaitArmPlan = False
+    isDockMeasureHighestPlan = False
     isDockAttachPlan = False
     isDockFinalPlan = False
     isTestPlan = False
@@ -272,8 +293,6 @@ def main(args=None):
                     continue
 
             elif usvState == "PURSUE_SUAV":
-                # if (sqrt(usvPose.tvEstPosX ** 2 + usvPose.tvEstPosY ** 2) > DIST_ALLOW_POD):####### ALERT #######
-                #     usvPose.podReset()
 
                 # 如果吊舱识别，则进入到吊舱导引
                 if (usvPose.isPodFindTV) & (abs(usvPose.tvAnglePod - usvPose.tvAngleEst) <= ANGLE_EST_POD_GAP):####### ALERT #######
@@ -396,11 +415,18 @@ def main(args=None):
                 # 控制无人船
                 [uSP, rSP, axbSP, etaSP] = usvControl.moveUSV(uSP, yawSP, usvPose.uDVL, usvPose.axb, usvPose.yaw, usvPose.r)
 
-                # 读取目标船的测量信息，若满足要求，则读取并保存目标船朝向角（ENU下）
+                # 读取目标船的朝向、长宽估计信息，若满足要求，则保存
                 tvInfo[0, tvInfoIdx] = usvPose.tvHeading
                 tvInfo[1, tvInfoIdx] = usvPose.tvLength
                 tvInfo[2, tvInfoIdx] = usvPose.tvWidth
                 tvInfoIdx = tvInfoIdx + 1
+
+                # 读取目标船的最高点信息
+                tvHighestXYZs[0, tvHighestInfoIdx] = usvPose.tvHighestX
+                tvHighestXYZs[1, tvHighestInfoIdx] = usvPose.tvHighestY
+                tvHighestXYZs[2, tvHighestInfoIdx] = usvPose.tvHighestZ
+                tvHighestInfoIdx = tvHighestInfoIdx + 1
+
                 latestMsg = f"Estimating target vessel heading: {rad2deg(usvPose.tvHeading):.2f} deg. L: {usvPose.tvLength:.2f} m. W: {usvPose.tvWidth:.2f} m. Path [{usvGuidance.currentIdx} >> {usvGuidance.endIdx}]."
 
                 # 如果测量段结束了，打印出测量段测量结果，进入变轨段
@@ -410,6 +436,7 @@ def main(args=None):
                     tvHeadings = tvInfo[0, :]
                     tvLengths = tvInfo[1, :]
                     tvWidths = tvInfo[2, :]
+                    tvHighestXYZs = tvHighestXYZs[:, 0:tvHighestInfoIdx-1]
 
                     # 如果标准差大于 ANGLE_DOCK_MEASURE_JUMP，认为大概率是-90°与90°跳变的情况，因此对 tvHeadings 中负角度加一个 pi
                     if (std(tvHeadings) > ANGLE_DOCK_MEASURE_JUMP):
@@ -419,12 +446,18 @@ def main(args=None):
                     tvHeadings = removeOutliers(tvHeadings, 0.087266, 20)
                     tvLengths = removeOutliers(tvLengths, 0.2, 20)
                     tvWidths = removeOutliers(tvWidths, 0.2, 20)
+                    tvHighestXs = removeOutliers(tvHighestXYZs[0, :], 0.1, 20)
+                    tvHighestYs = removeOutliers(tvHighestXYZs[1, :], 0.1, 20)
+                    tvHighestZs = removeOutliers(tvHighestXYZs[2, :], 0.1, 20)
         
                     # 计算平均值，并将结果角度映射到-90°~90°
                     tvHeadingMean = arctan(tan(mean(tvHeadings)))
                     tvLengthMean = mean(tvLengths)
-                    tvWidthMean = mean(tvWidths)
-        
+                    tvWidthMean = mean(tvWidths)                
+                    tvHighestXMean = mean(tvHighestXs)
+                    tvHighestYMean = mean(tvHighestYs)
+                    tvHighestZMean = mean(tvHighestZs)
+
                     usvState = "DOCK_APPROACH"
                     continue
 
@@ -433,10 +466,13 @@ def main(args=None):
                 if (isDockApproachPlan == False):
                     currPath = usvPathPlanner.planDockApproach(usvPose.xLidar, usvPose.yLidar, 0, 0, tvHeadingMean)
                     usvGuidance.setPath(currPath)
-                    finalyaw = arctan2(currPath[-1, 1] - currPath[-2, 1], currPath[-1, 0] - currPath[-2, 0])
+
+                    # 保存 yawf
+                    yawf = arctan2(currPath[-1, 1] - currPath[-2, 1], currPath[-1, 0] - currPath[-2, 0])
+                    
                     isDockApproachPlan = True
 
-                latestMsg = f"Estimating finished with average heading {rad2deg(tvHeadingMean):.2f} deg. L: {tvLengthMean:.2f} m. W: {tvWidthMean:.2f} m. Path [{usvGuidance.currentIdx} >> {usvGuidance.endIdx}]. Begin final approach."
+                latestMsg = f"Estimating finished with average heading {rad2deg(tvHeadingMean):.2f} deg. L: {tvLengthMean:.2f} m. W: {tvWidthMean:.2f} m. Path [{usvGuidance.currentIdx} >> {usvGuidance.endIdx}]."
 
                 # 读取激光雷达信息（这个时候应该能保证读到目标船吧？），生成控制指令
                 uSP = linearClip(0, USP_DOCK_APPROACH_UB, usvGuidance.endIdx, USP_DOCK_APPROACH_LB, usvGuidance.currentIdx)
@@ -460,19 +496,19 @@ def main(args=None):
                     timer1 = rospy.Time.now().to_sec()
                     isDockAdjustPlan = True
 
-                latestMsg = f"Try to stablize at [{xSP:.2f}, {ySP:.2f}]m, {rad2deg(yawSP):.2f}deg. Err/Tol: [{sqrt((usvPose.xLidar - xSP) ** 2 + (usvPose.yLidar - ySP) ** 2):.2f}/{DIST_DOCK_STEADY_TOL:.2f}]m."
+                latestMsg = f"Try to stablize at [{xSP:.2f}, {ySP:.2f}]m, {rad2deg(yawSP):.2f}deg. Err/Tol: [{norm([usvPose.xLidar - xSP, usvPose.yLidar - ySP]):.2f}/{DIST_DOCK_STEADY_TOL:.2f}]m."
                 
                 # 更新航向值
-                finalyaw = updateTVHeading(finalyaw, usvPose.tvHeading)
+                yawf = updateTVHeading(yawf, usvPose.tvHeading)
 
                 # 保持静止
-                xSP = 0 + (0.5 * tvWidthMean + L_HALF) * cos(finalyaw - pi / 2)
-                ySP = 0 + (0.5 * tvWidthMean + L_HALF) * sin(finalyaw - pi / 2)
-                yawSP = finalyaw
+                xSP = 0 + (0.5 * tvWidthMean + L_HALF) * cos(yawf - pi / 2)
+                ySP = 0 + (0.5 * tvWidthMean + L_HALF) * sin(yawf - pi / 2)
+                yawSP = yawf
                 [uSP, vSP, rSP, axbSP, aybSP, etaSP] = usvControl.moveUSVVec(xSP, ySP, yawSP, usvPose.xLidar, usvPose.yLidar, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.yaw, usvPose.r)
                 
                 # 一旦船靠近到阈值以下范围，进入固连
-                if (sqrt((usvPose.xLidar - xSP) ** 2 + (usvPose.yLidar - ySP) ** 2) <= DIST_DOCK_STEADY_TOL):   
+                if (norm([usvPose.xLidar - xSP, usvPose.yLidar - ySP]) <= DIST_DOCK_STEADY_TOL):   
                     usvState = "DOCK_ATTACH"
                     continue
 
@@ -490,7 +526,7 @@ def main(args=None):
                     isDockAttachPlan = True
 
                 # 计算目标船的在无人船船体系下坐标
-                finalyaw = updateTVHeading(finalyaw, usvPose.tvHeading)
+                yawf = updateTVHeading(yawf, usvPose.tvHeading)
                 [tvXBody, tvYBody] = rotationZ(usvPose.tvX, usvPose.tvY, usvPose.yaw)
                 lateralDist = abs(tvYBody)
 
@@ -508,7 +544,7 @@ def main(args=None):
 
                 # 固连成功判据：距离，或者超时
                 if (rospy.Time.now().to_sec() - timer1 > SECS_WAIT_ATTACH):   
-                    usvState = "MEASURE_HIGHEST"
+                    usvState = "DOCK_WAIT_FINAL"
                     continue
                 elif (lateralDist <= DIST_ATTACH_TOL + 0.5 * tvWidthMean + L_HALF):
                     pass
@@ -518,53 +554,8 @@ def main(args=None):
 
                 # 超时
                 if (rospy.Time.now().to_sec() - timer0 > SECS_TIMEOUT_ATTACH):
-                    usvState = "MEASURE_HIGHEST"
-                    continue
-
-            elif usvState == "MEASURE_HIGHEST":
-                if (isDockWaitArmPlan == False):
-                    # 将当前时间写入 t1 计时器
-                    timer1 = rospy.Time.now().to_sec()
-                    isDockWaitArmPlan = True
-
-                latestMsg = f"Attach finished. Measuring the highest point... [{rospy.Time.now().to_sec() - timer1:.2f} / {SECS_WAIT_HEIGHT_SEARCH:.2f}]s."
-
-                # 记录最高点信息
-                tvHighestXYZs[0, tvHighestInfoIdx] = usvPose.tvHighestX
-                tvHighestXYZs[1, tvHighestInfoIdx] = usvPose.tvHighestY
-                tvHighestXYZs[2, tvHighestInfoIdx] = usvPose.tvHighestZ
-                tvHighestInfoIdx = tvHighestInfoIdx + 1
-
-                # 等待测量完成
-                if (rospy.Time.now().to_sec() - timer1 > SECS_WAIT_HEIGHT_SEARCH):
-                    tvHighestXYZs = tvHighestXYZs[:, 0:tvHighestInfoIdx-1]
-                    tvHighestXs = removeOutliers(tvHighestXYZs[0, :], 0.1, 20)
-                    tvHighestYs = removeOutliers(tvHighestXYZs[1, :], 0.1, 20)
-                    tvHighestZs = removeOutliers(tvHighestXYZs[2, :], 0.1, 20)
-                    tvHighestXMean = mean(tvHighestXs)
-                    tvHighestYMean = mean(tvHighestYs)
-                    tvHighestZMean = mean(tvHighestZs)
-                    if (tvHighestZMean >= HEALTHY_Z_TOL):   
-                        # 最高点测量健康，向最高点映射到船中轴线上的点泊近
-                        # 注意：这里的 rotationZ 是要对点（向量）进行旋转，即求取点在旋转后的坐标（同一坐标系下），
-                        # 而不是同一个点在不同坐标系下的表示，故取负号
-                        [tvHighestXMean2, _] = rotationZ(tvHighestXMean, tvHighestYMean, finalyaw)
-                        if (tvHighestXMean2 >= 0):
-                            finalX = (-0.5 * tvLengthMean + tvHighestXMean2) / 2
-                            finalY = 0.0
-                        else:
-                            finalX = (0.5 * tvLengthMean + tvHighestXMean2) / 2
-                            finalY = 0.0
-                        [finalX, finalY] = rotationZ(finalX, finalY, -finalyaw)
-                    else: 
-                        # 最高点测量不健康，设置为目标船中心
-                        finalX = 0.0
-                        finalY = 0.0
-
                     usvState = "DOCK_WAIT_FINAL"
                     continue
-                else:
-                    pass
 
             elif usvState == "DOCK_WAIT_FINAL":
                 # 先判断无人船是否稳定
@@ -573,16 +564,17 @@ def main(args=None):
                     isDockFinalPlan = True
 
                 # 计算给小物体搬运的坐标点
-                [deckCenterX, deckCenterY] = rotationZ(-usvPose.xLidar + finalX, -usvPose.yLidar + finalY, usvPose.yaw)
-                deckyaw = finalyaw - usvPose.yaw
+                [xf, yf] = calcHighest(tvHighestXMean, tvHighestYMean, tvHighestZMean, tvLengthMean, yawf)
+                [deckCenterX, deckCenterY] = rotationZ(-usvPose.xLidar + xf, -usvPose.yLidar + yf, usvPose.yaw)
+                deckyaw = yawf - usvPose.yaw
 
-                latestMsg = f"Attached completed. Waiting USV stablized to send TAKEOFF signal [{sqrt(usvPose.uDVL ** 2 + usvPose.vDVL ** 2):.2f}/{VEL_WAIT_FINAL}]m/s & [{rospy.Time.now().to_sec() - timer1:.2f}/{SECS_WAIT_FINAL}]s. Real-time deck point at [{deckCenterX:.2f}, {deckCenterY:.2f}]m @ {rad2deg(deckyaw):.2f}deg."
+                latestMsg = f"Attached completed. Waiting USV stablized to send TAKEOFF signal [{norm([usvPose.uDVL, usvPose.vDVL]):.2f}/{VEL_WAIT_FINAL:.2f}]m/s & [{rospy.Time.now().to_sec() - timer1:.2f}/{SECS_WAIT_FINAL:.2f}]s. Real-time deck point at [{deckCenterX:.2f}, {deckCenterY:.2f}]m @ {rad2deg(deckyaw):.2f}deg."
                 
                 # 如果稳定，则发送起飞状态
                 if (rospy.Time.now().to_sec() - timer1 > SECS_WAIT_FINAL):   
                     usvState = "DOCK_FINAL"
                     continue
-                elif (sqrt(usvPose.uDVL ** 2 + usvPose.vDVL ** 2) <= VEL_WAIT_FINAL):
+                elif (norm([usvPose.uDVL, usvPose.vDVL]) <= VEL_WAIT_FINAL):
                     pass
                 else:
                     # 如果不满足静止条件，需要重置 t1 计时器
@@ -590,10 +582,14 @@ def main(args=None):
 
             elif usvState == "DOCK_FINAL":      
                 # 计算给小物体搬运的坐标点
-                [deckCenterX, deckCenterY] = rotationZ(-usvPose.xLidar + finalX, -usvPose.yLidar + finalY, usvPose.yaw)
-                deckyaw = finalyaw - usvPose.yaw
+                [xf, yf] = calcHighest(tvHighestXMean, tvHighestYMean, tvHighestZMean, tvLengthMean, yawf)
+                [deckCenterX, deckCenterY] = rotationZ(-usvPose.xLidar + xf, -usvPose.yLidar + yf, usvPose.yaw)
+                deckyaw = yawf - usvPose.yaw
 
                 latestMsg = f"TAKEOFF signal sent!!! Real-time deck point at [{deckCenterX:.2f}, {deckCenterY:.2f}]m @ {rad2deg(deckyaw):.2f}deg."              
+
+            elif usvState == "DOCK_FINAL_FS":      
+                pass
 
             elif usvState == "TEST":
                 uSP = 2.75            

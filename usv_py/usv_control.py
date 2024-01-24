@@ -76,8 +76,8 @@ class Control():
 
         self.__xPID = PID(0.35, 0.00, 0.0)
         self.__yPID = PID(0.2, 0.00, 0.0)
-        self.__vxPID = PID(1.0, 0.00, -0.0)
-        self.__vyPID = PID(2.0, 0.00, -0.0)
+        self.__vxPID = PID(1.0, 0.00, 0.0)
+        self.__vyPID = PID(2.0, 0.00, 0.0)
 
     def __del__(self):
         pass
@@ -91,7 +91,7 @@ class Control():
 
         # 根据 yawErr 的值，计算可行的 uSP (避免速度太大，转弯转不过来)
         if (abs(yawErr) > pi / 4):
-            uSP = 0
+            uSP = 0.1 * uSP
         else:
             uSP = uSP * (0.1 + 0.9 * (1 - abs(yawErr) / (pi / 4)))  
 
@@ -136,7 +136,7 @@ class Control():
         [xErr, yErr] = rotationZ(xErr, yErr, yaw)
 
         # 选择矢量控制器状态
-        if ((abs(yErr) > 2.2) | (sign(v * yErr) > 0 and abs(v) > 0.2)) & (self.vecCtrlState == 0) & (abs(yawSP - yaw) < deg2rad(8)):
+        if ((abs(yErr) > 2.0) | (sign(v * yErr) > 0 and abs(v) > 0.2)) & (self.vecCtrlState == 0) & (abs(yawSP - yaw) < deg2rad(10)):
             self.vecCtrlState = 1
         elif ((abs(yErr) <= 1.5) & (self.vecCtrlState == 1)) | (abs(yawSP - yaw) >= deg2rad(12)):
             self.vecCtrlState = 0
