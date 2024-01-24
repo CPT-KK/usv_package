@@ -222,7 +222,16 @@ def main():
         # 发送小物体搬运所需
         usvComm.sendTVPosFromLidar(deckCenterX, deckCenterY, deckyaw)
         
-        usvControl.thrustSet(0, 0, deg2rad(90), deg2rad(90))
+        # if (usvControl.angleLeftEst < deg2rad(89)) | (usvControl.angleLeftEst < deg2rad(89)):
+        #     usvControl.thrustSet(0, 0, deg2rad(95), deg2rad(95))
+        # else:
+        #     usvControl.thrustSet(500, 500, deg2rad(95), deg2rad(95))
+
+        if (usvControl.angleLeftEst < deg2rad(89)):
+            usvControl.thrustSet(0, 0, deg2rad(95), deg2rad(95))
+        else:
+            usvControl.thrustSet(250, 500, deg2rad(95), deg2rad(95))
+
         usvControl.thrustPub()
 
 
