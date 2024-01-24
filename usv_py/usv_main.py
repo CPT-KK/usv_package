@@ -160,10 +160,9 @@ def main(args=None):
     isDockNearbyPlan = False
     isDockMeasurePlan = False
     isDockApproachPlan = False
-    isDockAdjustPlan = False
-    isDockMeasureHighestPlan = False
+    isDockSteadyPlan = False
     isDockAttachPlan = False
-    isDockFinalPlan = False
+    isDockWaitFinalPlan = False
     isTestPlan = False
 
     isTestEnable = False
@@ -481,7 +480,7 @@ def main(args=None):
                 # 控制无人船
                 [uSP, rSP, axbSP, etaSP] = usvControl.moveUSV(uSP, yawSP, usvPose.uDVL, usvPose.axb, usvPose.yaw, usvPose.r)
 
-                if (usvGuidance.currentIdx >= usvGuidance.endIdx):
+                if (usvGuidance.currentIdx >= 0.9 * usvGuidance.endIdx):
                     usvState = "DOCK_STEADY"
                     
                     # 重要：清除 LOS yErrPID 的积分项
@@ -490,13 +489,11 @@ def main(args=None):
                     continue
 
             elif usvState == "DOCK_STEADY":
-                if (isDockAdjustPlan == False):
+                if (isDockSteadyPlan == False):
                     # 将当前时间写入 t1 计时器
                     timer0 = rospy.Time.now().to_sec()
                     timer1 = rospy.Time.now().to_sec()
-                    isDockAdjustPlan = True
-
-                latestMsg = f"Try to stablize at [{xSP:.2f}, {ySP:.2f}]m, {rad2deg(yawSP):.2f}deg. Err/Tol: [{norm([usvPose.xLidar - xSP, usvPose.yLidar - ySP]):.2f}/{DIST_DOCK_STEADY_TOL:.2f}]m."
+                    isDockSteadyPlan = True
                 
                 # 更新航向值
                 yawf = updateTVHeading(yawf, usvPose.tvHeading)
@@ -506,6 +503,8 @@ def main(args=None):
                 ySP = 0 + (0.5 * tvWidthMean + L_HALF) * sin(yawf - pi / 2)
                 yawSP = yawf
                 [uSP, vSP, rSP, axbSP, aybSP, etaSP] = usvControl.moveUSVVec(xSP, ySP, yawSP, usvPose.xLidar, usvPose.yLidar, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.yaw, usvPose.r)
+
+                latestMsg = f"Try to stablize at [{xSP:.2f}, {ySP:.2f}]m, {rad2deg(yawSP):.2f}deg. Tol: [{norm([usvPose.xLidar - xSP, usvPose.yLidar - ySP]):.2f}/{DIST_DOCK_STEADY_TOL:.2f}]m."
                 
                 # 一旦船靠近到阈值以下范围，进入固连
                 if (norm([usvPose.xLidar - xSP, usvPose.yLidar - ySP]) <= DIST_DOCK_STEADY_TOL):   
@@ -514,7 +513,7 @@ def main(args=None):
 
                 # 超时
                 if (rospy.Time.now().to_sec() - timer0 > SECS_TIMEOUT_DOCK_STEADY):
-                    usvState = "DOCK_ATTACH"
+                    usvState = "DOCK_STEADY_FS"
                     continue
             
             elif usvState == "DOCK_ATTACH":
@@ -530,8 +529,6 @@ def main(args=None):
                 [tvXBody, tvYBody] = rotationZ(usvPose.tvX, usvPose.tvY, usvPose.yaw)
                 lateralDist = abs(tvYBody)
 
-                latestMsg = f"Attaching to the target vessel. Tol: [{lateralDist:.2f}/{DIST_ATTACH_TOL + 0.5 * tvWidthMean + L_HALF:.2f}]m & [{rospy.Time.now().to_sec() - timer1:.2f}/{SECS_WAIT_ATTACH}]s"
-
                 thisThrust = linearClip(5, RPM_ATTACH_LB, 8, RPM_ATTACH_UB, lateralDist)
                 if (tvXBody >= 0.5):
                     usvControl.thrustSet(thisThrust, thisThrust, deg2rad(90), deg2rad(90))
@@ -539,8 +536,9 @@ def main(args=None):
                     usvControl.thrustSet(thisThrust, thisThrust, deg2rad(95), deg2rad(95))
                 else:
                     usvControl.thrustSet(thisThrust, thisThrust, deg2rad(90.5), deg2rad(92.5))
-
                 usvControl.thrustPub()
+          
+                latestMsg = f"Attaching to the target vessel. Pos tol: [{lateralDist:.2f}/{DIST_ATTACH_TOL + 0.5 * tvWidthMean + L_HALF:.2f}]m. Time tol: [{rospy.Time.now().to_sec() - timer1:.2f}/{SECS_WAIT_ATTACH}]s"
 
                 # 固连成功判据：距离，或者超时
                 if (rospy.Time.now().to_sec() - timer1 > SECS_WAIT_ATTACH):   
@@ -554,14 +552,14 @@ def main(args=None):
 
                 # 超时
                 if (rospy.Time.now().to_sec() - timer0 > SECS_TIMEOUT_ATTACH):
-                    usvState = "DOCK_WAIT_FINAL"
+                    usvState = "DOCK_STEADY_FS"
                     continue
 
             elif usvState == "DOCK_WAIT_FINAL":
                 # 先判断无人船是否稳定
-                if (isDockFinalPlan == "False"):
+                if (isDockWaitFinalPlan == "False"):
                     timer1 = rospy.Time.now().to_sec()
-                    isDockFinalPlan = True
+                    isDockWaitFinalPlan = True
 
                 # 计算给小物体搬运的坐标点
                 [xf, yf] = calcHighest(tvHighestXMean, tvHighestYMean, tvHighestZMean, tvLengthMean, yawf)
@@ -588,8 +586,36 @@ def main(args=None):
 
                 latestMsg = f"TAKEOFF signal sent!!! Real-time deck point at [{deckCenterX:.2f}, {deckCenterY:.2f}]m @ {rad2deg(deckyaw):.2f}deg."              
 
+            elif usvState == "DOCK_STEADY_FS":      
+                if (isDockSteadyFSPlan == False):
+                    timer0 = rospy.Time.now().to_sec()
+                    timer1 = rospy.Time.now().to_sec()
+                    isDockSteadyFSPlan = True
+
+                # 更新航向值
+                yawf = updateTVHeading(yawf, usvPose.tvHeading)
+
+                # 保持静止
+                xSP = 0 + (2 + 0.5 * tvWidthMean + L_HALF) * cos(yawf - pi / 2)
+                ySP = 0 + (2 + 0.5 * tvWidthMean + L_HALF) * sin(yawf - pi / 2)
+                yawSP = yawf
+                [uSP, vSP, rSP, axbSP, aybSP, etaSP] = usvControl.moveUSVVec(xSP, ySP, yawSP, usvPose.xLidar, usvPose.yLidar, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.yaw, usvPose.r)
+                
+                latestMsg = f"[FALSAFE] Try to stablize at [{xSP:.2f}, {ySP:.2f}]m, {rad2deg(yawSP):.2f}deg. Pos tol: [{norm([usvPose.xLidar - xSP, usvPose.yLidar - ySP]):.2f}/1.25]m. Vel tol: [{norm([usvPose.uDVL, usvPose. vDVL])}/0.25]m/s"
+
+                # 一旦船靠近到阈值以下范围
+                if (norm([usvPose.xLidar - xSP, usvPose.yLidar - ySP]) <= 1.25) & (norm([usvPose.uDVL, usvPose. vDVL]) < 0.25):   
+                    usvState = "DOCK_FINAL_FS"
+                    continue
+                           
             elif usvState == "DOCK_FINAL_FS":      
-                pass
+                # 保持静止
+                xSP = 0 + (2 + 0.5 * tvWidthMean + L_HALF) * cos(yawf - pi / 2)
+                ySP = 0 + (2 + 0.5 * tvWidthMean + L_HALF) * sin(yawf - pi / 2)
+                yawSP = yawf
+                [uSP, vSP, rSP, axbSP, aybSP, etaSP] = usvControl.moveUSVVec(xSP, ySP, yawSP, usvPose.xLidar, usvPose.yLidar, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.yaw, usvPose.r)
+                
+                latestMsg = f"[FALSAFE]  TAKEOFF signal sent. Stablized at [{xSP:.2f}, {ySP:.2f}]m, {rad2deg(yawSP):.2f}deg. Pos tol: [{norm([usvPose.xLidar - xSP, usvPose.yLidar - ySP]):.2f}/1.25]m. Vel tol: [{norm([usvPose.uDVL, usvPose. vDVL])}/0.25]m/s."
 
             elif usvState == "TEST":
                 uSP = 2.75            
