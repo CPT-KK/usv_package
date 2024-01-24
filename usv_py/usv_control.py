@@ -84,6 +84,8 @@ class Control():
 
     def moveUSV(self, uSP, yawSP, u, axb, yaw, r):
         # 计算朝向角误差
+        yawSP = wrapToPi(yawSP)
+        yaw = wrapToPi(yaw)
         yawErr = wrapToPi(yawSP) - yaw
 
         # 朝向角误差限幅
@@ -131,15 +133,24 @@ class Control():
         # 计算 x y 误差
         xErr = xSP - x
         yErr = ySP - y
-
+        yawSP = wrapToPi(yawSP)
+        yaw = wrapToPi(yaw)
+        yawErr = yawSP - yaw
+        yawErr = wrapToPi(yawErr)
+        
         # x y 误差转船体系
         [xErr, yErr] = rotationZ(xErr, yErr, yaw)
 
         # 选择矢量控制器状态
-        if ((abs(yErr) > 2.0) | (sign(v * yErr) > 0 and abs(v) > 0.2)) & (self.vecCtrlState == 0) & (abs(yawSP - yaw) < deg2rad(10)):
-            self.vecCtrlState = 1
-        elif ((abs(yErr) <= 1.5) & (self.vecCtrlState == 1)) | (abs(yawSP - yaw) >= deg2rad(12)):
+        if ((abs(xErr) > 1.75 or (sign(u * xErr) > 0 and abs(u) > 0.3) or abs(yawErr) > deg2rad(10)) and (self.vecCtrlState == 1)):
             self.vecCtrlState = 0
+        elif (abs(xErr) <= 1.0 and abs(yawErr) <= deg2rad(8) and self.vecCtrlState == 0):
+            self.vecCtrlState = 1
+
+        # if ((abs(yErr) > 2.0) | (sign(v * yErr) > 0 and abs(v) > 0.2)) & (self.vecCtrlState == 0) & (abs(yawErr) < deg2rad(10)):
+        #     self.vecCtrlState = 1
+        # elif ((abs(yErr) <= 1.5) & (self.vecCtrlState == 1)) | (abs(yawErr) >= deg2rad(12)):
+        #     self.vecCtrlState = 0
 
         uSP = 0.0
         vSP = 0.0
@@ -170,8 +181,6 @@ class Control():
             aybSP = clip(aybSP, -self.__aybSPMax, self.__aybSPMax)
 
             # 计算并修正航向误差
-            yawErr = yawSP - yaw
-            yawErr = wrapToPi(yawErr)
             rSP = self.__yawPID.compute(yawErr, r)
             rSP = clip(rSP, -self.__rSPMax, self.__rSPMax)
             rErr = rSP - r
