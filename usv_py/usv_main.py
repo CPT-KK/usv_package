@@ -608,7 +608,10 @@ def main(args=None):
                     usvState = "DOCK_FINAL_FS"
                     continue
                            
-            elif usvState == "DOCK_FINAL_FS":      
+            elif usvState == "DOCK_FINAL_FS":    
+                # 更新航向值
+                yawf = updateTVHeading(yawf, usvPose.tvHeading)
+                  
                 # 保持静止
                 xSP = 0 + (2 + 0.5 * tvWidthMean + L_HALF) * cos(yawf - pi / 2)
                 ySP = 0 + (2 + 0.5 * tvWidthMean + L_HALF) * sin(yawf - pi / 2)
