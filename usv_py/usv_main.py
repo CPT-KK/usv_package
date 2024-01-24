@@ -64,7 +64,7 @@ SECS_TIMEOUT_ATTACH = 30.0
 SECS_WAIT_ATTACH = 3.0
 DIST_ATTACH_TOL = 0.5
 RPM_ATTACH = 400.0
-RPM_ATTACH_UB = 300.0
+RPM_ATTACH_UB = 500.0
 RPM_ATTACH_LB = 120.0
 ANGLE_LEFT_ATTACH = deg2rad(90.5)
 ANGLE_RIGHT_ATTACH = deg2rad(95)
@@ -496,10 +496,14 @@ def main(args=None):
 
                 latestMsg = f"Attaching to the target vessel. Tol: [{lateralDist:.2f}/{DIST_ATTACH_TOL + 0.5 * tvWidthMean + L_HALF:.2f}]m & [{rospy.Time.now().to_sec() - timer1:.2f}/{SECS_WAIT_ATTACH}]s"
 
-                if (tvXBody >= 0):
-                    usvControl.thrustSet(RPM_ATTACH, RPM_ATTACH, deg2rad(90), deg2rad(90))
+                thisThrust = linearClip(5, RPM_ATTACH_LB, 8, RPM_ATTACH_UB, lateralDist)
+                if (tvXBody >= 0.5):
+                    usvControl.thrustSet(thisThrust, thisThrust, deg2rad(90), deg2rad(90))
+                elif (tvXBody <= -0.5):
+                    usvControl.thrustSet(thisThrust, thisThrust, deg2rad(95), deg2rad(95))
                 else:
-                    usvControl.thrustSet(RPM_ATTACH, RPM_ATTACH, deg2rad(95), deg2rad(95))
+                    usvControl.thrustSet(thisThrust, thisThrust, deg2rad(90.5), deg2rad(92.5))
+
                 usvControl.thrustPub()
 
                 # 固连成功判据：距离，或者超时
@@ -571,13 +575,15 @@ def main(args=None):
                 # 计算给小物体搬运的坐标点
                 [deckCenterX, deckCenterY] = rotationZ(-usvPose.xLidar + finalX, -usvPose.yLidar + finalY, usvPose.yaw)
                 deckyaw = finalyaw - usvPose.yaw
+
+                latestMsg = f"Attached completed. Waiting USV stablized to send TAKEOFF signal [{sqrt(usvPose.uDVL ** 2 + usvPose.vDVL ** 2):.2f}/{VEL_WAIT_FINAL}]m/s & [{rospy.Time.now().to_sec() - timer1:.2f}/{SECS_WAIT_FINAL}]s. Real-time deck point at [{deckCenterX:.2f}, {deckCenterY:.2f}]m @ {rad2deg(deckyaw):.2f}deg."
                 
                 # 如果稳定，则发送起飞状态
                 if (rospy.Time.now().to_sec() - timer1 > SECS_WAIT_FINAL):   
                     usvState = "DOCK_FINAL"
                     continue
                 elif (sqrt(usvPose.uDVL ** 2 + usvPose.vDVL ** 2) <= VEL_WAIT_FINAL):
-                    latestMsg = f"Attached completed. Waiting USV stablized to send TAKEOFF signal [{sqrt(usvPose.uDVL ** 2 + usvPose.vDVL ** 2):.2f}/{VEL_WAIT_FINAL}]m/s & [{rospy.Time.now().to_sec() - timer1:.2f}/{SECS_WAIT_FINAL}]s. Real-time deck point at [{deckCenterX:.2f}, {deckCenterY:.2f}]m @ {rad2deg(deckyaw):.2f}deg."
+                    pass
                 else:
                     # 如果不满足静止条件，需要重置 t1 计时器
                     timer1 = rospy.Time.now().to_sec()
