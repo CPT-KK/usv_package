@@ -235,7 +235,7 @@ def main(args=None):
                     (not isnan(usvControl.angleLeftEst)) & (not isnan(usvControl.angleRightEst)) & \
                     (not isnan(usvControl.rpmLeftEst) & (not isnan(usvControl.rpmRightEst))):
                     latestMsg = "Self check complete. Start checking comms..."
-                    usvState = "COMM_TEST" ####### ALERT #######
+                    usvState = "STANDBY" ####### ALERT #######
                     continue
                 
                 if (isInitalBackStableEnable):
@@ -264,7 +264,7 @@ def main(args=None):
                     usvState = "TEST"
                     continue
                     
-                if (usvComm.suavState == "DOCK"):
+                if (usvComm.suavState == "DOCK") | (usvComm.suavState == "GUIDE"):
                     usvState = "GOING_OUT"
                     latestMsg = "USV is going out from the bay..."
                     continue
@@ -480,7 +480,7 @@ def main(args=None):
                 # 控制无人船
                 [uSP, rSP, axbSP, etaSP] = usvControl.moveUSV(uSP, yawSP, usvPose.uDVL, usvPose.axb, usvPose.yaw, usvPose.r)
 
-                if (usvGuidance.currentIdx >= 0.9 * usvGuidance.endIdx):
+                if (usvGuidance.currentIdx >= usvGuidance.endIdx) | ((abs(usvPose.tvXB) <= 0.5 * tvLengthMean + 3.0) & (usvPose.tvYB >= 0)):
                     usvState = "DOCK_STEADY"
                     
                     # 重要：清除 LOS yErrPID 的积分项
@@ -528,14 +528,10 @@ def main(args=None):
                 yawf = updateTVHeading(yawf, usvPose.tvHeading)
                 lateralDist = abs(usvPose.tvYB)
 
-                thisThrust = linearClip(5, RPM_ATTACH_LB, 8, RPM_ATTACH_UB, lateralDist)
-                if (usvPose.tvXB >= 0.5):
-                    usvControl.thrustSet(thisThrust, thisThrust, deg2rad(90), deg2rad(90))
-                elif (usvPose.tvXB <= -0.5):
-                    usvControl.thrustSet(thisThrust, thisThrust, deg2rad(95), deg2rad(95))
+                if (usvControl.angleLeftEst > -deg2rad(89)):
+                    usvControl.thrustSet(0, 0, -deg2rad(96), -deg2rad(96))
                 else:
-                    usvControl.thrustSet(thisThrust, thisThrust, deg2rad(90.5), deg2rad(92.5))
-                usvControl.thrustPub()
+                    usvControl.thrustSet(-500, -400, -deg2rad(96), -deg2rad(96))
           
                 latestMsg = f"Attaching to the target vessel. Pos tol: [{lateralDist:.2f}/{DIST_ATTACH_TOL + 0.5 * tvWidthMean + L_HALF:.2f}]m. Time tol: [{rospy.Time.now().to_sec() - timer1:.2f}/{SECS_WAIT_ATTACH}]s"
 

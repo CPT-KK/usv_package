@@ -227,10 +227,10 @@ def main():
         # else:
         #     usvControl.thrustSet(500, 500, deg2rad(95), deg2rad(95))
 
-        if (usvControl.angleLeftEst < deg2rad(89)):
-            usvControl.thrustSet(0, 0, deg2rad(95), deg2rad(95))
+        if (usvControl.angleLeftEst > -deg2rad(89)):
+            usvControl.thrustSet(0, 0, -deg2rad(95), -deg2rad(96))
         else:
-            usvControl.thrustSet(250, 500, deg2rad(95), deg2rad(95))
+            usvControl.thrustSet(-500, -400, -deg2rad(96), -deg2rad(96))
 
         usvControl.thrustPub()
 
