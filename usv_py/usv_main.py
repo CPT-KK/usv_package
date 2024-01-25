@@ -55,7 +55,8 @@ USP_DOCK_APPROACH_LB = 1.0              # DOCK_APPROACH 时 USV 的轴向速度�
 DIST_TONEXT_DOCK_APPROACH = 12.0         # DOCK_APPROACH 时切换追踪点为轨迹下一点的距离
 
 SECS_WAIT_DOCK_STEADY = 5.0      # DOCK_STEADY 时认为 USV 已经稳定前所需的秒数
-SECS_TIMEOUT_DOCK_STEADY = 60.0
+SECS_TIMEOUT_DOCK_STEADY = 120
+.0
 ANGLE_DOCK_STEADY_TOL = deg2rad(5)      # DOCK_STEADY 时认为 USV 已经稳定的角度判据
 DIST_DOCK_STEADY_TOL = 1.25             # DOCK_STEADY 时认为 USV 已经稳定的位置判据
 VEL_DOCK_STEADY_TOL = 0.4              # DOCK_STEADY 时认为 USV 已经稳定的速度判据
@@ -92,8 +93,8 @@ def interuptFunc(signum, frame):
 
 def updateTVHeading(existHeading, newHeading):
     newHeading2 = wrapToPi(newHeading + pi)
-    angleGap1 = abs(newHeading - existHeading)
-    angleGap2 = abs(newHeading2 - existHeading)
+    angleGap1 = abs(wrapToPi(newHeading - existHeading))
+    angleGap2 = abs(wrapToPi(newHeading2 - existHeading))
 
     if (angleGap1 <= angleGap2):
         return wrapToPi(newHeading)
@@ -163,6 +164,7 @@ def main(args=None):
     isDockSteadyPlan = False
     isDockAttachPlan = False
     isDockWaitFinalPlan = False
+    isDockSteadyFSPlan = False
     isTestPlan = False
 
     isTestEnable = False
@@ -235,7 +237,7 @@ def main(args=None):
                     (not isnan(usvControl.angleLeftEst)) & (not isnan(usvControl.angleRightEst)) & \
                     (not isnan(usvControl.rpmLeftEst) & (not isnan(usvControl.rpmRightEst))):
                     latestMsg = "Self check complete. Start checking comms..."
-                    usvState = "STANDBY" ####### ALERT #######
+                    usvState = "PURSUE_POD" ####### ALERT #######
                     continue
                 
                 if (isInitalBackStableEnable):
@@ -338,7 +340,6 @@ def main(args=None):
                 
             elif usvState == "PURSUE_POD_LOST":
                 if (usvPose.isPodFindTV):
-                    
                     usvState = "PURSUE_POD"
                     continue
 
@@ -480,7 +481,7 @@ def main(args=None):
                 # 控制无人船
                 [uSP, rSP, axbSP, etaSP] = usvControl.moveUSV(uSP, yawSP, usvPose.uDVL, usvPose.axb, usvPose.yaw, usvPose.r)
 
-                if (usvGuidance.currentIdx >= usvGuidance.endIdx) | ((abs(usvPose.tvXB) <= 0.5 * tvLengthMean + 3.0) & (usvPose.tvYB >= 0)):
+                if (usvGuidance.currentIdx >= 0.9 * usvGuidance.endIdx) | ((abs(usvPose.tvXB) <= 0.5 * tvLengthMean + 3.0) & (usvPose.tvYB >= 0)):
                     usvState = "DOCK_STEADY"
                     
                     # 重要：清除 LOS yErrPID 的积分项
@@ -496,7 +497,7 @@ def main(args=None):
                     isDockSteadyPlan = True
                 
                 # 更新航向值
-                yawf = updateTVHeading(yawf, usvPose.tvHeading)
+                yawf = updateTVHeading(usvPose.yaw, usvPose.tvHeading)
 
                 # 保持静止
                 xSP = 0 + (0.5 * tvWidthMean + L_HALF) * cos(yawf - pi / 2)
@@ -525,13 +526,13 @@ def main(args=None):
                     isDockAttachPlan = True
 
                 # 通过目标船在无人船船体系下的坐标计算两船侧向的距离
-                yawf = updateTVHeading(yawf, usvPose.tvHeading)
+                yawf = updateTVHeading(usvPose.yaw, usvPose.tvHeading)
                 lateralDist = abs(usvPose.tvYB)
 
-                if (usvControl.angleLeftEst > -deg2rad(89)):
-                    usvControl.thrustSet(0, 0, -deg2rad(96), -deg2rad(96))
+                if (usvControl.angleLeftEst > -deg2rad(89)) | (usvControl.angleRightEst > -deg2rad(89)):
+                    usvControl.thrustSet(0, 0, -deg2rad(89), -deg2rad(89))
                 else:
-                    usvControl.thrustSet(-500, -400, -deg2rad(96), -deg2rad(96))
+                    usvControl.thrustSet(-500, -400, -deg2rad(95.5), -deg2rad(95.5))
           
                 latestMsg = f"Attaching to the target vessel. Pos tol: [{lateralDist:.2f}/{DIST_ATTACH_TOL + 0.5 * tvWidthMean + L_HALF:.2f}]m. Time tol: [{rospy.Time.now().to_sec() - timer1:.2f}/{SECS_WAIT_ATTACH}]s"
 
@@ -588,7 +589,11 @@ def main(args=None):
                     isDockSteadyFSPlan = True
 
                 # 更新航向值
-                yawf = updateTVHeading(yawf, usvPose.tvHeading)
+                [xf, yf] = calcHighest(tvHighestXMean, tvHighestYMean, tvHighestZMean, tvLengthMean, yawf)
+                [deckCenterX, deckCenterY] = rotationZ(-usvPose.xLidar + xf, -usvPose.yLidar + yf, usvPose.yaw)
+                deckyaw = yawf - usvPose.yaw
+
+                yawf = updateTVHeading(usvPose.yaw, usvPose.tvHeading)
 
                 # 保持静止
                 xSP = 0 + (2 + 0.5 * tvWidthMean + L_HALF) * cos(yawf - pi / 2)
@@ -603,9 +608,13 @@ def main(args=None):
                     usvState = "DOCK_FINAL_FS"
                     continue
                            
-            elif usvState == "DOCK_FINAL_FS":    
+            elif usvState == "DOCK_FINAL_FS":  
+                [xf, yf] = calcHighest(tvHighestXMean, tvHighestYMean, tvHighestZMean, tvLengthMean, yawf)
+                [deckCenterX, deckCenterY] = rotationZ(-usvPose.xLidar + xf, -usvPose.yLidar + yf, usvPose.yaw)
+                deckyaw = yawf - usvPose.yaw
+
                 # 更新航向值
-                yawf = updateTVHeading(yawf, usvPose.tvHeading)
+                yawf = updateTVHeading(usvPose.yaw, usvPose.tvHeading)
                   
                 # 保持静止
                 xSP = 0 + (2 + 0.5 * tvWidthMean + L_HALF) * cos(yawf - pi / 2)
