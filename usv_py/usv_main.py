@@ -533,7 +533,8 @@ def main(args=None):
                     usvControl.thrustSet(0, 0, -deg2rad(89), -deg2rad(89))
                 else:
                     usvControl.thrustSet(-500, -400, -deg2rad(95.5), -deg2rad(95.5))
-          
+                usvControl.thrustPub()
+                
                 latestMsg = f"Attaching to the target vessel. Pos tol: [{lateralDist:.2f}/{DIST_ATTACH_TOL + 0.5 * tvWidthMean + L_HALF:.2f}]m. Time tol: [{rospy.Time.now().to_sec() - timer1:.2f}/{SECS_WAIT_ATTACH}]s"
 
                 # 固连成功判据：距离，或者超时

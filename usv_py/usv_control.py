@@ -18,7 +18,7 @@ class Control():
 
     __uSPMax = 4.0          # 差动控制器中 uSP 的最大值
     __uSPVecMax = 1.0       # 矢量控制器中 uSP 的最大值
-    __vSPMax = 0.75          # 矢量控制器中 vSP 的最大值
+    __vSPMax = 1.2          # 矢量控制器中 vSP 的最大值
     __rSPMax = deg2rad(8)   # 控制器中 rSP 的最大值
     
     # 矢量控制器所处状态
@@ -75,9 +75,9 @@ class Control():
         self.__rPID = PID(14, 0.5, -0.1)
 
         self.__xPID = PID(0.2, 0.00, 0.0)
-        self.__yPID = PID(0.2, 0.00, 0.0)
+        self.__yPID = PID(0.3, 0.00, 0.0)
         self.__vxPID = PID(0.8, 0.00, 0.0)
-        self.__vyPID = PID(1.5, 0.00, 0.0)
+        self.__vyPID = PID(4.0, 0.00, 0.0)
 
     def __del__(self):
         pass
@@ -142,9 +142,9 @@ class Control():
         [xErr, yErr] = rotationZ(xErr, yErr, yaw)
 
         # 选择矢量控制器状态
-        if ((abs(xErr) > 1.75 or (sign(u * xErr) > 0 and abs(u) > 0.3) or abs(yawErr) > deg2rad(10)) and (self.vecCtrlState == 1)):
+        if ((abs(xErr) > 2.0 or (sign(u * xErr) > 0 and abs(u) > 0.3) or abs(yawErr) > deg2rad(15)) and (self.vecCtrlState == 1)):
             self.vecCtrlState = 0
-        elif (abs(xErr) <= 1.0 and abs(yawErr) <= deg2rad(8) and self.vecCtrlState == 0):
+        elif (abs(xErr) <= 1.0 and abs(yawErr) <= deg2rad(12) and self.vecCtrlState == 0):
             self.vecCtrlState = 1
 
         # if ((abs(yErr) > 2.0) | (sign(v * yErr) > 0 and abs(v) > 0.2)) & (self.vecCtrlState == 0) & (abs(yawErr) < deg2rad(10)):
