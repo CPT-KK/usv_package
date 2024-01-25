@@ -50,6 +50,8 @@ class Pose():
     tLidar = float("nan")
     tvX = float("nan")             # 目标船在 ENU 系（原点为无人船）下的 x 坐标
     tvY = float("nan")             # 目标船在 ENU 系（原点为无人船）下的 y 坐标
+    tvXB = float("nan")            # 目标船在无人船船体系下的 x 坐标
+    tvYB = float("nan")            # 目标船在无人船船体系下的 y 坐标
     tvAngleLidar = float("nan")    # 目标船在 ENU 系（原点为无人船）下的方向角
     tvDist = float("nan")          # 目标船距离无人船的距离
     tvHeading = float("nan")       # 目标船在 ENU 系下的朝向
@@ -251,6 +253,7 @@ class Pose():
                 # 记录目标船信息
                 self.tvX = objectX[dDistIndex, 0]
                 self.tvY = objectY[dDistIndex, 0]
+                [self.tvXBody, self.tvYBody] = rotationZ(self.tvX, self.tvY, self.yaw)
                 self.tvAngleLidar = objectAngle[dDistIndex, 0]
                 self.tvDist = objectDist[dDistIndex, 0]
                 self.tvLength = objectLength[dDistIndex, 0]
@@ -287,6 +290,7 @@ class Pose():
                 # 记录目标船信息
                 self.tvX = objectX[tvIndex, 0]
                 self.tvY = objectY[tvIndex, 0]
+                [self.tvXBody, self.tvYBody] = rotationZ(self.tvX, self.tvY, self.yaw)
                 self.tvAngleLidar = objectAngle[tvIndex, 0]
                 self.tvDist = objectDist[tvIndex, 0]
                 self.tvLength = objectLength[tvIndex, 0]
@@ -319,6 +323,7 @@ class Pose():
                 # 记录目标船信息
                 self.tvX = objectX[tvIndex, 0]
                 self.tvY = objectY[tvIndex, 0]
+                [self.tvXBody, self.tvYBody] = rotationZ(self.tvX, self.tvY, self.yaw)
                 self.tvAngleLidar = objectAngle[tvIndex, 0]
                 self.tvDist = objectDist[tvIndex, 0]
                 self.tvLength = objectLength[tvIndex, 0]
@@ -343,6 +348,7 @@ class Pose():
             
             self.tvX = objectX[tvIndex, 0]
             self.tvY = objectY[tvIndex, 0]
+            [self.tvXBody, self.tvYBody] = rotationZ(self.tvX, self.tvY, self.yaw)
             self.tvAngleLidar = objectAngle[tvIndex, 0]
             self.tvDist = objectDist[tvIndex, 0]
             self.tvLength = objectLength[tvIndex, 0]

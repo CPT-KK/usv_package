@@ -47,19 +47,18 @@ DIST_TONEXT_DOCK_NEARBY = 12.0          # DOCK_NEARBY 时切换追踪点为轨�
 USP_DOCK_MEASURE = 1.5                  # DOCK_MEASURE 时 USV 的轴向速度
 DIST_TONEXT_DOCK_MEASURE = 12.0          # DOCK_MEASURE 时切换追踪点为轨迹下一点的距离
 ANGLE_DOCK_MEASURE_JUMP = deg2rad(20.0) # DOCK_MEASURE 时认为激光雷达估计目标船朝向可能跳变的角度判据
+HEALTHY_Z_TOL = 1.2                     # DOCK_MEASURE 时健康的高度阈值
+
 
 USP_DOCK_APPROACH_UB = 1.5              # DOCK_APPROACH 时 USV 的轴向速度上界
 USP_DOCK_APPROACH_LB = 1.0              # DOCK_APPROACH 时 USV 的轴向速度下界
-DIST_TONEXT_DOCK_APPROACH = 10.0         # DOCK_APPROACH 时切换追踪点为轨迹下一点的距离
+DIST_TONEXT_DOCK_APPROACH = 12.0         # DOCK_APPROACH 时切换追踪点为轨迹下一点的距离
 
 SECS_WAIT_DOCK_STEADY = 5.0      # DOCK_STEADY 时认为 USV 已经稳定前所需的秒数
 SECS_TIMEOUT_DOCK_STEADY = 60.0
 ANGLE_DOCK_STEADY_TOL = deg2rad(5)      # DOCK_STEADY 时认为 USV 已经稳定的角度判据
-DIST_DOCK_STEADY_TOL = 1.5             # DOCK_STEADY 时认为 USV 已经稳定的位置判据
+DIST_DOCK_STEADY_TOL = 1.25             # DOCK_STEADY 时认为 USV 已经稳定的位置判据
 VEL_DOCK_STEADY_TOL = 0.4              # DOCK_STEADY 时认为 USV 已经稳定的速度判据
-
-HEALTHY_Z_TOL = 1.2                     # WAIT_HEIGHT_SEARCH 时健康的高度阈值
-SECS_WAIT_HEIGHT_SEARCH = 10.0          # WAIT_HEIGHT_SEARCH 时搜索的秒数
 
 SECS_TIMEOUT_ATTACH = 30.0
 SECS_WAIT_ATTACH = 3.0
@@ -70,11 +69,12 @@ RPM_ATTACH_LB = 120.0
 ANGLE_LEFT_ATTACH = deg2rad(90.5)
 ANGLE_RIGHT_ATTACH = deg2rad(95)
 
+SECS_WAIT_FINAL = 10.0
+VEL_WAIT_FINAL = 0.2
+
 RPM_FINAL = 0.0
 ANGLE_LEFT_FINAL = deg2rad(0)
 ANGLE_RIGHT_FINAL = deg2rad(0)
-SECS_WAIT_FINAL = 10.0
-VEL_WAIT_FINAL = 0.2
 
 # 控制台输出
 console = Console(record=True)
@@ -526,13 +526,12 @@ def main(args=None):
 
                 # 计算目标船的在无人船船体系下坐标
                 yawf = updateTVHeading(yawf, usvPose.tvHeading)
-                [tvXBody, tvYBody] = rotationZ(usvPose.tvX, usvPose.tvY, usvPose.yaw)
-                lateralDist = abs(tvYBody)
+                lateralDist = abs(usvPose.tvYBody)
 
                 thisThrust = linearClip(5, RPM_ATTACH_LB, 8, RPM_ATTACH_UB, lateralDist)
-                if (tvXBody >= 0.5):
+                if (usvPose.tvXBody >= 0.5):
                     usvControl.thrustSet(thisThrust, thisThrust, deg2rad(90), deg2rad(90))
-                elif (tvXBody <= -0.5):
+                elif (usvPose.tvXBody <= -0.5):
                     usvControl.thrustSet(thisThrust, thisThrust, deg2rad(95), deg2rad(95))
                 else:
                     usvControl.thrustSet(thisThrust, thisThrust, deg2rad(90.5), deg2rad(92.5))
