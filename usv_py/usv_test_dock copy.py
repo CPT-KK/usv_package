@@ -55,7 +55,7 @@ USP_DOCK_APPROACH_LB = 1.0              # DOCK_APPROACH 时 USV 的轴向速度�
 DIST_TONEXT_DOCK_APPROACH = 12.0         # DOCK_APPROACH 时切换追踪点为轨迹下一点的距离
 
 SECS_WAIT_DOCK_STEADY = 5.0      # DOCK_STEADY 时认为 USV 已经稳定前所需的秒数
-SECS_TIMEOUT_DOCK_STEADY = 120
+SECS_TIMEOUT_DOCK_STEADY = 240
 .0
 ANGLE_DOCK_STEADY_TOL = deg2rad(5)      # DOCK_STEADY 时认为 USV 已经稳定的角度判据
 DIST_DOCK_STEADY_TOL = 1.25             # DOCK_STEADY 时认为 USV 已经稳定的位置判据
@@ -292,7 +292,7 @@ def main():
             if (usvControl.angleLeftEst > -deg2rad(89)) | (usvControl.angleRightEst > -deg2rad(89)):
                 usvControl.thrustSet(0, 0, -deg2rad(89), -deg2rad(89))
             else:
-                usvControl.thrustSet(-500, -400, -deg2rad(95.5), -deg2rad(95.5))
+                usvControl.thrustSet(-500, -400, -deg2rad(93.5), -deg2rad(95.5))
             usvControl.thrustPub()
             
             latestMsg = f"Attaching to the target vessel. Pos tol: [{lateralDist:.2f}/{DIST_ATTACH_TOL + 0.5 * tvWidthMean + L_HALF:.2f}]m. Time tol: [{rospy.Time.now().to_sec() - timer1:.2f}/{SECS_WAIT_ATTACH}]s"

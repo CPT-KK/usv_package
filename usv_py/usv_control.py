@@ -28,11 +28,11 @@ class Control():
     __rpmMin = 35                   # 最小转速
     __rpmMax = 1000                 # 最大转速
     __rpmRotateMax = 800            # 用于转动的最大转速
-    __angleMax = deg2rad(90)        # 舵角最大值
+    __angleMax = deg2rad(94.9)        # 舵角最大值
     __angleMaxState0 = deg2rad(25)  # Control state 0 下的舵角最大值
 
     # 无人船参数
-    __MASS = 775.0          # 质量
+    __MASS = 800.0          # 质量
     __INERZ = 2072.475      # 惯性矩
     __TORQLEN = 1.55        # 力臂长度
 

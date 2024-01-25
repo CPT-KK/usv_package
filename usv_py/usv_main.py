@@ -167,7 +167,7 @@ def main(args=None):
     isDockSteadyFSPlan = False
     isTestPlan = False
 
-    isTestEnable = False
+    isTestEnable = True
 
     # 无人船状态
     usvState = "SELF_CHECK"
@@ -236,6 +236,9 @@ def main(args=None):
                 if (usvPose.isImuValid) & (usvPose.isDvlValid) & (usvPose.isPodValid) & (usvPose.isLidarValid) & \
                     (not isnan(usvControl.angleLeftEst)) & (not isnan(usvControl.angleRightEst)) & \
                     (not isnan(usvControl.rpmLeftEst) & (not isnan(usvControl.rpmRightEst))):
+                    if (isTestEnable):
+                        usvState = "TEST"
+                    continue
                     latestMsg = "Self check complete. Start checking comms..."
                     usvState = "PURSUE_POD" ####### ALERT #######
                     continue
@@ -262,9 +265,6 @@ def main(args=None):
                     usvControl.thrustPub()
             
             elif usvState == "STANDBY":
-                if (isTestEnable):
-                    usvState = "TEST"
-                    continue
                     
                 if (usvComm.suavState == "DOCK") | (usvComm.suavState == "GUIDE"):
                     usvState = "GOING_OUT"
@@ -626,7 +626,7 @@ def main(args=None):
                 latestMsg = f"[FALSAFE]  TAKEOFF signal sent. Stablized at [{xSP:.2f}, {ySP:.2f}]m, {rad2deg(yawSP):.2f}deg. Pos tol: [{norm([usvPose.xLidar - xSP, usvPose.yLidar - ySP]):.2f}/1.25]m. Vel tol: [{norm([usvPose.uDVL, usvPose. vDVL])}/0.25]m/s."
 
             elif usvState == "TEST":
-                uSP = 2.75            
+                uSP = 2.25            
                 if (isTestPlan == False):              
                     yawSP = wrapToPi(usvPose.yaw + deg2rad(0))
                     isTestPlan = True
