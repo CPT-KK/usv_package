@@ -524,14 +524,14 @@ def main(args=None):
 
                     isDockAttachPlan = True
 
-                # 计算目标船的在无人船船体系下坐标
+                # 通过目标船在无人船船体系下的坐标计算两船侧向的距离
                 yawf = updateTVHeading(yawf, usvPose.tvHeading)
-                lateralDist = abs(usvPose.tvYBody)
+                lateralDist = abs(usvPose.tvYB)
 
                 thisThrust = linearClip(5, RPM_ATTACH_LB, 8, RPM_ATTACH_UB, lateralDist)
-                if (usvPose.tvXBody >= 0.5):
+                if (usvPose.tvXB >= 0.5):
                     usvControl.thrustSet(thisThrust, thisThrust, deg2rad(90), deg2rad(90))
-                elif (usvPose.tvXBody <= -0.5):
+                elif (usvPose.tvXB <= -0.5):
                     usvControl.thrustSet(thisThrust, thisThrust, deg2rad(95), deg2rad(95))
                 else:
                     usvControl.thrustSet(thisThrust, thisThrust, deg2rad(90.5), deg2rad(92.5))
