@@ -165,6 +165,8 @@ class Control():
             vErr = vSP - v
             aybSP = self.__vyPID.compute(vErr, ayb)
             aybSP = clip(aybSP, -self.__aybSPMax, self.__aybSPMax)
+
+            axbSP = -0.001
         else:
             # 计算并修正轴向误差
             uSP = self.__xPID.compute(xErr, u)
