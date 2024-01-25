@@ -287,7 +287,7 @@ def main():
 
             # 通过目标船在无人船船体系下的坐标计算两船侧向的距离
             yawf = updateTVHeading(usvPose.yaw, usvPose.tvHeading)
-            lateralDist = abs(usvPose.tvYB)
+            lateralDist = abs(usvPose.tvYBody)
 
             if (usvControl.angleLeftEst > -deg2rad(89)) | (usvControl.angleRightEst > -deg2rad(89)):
                 usvControl.thrustSet(0, 0, -deg2rad(89), -deg2rad(89))

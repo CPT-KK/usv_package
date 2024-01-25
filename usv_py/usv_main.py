@@ -481,7 +481,7 @@ def main(args=None):
                 # 控制无人船
                 [uSP, rSP, axbSP, etaSP] = usvControl.moveUSV(uSP, yawSP, usvPose.uDVL, usvPose.axb, usvPose.yaw, usvPose.r)
 
-                if (usvGuidance.currentIdx >= 0.9 * usvGuidance.endIdx) | ((abs(usvPose.tvXB) <= 0.5 * tvLengthMean + 3.0) & (usvPose.tvYB >= 0)):
+                if (usvGuidance.currentIdx >= 0.9 * usvGuidance.endIdx) | ((abs(usvPose.tvXBody) <= 0.5 * tvLengthMean + 3.0) & (usvPose.tvYBody >= 0)):
                     usvState = "DOCK_STEADY"
                     
                     # 重要：清除 LOS yErrPID 的积分项
@@ -527,7 +527,7 @@ def main(args=None):
 
                 # 通过目标船在无人船船体系下的坐标计算两船侧向的距离
                 yawf = updateTVHeading(usvPose.yaw, usvPose.tvHeading)
-                lateralDist = abs(usvPose.tvYB)
+                lateralDist = abs(usvPose.tvYBody)
 
                 if (usvControl.angleLeftEst > -deg2rad(89)) | (usvControl.angleRightEst > -deg2rad(89)):
                     usvControl.thrustSet(0, 0, -deg2rad(89), -deg2rad(89))
@@ -549,7 +549,7 @@ def main(args=None):
 
                 # 超时
                 if (rospy.Time.now().to_sec() - timer0 > SECS_TIMEOUT_ATTACH):
-                    usvState = "DOCK_STEADY_FS"
+                    usvState = "DOCK_WAIT_FINAL"
                     continue
 
             elif usvState == "DOCK_WAIT_FINAL":

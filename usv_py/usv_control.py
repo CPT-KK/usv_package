@@ -14,7 +14,7 @@ class Control():
      
     # 控制器限幅参数
     __axbSPMax = 3.0        # 控制器中 axbSP 的最大值
-    __aybSPMax = 1.0        # 矢量控制器中 aybSP 的最大值
+    __aybSPMax = 1.5        # 矢量控制器中 aybSP 的最大值
 
     __uSPMax = 4.0          # 差动控制器中 uSP 的最大值
     __uSPVecMax = 1.0       # 矢量控制器中 uSP 的最大值
@@ -77,7 +77,7 @@ class Control():
         self.__xPID = PID(0.2, 0.00, 0.0)
         self.__yPID = PID(0.3, 0.00, 0.0)
         self.__vxPID = PID(0.8, 0.00, 0.0)
-        self.__vyPID = PID(4.0, 0.00, 0.0)
+        self.__vyPID = PID(1.5, 0.00, 0.0)
 
     def __del__(self):
         pass
@@ -144,7 +144,7 @@ class Control():
         # 选择矢量控制器状态
         if ((abs(xErr) > 2.0 or (sign(u * xErr) > 0 and abs(u) > 0.3) or abs(yawErr) > deg2rad(15)) and (self.vecCtrlState == 1)):
             self.vecCtrlState = 0
-        elif (abs(xErr) <= 1.0 and abs(yawErr) <= deg2rad(12) and self.vecCtrlState == 0):
+        elif (abs(xErr) <= 1.0 and abs(yawErr) <= deg2rad(10) and self.vecCtrlState == 0):
             self.vecCtrlState = 1
 
         # if ((abs(yErr) > 2.0) | (sign(v * yErr) > 0 and abs(v) > 0.2)) & (self.vecCtrlState == 0) & (abs(yawErr) < deg2rad(10)):
@@ -187,7 +187,7 @@ class Control():
             etaSP = self.__rPID.compute(rErr)
 
             # 侧向加速度要被轴向加速度限幅
-            aybSP = clip(aybSP, -axbSP * tan(self.__angleMaxState0), axbSP * tan(self.__angleMaxState0))
+            aybSP = clip(aybSP, -abs(axbSP) * tan(self.__angleMaxState0), abs(axbSP) * tan(self.__angleMaxState0))
             
         # 送入混控
         self.mixer(axbSP, aybSP, etaSP)

@@ -50,8 +50,8 @@ class Pose():
     tLidar = float("nan")
     tvX = float("nan")             # 目标船在 ENU 系（原点为无人船）下的 x 坐标
     tvY = float("nan")             # 目标船在 ENU 系（原点为无人船）下的 y 坐标
-    tvXB = float("nan")            # 目标船在无人船船体系下的 x 坐标
-    tvYB = float("nan")            # 目标船在无人船船体系下的 y 坐标
+    tvXBody = float("nan")            # 目标船在无人船船体系下的 x 坐标
+    tvYBody = float("nan")            # 目标船在无人船船体系下的 y 坐标
     tvAngleLidar = float("nan")    # 目标船在 ENU 系（原点为无人船）下的方向角
     tvDist = float("nan")          # 目标船距离无人船的距离
     tvHeading = float("nan")       # 目标船在 ENU 系下的朝向
