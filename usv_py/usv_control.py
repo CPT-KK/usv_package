@@ -146,7 +146,7 @@ class Control():
         [xErr, yErr] = rotationZ(xErr, yErr, yaw)
 
         # 选择矢量控制器状态
-        if ((abs(xErr) > 2.0 or (sign(u * xErr) > 0 and abs(u) > 0.3) or abs(yawErr) > deg2rad(15)) and (self.vecCtrlState == 1)):
+        if ((abs(xErr) > 2.0 or (sign(u * xErr) > 0 and abs(u) > 0.4) or abs(yawErr) > deg2rad(15)) and (self.vecCtrlState == 1)):
             self.vecCtrlState = 0
         elif (abs(xErr) <= 1.0 and abs(yawErr) <= deg2rad(10) and self.vecCtrlState == 0):
             self.vecCtrlState = 1
@@ -198,29 +198,6 @@ class Control():
 
             # 侧向加速度要被轴向加速度限幅
             aybSP = clip(aybSP, -abs(axbSP) * tan(self.__angleMaxState0), abs(axbSP) * tan(self.__angleMaxState0))
-
-        # # 计算并修正轴向误差
-        # uSP = self.__xPID.compute(xErr, u)
-        # uSP = clip(uSP, -self.__uSPVecMax, self.__uSPVecMax)
-        # uErr = uSP - u
-        # axbSP = self.__vxPID.compute(uErr, axb)
-        # axbSP = clip(axbSP, -self.__axbSPMax, self.__axbSPMax)
-
-        # # 计算并修正侧向误差
-        # vSP = self.__yPID.compute(yErr, v)
-        # vSP = clip(vSP, -self.__vSPMax, self.__vSPMax)
-        # vErr = vSP - v
-        # aybSP = self.__vyPID.compute(vErr, ayb)
-        # aybSP = clip(aybSP, -self.__aybSPMax, self.__aybSPMax)
-
-        # # 计算并修正航向误差
-        # rSP = self.__yawPID.compute(yawErr, r)
-        # rSP = clip(rSP, -self.__rSPMax, self.__rSPMax)
-        # rErr = rSP - r
-        # etaSP = self.__rPID.compute(rErr)
-
-        # if (aybSP / axbSP < tan(self.__angleMin)):
-        #     axbSP = aybSP / tan(self.__angleMax)
             
         # 送入混控
         self.mixer(axbSP, aybSP, etaSP)
@@ -231,10 +208,6 @@ class Control():
         return [uSP, vSP, rSP, axbSP, aybSP, etaSP]
 
     def mixer(self, axSP, aySP, etaSP):       
-        # 计算推力偏角
-        # 左真实/左setpoint是 1.1556
-        # 右真实/右setpoint是 1.0778
-        # 即：如果需要-90度，则需要给-104的指令（左侧）
         self.angleLeftSP = arctan(aySP / axSP)
         self.angleRightSP = arctan(aySP / axSP)
 
