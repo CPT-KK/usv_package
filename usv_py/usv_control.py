@@ -211,8 +211,8 @@ class Control():
         rErr = rSP - r
         etaSP = self.__rPID.compute(rErr)
 
-        # 侧向加速度要被轴向加速度限幅，并且aybSP应永远大于0
-        aybSP = clip(aybSP, 0, abs(axbSP) * tan(self.__angleMax))
+        if (aybSP / axbSP < tan(self.__angleMin)):
+            axbSP = aybSP / tan(self.__angleMax)
             
         # 送入混控
         self.mixer(axbSP, aybSP, etaSP)
