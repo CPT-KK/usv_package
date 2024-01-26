@@ -31,6 +31,9 @@ class Control():
     __angleMax = deg2rad(94.9)        # 舵角最大值
     __angleMaxState0 = deg2rad(25)  # Control state 0 下的舵角最大值
 
+    __rpmRateMax = 250
+    __angleRateMax = deg2rad(30)
+
     # 无人船参数
     __MASS = 800.0          # 质量
     __INERZ = 2072.475      # 惯性矩
@@ -226,8 +229,17 @@ class Control():
         rpmRotateRight = clip(rpmRotate / cos(self.angleRightEst), -self.__rpmRotateMax, self.__rpmRotateMax)
 
         # 计算左右两侧真实推力设置值的大小
-        self.rpmLeftSP = rpmTranslateLeft - rpmRotateLeft
-        self.rpmRightSP = rpmTranslateRight + rpmRotateRight
+        rpmLeftErr = rpmTranslateLeft - rpmRotateLeft - self.rpmLeftSP
+        rpmRightErr = rpmTranslateRight + rpmRotateRight - self.rpmRightSP
+        if (abs(rpmLeftErr) > self.__rpmRateMax):
+            self.rpmLeftSP = self.rpmLeftSP + sign(rpmLeftErr) * self.__rpmRateMax
+        else:
+            self.rpmLeftSP = rpmTranslateLeft - rpmRotateLeft
+        
+        if (abs(rpmRightErr) > self.__rpmRateMax):
+            self.rpmRightSP = self.rpmRightSP + sign(rpmRightErr) * self.__rpmRateMax
+        else:
+            self.rpmRightSP = rpmTranslateRight + rpmRotateRight
 
         # 推力大小限幅
         self.rpmLeftSP = clip(self.rpmLeftSP, -self.__rpmMax, self.__rpmMax)
