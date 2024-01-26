@@ -55,8 +55,7 @@ USP_DOCK_APPROACH_LB = 1.0              # DOCK_APPROACH 时 USV 的轴向速度�
 DIST_TONEXT_DOCK_APPROACH = 12.0         # DOCK_APPROACH 时切换追踪点为轨迹下一点的距离
 
 SECS_WAIT_DOCK_STEADY = 5.0      # DOCK_STEADY 时认为 USV 已经稳定前所需的秒数
-SECS_TIMEOUT_DOCK_STEADY = 120
-.0
+SECS_TIMEOUT_DOCK_STEADY = 180.0
 ANGLE_DOCK_STEADY_TOL = deg2rad(5)      # DOCK_STEADY 时认为 USV 已经稳定的角度判据
 DIST_DOCK_STEADY_TOL = 1.25             # DOCK_STEADY 时认为 USV 已经稳定的位置判据
 VEL_DOCK_STEADY_TOL = 0.4              # DOCK_STEADY 时认为 USV 已经稳定的速度判据
@@ -71,7 +70,7 @@ ANGLE_LEFT_ATTACH = deg2rad(90.5)
 ANGLE_RIGHT_ATTACH = deg2rad(95)
 
 SECS_WAIT_FINAL = 10.0
-VEL_WAIT_FINAL = 0.2
+VEL_WAIT_FINAL = 0.35
 
 RPM_FINAL = 0.0
 ANGLE_LEFT_FINAL = deg2rad(0)
@@ -528,10 +527,10 @@ def main(args=None):
                 yawf = updateTVHeading(usvPose.yaw, usvPose.tvHeading)
                 lateralDist = abs(usvPose.tvYBody)
 
-                if (usvControl.angleLeftEst > -deg2rad(89)) | (usvControl.angleRightEst > -deg2rad(89)):
-                    usvControl.thrustSet(0, 0, -deg2rad(89), -deg2rad(89))
+                if (usvControl.angleLeftEst < deg2rad(90)) | (usvControl.angleRightEst < deg2rad(90)):
+                    usvControl.thrustSet(0, 0, deg2rad(105), deg2rad(96))
                 else:
-                    usvControl.thrustSet(-500, -400, -deg2rad(95.5), -deg2rad(95.5))
+                    usvControl.thrustSet(400, 400, deg2rad(105), deg2rad(96))
                 usvControl.thrustPub()
                 
                 latestMsg = f"Attaching to the target vessel. Pos tol: [{lateralDist:.2f}/{DIST_ATTACH_TOL + 0.5 * tvWidthMean + L_HALF:.2f}]m. Time tol: [{rospy.Time.now().to_sec() - timer1:.2f}/{SECS_WAIT_ATTACH}]s"
@@ -563,6 +562,9 @@ def main(args=None):
                 deckyaw = yawf - usvPose.yaw
 
                 latestMsg = f"Attached completed. Waiting USV stablized to send TAKEOFF signal [{norm([usvPose.uDVL, usvPose.vDVL]):.2f}/{VEL_WAIT_FINAL:.2f}]m/s & [{rospy.Time.now().to_sec() - timer1:.2f}/{SECS_WAIT_FINAL:.2f}]s. Real-time deck point at [{deckCenterX:.2f}, {deckCenterY:.2f}]m @ {rad2deg(deckyaw):.2f}deg."
+
+                usvControl.thrustSet(120, 120, deg2rad(105), deg2rad(96))
+                usvControl.thrustPub()
                 
                 # 如果稳定，则发送起飞状态
                 if (rospy.Time.now().to_sec() - timer1 > SECS_WAIT_FINAL):   
@@ -579,6 +581,9 @@ def main(args=None):
                 [xf, yf] = calcHighest(tvHighestXMean, tvHighestYMean, tvHighestZMean, tvLengthMean, yawf)
                 [deckCenterX, deckCenterY] = rotationZ(-usvPose.xLidar + xf, -usvPose.yLidar + yf, usvPose.yaw)
                 deckyaw = yawf - usvPose.yaw
+
+                usvControl.thrustSet(80, 80, deg2rad(105), deg2rad(96))
+                usvControl.thrustPub()
 
                 latestMsg = f"TAKEOFF signal sent!!! Real-time deck point at [{deckCenterX:.2f}, {deckCenterY:.2f}]m @ {rad2deg(deckyaw):.2f}deg."              
 
