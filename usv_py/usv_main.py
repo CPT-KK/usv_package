@@ -294,13 +294,13 @@ def main(args=None):
                     continue
 
             elif usvState == "PURSUE_SUAV":
+                if (norm([usvPose.tvEstPosX, usvPose.tvEstPosY]) >= DIST_ALLOW_POD):
+                    usvPose.podReset()
 
                 # 如果吊舱识别，则进入到吊舱导引
                 if (usvPose.isPodFindTV) & (abs(usvPose.tvAnglePod - usvPose.tvAngleEst) <= ANGLE_EST_POD_GAP):####### ALERT #######
                     usvState = "PURSUE_POD"
-                    continue
-                else:
-                    usvPose.podReset()
+                    continue            
                     
                 # 如果激光雷达识别，则进入到 LIDAR 导引
                 if (usvPose.isLidarFindTV):
@@ -388,8 +388,7 @@ def main(args=None):
                     isDockNearbyPlan = True     
 
                 latestMsg = f"Approaching to the measure circle. Path [{usvGuidance.currentIdx} >> {usvGuidance.endIdx}]."
-                      
-                
+                                
                 # 读取激光雷达信息（这个时候应该能保证读到目标船吧？），生成控制指令
                 uSP = USP_DOCK_NEARBY
                 [yawSP, xSP, ySP] = usvGuidance.guidance(DIST_TONEXT_DOCK_NEARBY, usvPose.xLidar, usvPose.yLidar, usvPose.yaw, usvPose.betaDVL)
