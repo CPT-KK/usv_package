@@ -237,7 +237,7 @@ def main(args=None):
                     (not isnan(usvControl.angleLeftEst)) & (not isnan(usvControl.angleRightEst)) & \
                     (not isnan(usvControl.rpmLeftEst) & (not isnan(usvControl.rpmRightEst))):
                     if (isTestEnable):
-                        usvState = "TEST"
+                        usvState = "PURSUE_POD"
                     continue
                     latestMsg = "Self check complete. Start checking comms..."
                     usvState = "PURSUE_POD" ####### ALERT #######
@@ -480,7 +480,7 @@ def main(args=None):
                 # 控制无人船
                 [uSP, rSP, axbSP, etaSP] = usvControl.moveUSV(uSP, yawSP, usvPose.uDVL, usvPose.axb, usvPose.yaw, usvPose.r)
 
-                if (usvGuidance.currentIdx >= 0.9 * usvGuidance.endIdx) | ((abs(usvPose.tvXBody) <= 0.5 * tvLengthMean + 3.0) & (usvPose.tvYBody >= 0)):
+                if (usvGuidance.currentIdx >= usvGuidance.endIdx):
                     usvState = "DOCK_STEADY"
                     
                     # 重要：清除 LOS yErrPID 的积分项
