@@ -13,8 +13,8 @@ from PID import PID
 class Control():
      
     # 控制器限幅参数
-    __axbSPMax = 3.0        # 控制器中 axbSP 的最大值
-    __aybSPMax = 1.5        # 矢量控制器中 aybSP 的最大值
+    __axbSPMax = 2.0        # 控制器中 axbSP 的最大值
+    __aybSPMax = 2.0        # 矢量控制器中 aybSP 的最大值
 
     __uSPMax = 4.0          # 差动控制器中 uSP 的最大值
     __uSPVecMax = 1.0       # 矢量控制器中 uSP 的最大值
@@ -28,7 +28,7 @@ class Control():
     __rpmMin = 35                   # 最小转速
     __rpmMax = 1000                 # 最大转速
     __rpmRotateMax = 800            # 用于转动的最大转速
-    __angleMax = deg2rad(140)        # 舵角最大值
+    __angleMax = deg2rad(136)        # 舵角最大值
     __angleMin = deg2rad(-44)
     __angleMaxState0 = deg2rad(25)  # Control state 0 下的舵角最大值
 
@@ -139,8 +139,7 @@ class Control():
         yErr = ySP - y
         yawSP = wrapToPi(yawSP)
         yaw = wrapToPi(yaw)
-        yawErr = yawSP - yaw
-        yawErr = wrapToPi(yawErr)
+        yawErr = wrapToPi(yawSP - yaw)
         
         # x y 误差转船体系
         [xErr, yErr] = rotationZ(xErr, yErr, yaw)
@@ -207,26 +206,40 @@ class Control():
 
         return [uSP, vSP, rSP, axbSP, aybSP, etaSP]
 
-    def mixer(self, axSP, aySP, etaSP):       
-        self.angleLeftSP = arctan(aySP / axSP)
-        self.angleRightSP = arctan(aySP / axSP)
+    def mixer(self, axSP, aySP, etaSP):
+        if (abs(axSP) < 1e-6) & (abs(aySP) < 1e-6):
+            self.angleLeftSP = 0.0
+            self.angleRightSP = 0.0
+        else:    
+            self.angleLeftSP = arctan(aySP / axSP)
+            self.angleRightSP = arctan(aySP / axSP)
 
-        # 这里假设 angleLeftSP 在[-pi/2, pi/2]之间
-        if (self.angleLeftSP < self.__angleMin + deg2rad(2)):
+        # 这里假设 angleLeftSP 在 [-pi/2, pi/2] 之间
+        if (self.angleLeftSP < self.__angleMin):
             self.angleLeftSP = self.angleLeftSP + pi
 
-        if (self.angleRightSP < self.__angleMin + deg2rad(2)):
+        if (self.angleRightSP < self.__angleMin):
             self.angleRightSP = self.angleRightSP + pi
 
         # 推力偏角限幅
         self.angleLeftSP = clip(self.angleLeftSP, self.__angleMin, self.__angleMax)
         self.angleRightSP = clip(self.angleRightSP, self.__angleMin, self.__angleMax)
 
+        # 现在，电机角度确定，需要确定推力大小
         # 计算一侧发动机平动和转动所需推力大小的参考值
-        if (axSP == 0.0):
-            rpmTranslate = self.__MASS * sqrt(aySP ** 2) / 2.0
+        # 如果发动机推力方向与 atan2(aySP, axSP) 的方向相同，那么平动推力是正的
+        # 如果发动机推力方向与 atan2(aySP, axSP) 的方向相反，那么平动推力是负的
+        # assert self.angleLeftSP = self.angleRightSP!!!!
+        # sign(self.angleLeftSP) * sign(atan2(aySP, axSP)) == 1
+        # sign(self.angleLeftSP) * sign(atan2(aySP, axSP)) == -1
+        # sign(self.angleLeftSP) * sign(atan2(aySP, axSP)) == 0 <-> aySP == 0
+        if (sign(self.angleLeftSP) * sign(arctan2(aySP, axSP)) == 0):
+            rpmTranslate = self.MASS * sign(axSP) * sqrt(axSP ** 2) / 2.0
+        elif (sign(self.angleLeftSP) * sign(arctan2(aySP, axSP)) > 0):
+            rpmTranslate = self.__MASS * sqrt(axSP ** 2 + aySP ** 2) / 2.0
         else:
-            rpmTranslate = self.__MASS * sign(axSP) * sqrt(axSP ** 2 + aySP ** 2) / 2.0
+            rpmTranslate = -self.__MASS * sqrt(axSP ** 2 + aySP ** 2) / 2.0
+
         rpmRotate = self.__INERZ * etaSP / self.__TORQLEN / 2.0
         
         # 计算左右两侧平动所需推力
