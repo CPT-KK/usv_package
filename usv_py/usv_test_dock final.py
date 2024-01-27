@@ -58,7 +58,7 @@ def calcHighest(tvHighestXMean, tvHighestYMean, tvHighestZMean, tvLengthMean, ya
 
 def main():
     # 控制台输出初始化
-    console = Console()
+    console = Console(record=True)
     latestMsg = "Waiting USV self-check to complete..."
     console.print("[green]>>>>>>> Console initialized.")
 
@@ -138,6 +138,8 @@ def main():
     aybSP = float("nan")
     etaSP = float("nan")
 
+    usvPose.isLidarFindTVPrevious = True
+
     while (True):
         # 单独为激光雷达设置启动检查
         pubTopicList = sum(rospy.get_published_topics(), [])
@@ -148,11 +150,9 @@ def main():
         theTable = genTable(usvState, latestMsg, usvPose, usvControl, usvComm, dt, uSP, vSP, yawSP, rSP, xSP, ySP, axbSP, aybSP, etaSP) 
         console.print(theTable)
 
-        if (usvPose.isImuValid) & (usvPose.isDvlValid) & (usvPose.isPodValid) & (not isnan(usvControl.angleLeftEst)) & (not isnan(usvControl.angleRightEst)) & (not isnan(usvControl.rpmLeftEst) & (not isnan(usvControl.rpmRightEst))):
+        if (usvPose.isImuValid) & (usvPose.isDvlValid) & (not isnan(usvControl.angleLeftEst)) & (not isnan(usvControl.angleRightEst)) & (not isnan(usvControl.rpmLeftEst) & (not isnan(usvControl.rpmRightEst))):
             break
     
-    usvPose.isLidarFindTVPrevious = True
-
     while (not usvPose.isLidarFindTV):
         # 打印当前状态
         dt = rospy.Time.now().to_sec() - t0
@@ -293,6 +293,8 @@ def main():
 
             latestMsg = f"TAKEOFF signal sent!!! Real-time deck point at [{deckCenterX:.2f}, {deckCenterY:.2f}]m @ {rad2deg(deckyaw):.2f}deg."              
             
+        rosRate.sleep()
 
+        
 if __name__ == '__main__':
     main()
