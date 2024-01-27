@@ -15,68 +15,7 @@ from usv_control import Control
 from usv_communication import Communication
 from usv_math import removeOutliers, wrapToPi, linearClip, rotationZ
 from usv_record import genTable, USVData
-
-# ROS 定频
-ROS_RATE = 10
-
-# 常量
-RPM_START = -160
-
-L_HALF = 1.75
-
-USP_GOINT_OUT = 1.5
-SECS_GOING_OUT = 15
-
-USP_SUAV_PURSUE = 2.75                  # 搜索无人机引导时 USV 的轴向速度
-ANGLE_EST_POD_GAP = deg2rad(30)
-USP_POD_PURSUE = 2.75                    # 吊舱引导时 USV 的轴向速度
-DIST_ALLOW_POD = 400.0                  # 吊舱引导时允许的吊舱距离
-
-USP_LIDAR_PURSUE_UB = 2.75               # 激光雷达引导时 USV 的轴向速度上界
-USP_LIDAR_PURSUE_LB = 1.7               # 激光雷达引导时 USV 的轴向速度下界
-DIST_LIDAR_PURSUE_UB = 100.0            # 激光雷达引导时取到 USP_LIDAR_PURSUE_UB 的 USV-TV 距离
-DIST_LIDAR_PURSUE_LB = 75.0             # 激光雷达引导时取到 USP_LIDAR_PURSUE_LB 的 USV-TV 距离
-DIST_PURSUE_TO_APPROACH = 70.0          # 由 PURSUE 切换到 DOCK_NEARBY 的 USV-TV 距离
-
-USP_OBS_PURSUE = 2.75                   # 避障时 USV 的轴向速度
-ANGLE_AVOID_OBS = deg2rad(35.0)         # 避障时 USV 的航向附加量
-
-USP_DOCK_NEARBY = 1.8                   # DOCK_NEARBY 时 USV 的轴向速度
-DIST_TONEXT_DOCK_NEARBY = 12.0          # DOCK_NEARBY 时切换追踪点为轨迹下一点的距离
-
-USP_DOCK_MEASURE = 1.5                  # DOCK_MEASURE 时 USV 的轴向速度
-DIST_TONEXT_DOCK_MEASURE = 12.0          # DOCK_MEASURE 时切换追踪点为轨迹下一点的距离
-ANGLE_DOCK_MEASURE_JUMP = deg2rad(20.0) # DOCK_MEASURE 时认为激光雷达估计目标船朝向可能跳变的角度判据
-HEALTHY_Z_TOL = 1.2                     # DOCK_MEASURE 时健康的高度阈值
-
-
-USP_DOCK_APPROACH_UB = 1.5              # DOCK_APPROACH 时 USV 的轴向速度上界
-USP_DOCK_APPROACH_LB = 1.0              # DOCK_APPROACH 时 USV 的轴向速度下界
-DIST_TONEXT_DOCK_APPROACH = 12.0         # DOCK_APPROACH 时切换追踪点为轨迹下一点的距离
-
-SECS_WAIT_DOCK_STEADY = 5.0      # DOCK_STEADY 时认为 USV 已经稳定前所需的秒数
-SECS_TIMEOUT_DOCK_STEADY = 240
-.0
-ANGLE_DOCK_STEADY_TOL = deg2rad(5)      # DOCK_STEADY 时认为 USV 已经稳定的角度判据
-DIST_DOCK_STEADY_TOL = 1.25             # DOCK_STEADY 时认为 USV 已经稳定的位置判据
-VEL_DOCK_STEADY_TOL = 0.4              # DOCK_STEADY 时认为 USV 已经稳定的速度判据
-
-SECS_TIMEOUT_ATTACH = 30.0
-SECS_WAIT_ATTACH = 3.0
-DIST_ATTACH_TOL = 0.5
-RPM_ATTACH = 400.0
-RPM_ATTACH_UB = 500.0
-RPM_ATTACH_LB = 120.0
-ANGLE_LEFT_ATTACH = deg2rad(90.5)
-ANGLE_RIGHT_ATTACH = deg2rad(95)
-
-SECS_WAIT_FINAL = 10.0
-VEL_WAIT_FINAL = 0.2
-
-RPM_FINAL = 0.0
-ANGLE_LEFT_FINAL = deg2rad(0)
-ANGLE_RIGHT_FINAL = deg2rad(0)
-
+from usv_constants import *
 
 @atexit.register 
 def clean():
@@ -274,7 +213,7 @@ def main():
 
             # 超时
             if (rospy.Time.now().to_sec() - timer0 > SECS_TIMEOUT_DOCK_STEADY):
-                usvState = "DOCK_STEADY_FS"
+                usvState = "DOCK_ATTACH"
                 continue
         
         elif usvState == "DOCK_ATTACH":
@@ -289,10 +228,10 @@ def main():
             yawf = updateTVHeading(usvPose.yaw, usvPose.tvHeading)
             lateralDist = abs(usvPose.tvYBody)
 
-            if (usvControl.angleLeftEst > -deg2rad(89)) | (usvControl.angleRightEst > -deg2rad(89)):
-                usvControl.thrustSet(0, 0, -deg2rad(89), -deg2rad(89))
+            if (usvControl.angleLeftEst < deg2rad(90)) | (usvControl.angleRightEst < deg2rad(90)):
+                usvControl.thrustSet(0, 0, deg2rad(105), deg2rad(96))
             else:
-                usvControl.thrustSet(-500, -400, -deg2rad(93.5), -deg2rad(95.5))
+                usvControl.thrustSet(400, 400, deg2rad(105), deg2rad(96))
             usvControl.thrustPub()
             
             latestMsg = f"Attaching to the target vessel. Pos tol: [{lateralDist:.2f}/{DIST_ATTACH_TOL + 0.5 * tvWidthMean + L_HALF:.2f}]m. Time tol: [{rospy.Time.now().to_sec() - timer1:.2f}/{SECS_WAIT_ATTACH}]s"
@@ -309,12 +248,13 @@ def main():
 
             # 超时
             if (rospy.Time.now().to_sec() - timer0 > SECS_TIMEOUT_ATTACH):
-                usvState = "DOCK_STEADY_FS"
+                usvState = "DOCK_WAIT_FINAL"
                 continue
 
         elif usvState == "DOCK_WAIT_FINAL":
             # 先判断无人船是否稳定
             if (isDockWaitFinalPlan == "False"):
+                timer0 = rospy.Time.now().to_sec()
                 timer1 = rospy.Time.now().to_sec()
                 isDockWaitFinalPlan = True
 
@@ -324,6 +264,9 @@ def main():
             deckyaw = yawf - usvPose.yaw
 
             latestMsg = f"Attached completed. Waiting USV stablized to send TAKEOFF signal [{norm([usvPose.uDVL, usvPose.vDVL]):.2f}/{VEL_WAIT_FINAL:.2f}]m/s & [{rospy.Time.now().to_sec() - timer1:.2f}/{SECS_WAIT_FINAL:.2f}]s. Real-time deck point at [{deckCenterX:.2f}, {deckCenterY:.2f}]m @ {rad2deg(deckyaw):.2f}deg."
+
+            # usvControl.thrustSet(120, 120, deg2rad(105), deg2rad(96))
+            # usvControl.thrustPub()
             
             # 如果稳定，则发送起飞状态
             if (rospy.Time.now().to_sec() - timer1 > SECS_WAIT_FINAL):   
@@ -335,57 +278,21 @@ def main():
                 # 如果不满足静止条件，需要重置 t1 计时器
                 timer1 = rospy.Time.now().to_sec()
 
+            if (rospy.Time.now().to_sec() - timer0 > SECS_TIMEOUT_WAIT_FINAL):
+                usvState = "DOCK_FINAL"
+                continue
+
         elif usvState == "DOCK_FINAL":      
             # 计算给小物体搬运的坐标点
             [xf, yf] = calcHighest(tvHighestXMean, tvHighestYMean, tvHighestZMean, tvLengthMean, yawf)
             [deckCenterX, deckCenterY] = rotationZ(-usvPose.xLidar + xf, -usvPose.yLidar + yf, usvPose.yaw)
             deckyaw = yawf - usvPose.yaw
 
+            usvControl.thrustSet(80, 80, deg2rad(105), deg2rad(96))
+            usvControl.thrustPub()
+
             latestMsg = f"TAKEOFF signal sent!!! Real-time deck point at [{deckCenterX:.2f}, {deckCenterY:.2f}]m @ {rad2deg(deckyaw):.2f}deg."              
-
-        elif usvState == "DOCK_STEADY_FS":      
-            if (isDockSteadyFSPlan == False):
-                timer0 = rospy.Time.now().to_sec()
-                timer1 = rospy.Time.now().to_sec()
-                isDockSteadyFSPlan = True
-
-            # 更新航向值
-            [xf, yf] = calcHighest(tvHighestXMean, tvHighestYMean, tvHighestZMean, tvLengthMean, yawf)
-            [deckCenterX, deckCenterY] = rotationZ(-usvPose.xLidar + xf, -usvPose.yLidar + yf, usvPose.yaw)
-            deckyaw = yawf - usvPose.yaw
-
-            yawf = updateTVHeading(usvPose.yaw, usvPose.tvHeading)
-
-            # 保持静止
-            xSP = 0 + (2 + 0.5 * tvWidthMean + L_HALF) * cos(yawf - pi / 2)
-            ySP = 0 + (2 + 0.5 * tvWidthMean + L_HALF) * sin(yawf - pi / 2)
-            yawSP = yawf
-            [uSP, vSP, rSP, axbSP, aybSP, etaSP] = usvControl.moveUSVVec(xSP, ySP, yawSP, usvPose.xLidar, usvPose.yLidar, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.yaw, usvPose.r)
             
-            latestMsg = f"[FALSAFE] Try to stablize at [{xSP:.2f}, {ySP:.2f}]m, {rad2deg(yawSP):.2f}deg. Pos tol: [{norm([usvPose.xLidar - xSP, usvPose.yLidar - ySP]):.2f}/1.25]m. Vel tol: [{norm([usvPose.uDVL, usvPose. vDVL])}/0.25]m/s"
-
-            # 一旦船靠近到阈值以下范围
-            if (norm([usvPose.xLidar - xSP, usvPose.yLidar - ySP]) <= 1.25) & (norm([usvPose.uDVL, usvPose. vDVL]) < 0.25):   
-                usvState = "DOCK_FINAL_FS"
-                continue
-                        
-        elif usvState == "DOCK_FINAL_FS":  
-            [xf, yf] = calcHighest(tvHighestXMean, tvHighestYMean, tvHighestZMean, tvLengthMean, yawf)
-            [deckCenterX, deckCenterY] = rotationZ(-usvPose.xLidar + xf, -usvPose.yLidar + yf, usvPose.yaw)
-            deckyaw = yawf - usvPose.yaw
-
-            # 更新航向值
-            yawf = updateTVHeading(usvPose.yaw, usvPose.tvHeading)
-                
-            # 保持静止
-            xSP = 0 + (2 + 0.5 * tvWidthMean + L_HALF) * cos(yawf - pi / 2)
-            ySP = 0 + (2 + 0.5 * tvWidthMean + L_HALF) * sin(yawf - pi / 2)
-            yawSP = yawf
-            [uSP, vSP, rSP, axbSP, aybSP, etaSP] = usvControl.moveUSVVec(xSP, ySP, yawSP, usvPose.xLidar, usvPose.yLidar, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.yaw, usvPose.r)
-            
-            latestMsg = f"[FALSAFE]  TAKEOFF signal sent. Stablized at [{xSP:.2f}, {ySP:.2f}]m, {rad2deg(yawSP):.2f}deg. Pos tol: [{norm([usvPose.xLidar - xSP, usvPose.yLidar - ySP]):.2f}/1.25]m. Vel tol: [{norm([usvPose.uDVL, usvPose. vDVL])}/0.25]m/s."
-
-        rosRate.sleep()
 
 if __name__ == '__main__':
     main()

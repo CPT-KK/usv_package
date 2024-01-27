@@ -102,6 +102,8 @@ class PathPlanner:
             # l2Y = l1Y - 2.0 * self.l * sin(tvHeading + pi)
             l2X = self.d * cos(tvHeading + 1.5*pi)
             l2Y = self.d * sin(tvHeading + 1.5*pi)
+            l12X = (l1X + l2X) / 2
+            l12Y = (l1Y + l2Y) / 2
             path2 = planLinePath(l1X, l1Y, l2X, l2Y, self.ds)
 
         else:
@@ -118,6 +120,8 @@ class PathPlanner:
             # l2Y = l1Y - 2.0 * self.l * sin(tvHeading)
             l2X = self.d * cos(tvHeading + 0.5*pi)
             l2Y = self.d * sin(tvHeading + 0.5*pi)
+            l12X = (l1X + l2X) / 2
+            l12Y = (l1Y + l2Y) / 2
             path2 = planLinePath(l1X, l1Y, l2X, l2Y, self.ds)
 
         # 返回时，去除 path0 和 path1 最后一个点，避免造成路径点重复

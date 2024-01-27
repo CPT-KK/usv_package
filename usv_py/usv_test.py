@@ -16,60 +16,8 @@ from usv_math import removeOutliers, wrapToPi, linearClip, rotationZ
 from usv_record import genTable, USVData
 
 from rosgraph_msgs.msg import Clock
+from usv_constants import *
 
-# ROS 定频
-ROS_RATE = 10
-
-# 常量
-USP_SUAV_PURSUE = 3.25                  # 搜索无人机引导时 USV 的轴向速度
-USP_POD_PURSUE = 3.0                    # 吊舱引导时 USV 的轴向速度
-
-USP_LIDAR_PURSUE_UB = 3.0               # 激光雷达引导时 USV 的轴向速度上界
-USP_LIDAR_PURSUE_LB = 1.7               # 激光雷达引导时 USV 的轴向速度下界
-DIST_LIDAR_PURSUE_UB = 100.0            # 激光雷达引导时取到 USP_LIDAR_PURSUE_UB 的 USV-TV 距离
-DIST_LIDAR_PURSUE_LB = 75.0             # 激光雷达引导时取到 USP_LIDAR_PURSUE_LB 的 USV-TV 距离
-DIST_PURSUE_TO_APPROACH = 70.0          # 由 PURSUE 切换到 DOCK_NEARBY 的 USV-TV 距离
-
-USP_OBS_PURSUE = 3.25                   # 避障时 USV 的轴向速度
-ANGLE_AVOID_OBS = deg2rad(35.0)         # 避障时 USV 的航向附加量
-
-USP_DOCK_NEARBY = 1.6                   # DOCK_NEARBY 时 USV 的轴向速度
-DIST_TONEXT_DOCK_NEARBY = 12.0          # DOCK_NEARBY 时切换追踪点为轨迹下一点的距离
-
-USP_DOCK_MEASURE = 1.5                  # DOCK_MEASURE 时 USV 的轴向速度
-DIST_TONEXT_DOCK_MEASURE = 8.0          # DOCK_MEASURE 时切换追踪点为轨迹下一点的距离
-ANGLE_DOCK_MEASURE_JUMP = deg2rad(20.0) # DOCK_MEASURE 时认为激光雷达估计目标船朝向可能跳变的角度判据
-
-USP_DOCK_APPROACH_UB = 1.5              # DOCK_APPROACH 时 USV 的轴向速度上界
-USP_DOCK_APPROACH_LB = 0.8              # DOCK_APPROACH 时 USV 的轴向速度下界
-DIST_TONEXT_DOCK_APPROACH = 6.0         # DOCK_APPROACH 时切换追踪点为轨迹下一点的距离
-
-SECS_WAIT_DOCK_ADJUST_STEADY = 5.0      # DOCK_ADJUST 时认为 USV 已经稳定前所需的秒数
-ANGLE_DOCK_STEADY_TOL = deg2rad(2)      # DOCK_ADJUST 时认为 USV 已经稳定的角度判据
-DIST_DOCK_STEADY_TOL = 1.0              # DOCK_ADJUST 时认为 USV 已经稳定的位置判据
-VEL_DOCK_STEADY_TOL = 0.25              # DOCK_ADJUST 时认为 USV 已经稳定的速度判据
-
-HEALTHY_Z_TOL = 0.2                    # 
-SECS_WAIT_HEIGHT_SEARCH = 3.0          # WAIT_ARM 时等待机械臂搜索大物体的秒数
-
-DIST_TOOBJAREA_SIDE = 2.5              # TOLARGEOBJ 时 USV 前往的大物体侧面点与船边的距离
-SECS_WAIT_TOOBJAREA_STEADY = 5.0       # TOLARGEOBJ 时认为 USV 已经稳定前所需的秒数
-DIST_TOLARGEOBJ_TOL = 1.5               # TOLARGEOBJ 时认为 USV 已经前往到大物体侧面点的位置判据
-
-DIST_TOVESSELCEN_SIDE = 2.5                # TOVESSEL 时 USV 前往的目标船侧面点与船边的距离
-SECS_WAIT_TOVESSCEN_STEADY = 5.0         # TOVESSEL 时认为 USV 已经稳定前所需的秒数
-DIST_TOVESSEL_TOL = 1.5                 # TOVESSEL 时认为 USV 已经前往到目标船侧面点的位置判据
-
-SECS_WAIT_ATTACH_STEADY = 5.0
-VEL_ATTACH_TOL = 0.08
-DIST_ATTACH_TOL = 1.5
-
-RPM_ATTACH_UB = 400.0
-RPM_ATTACH_LB = 150.0
-DIST_ATTACH_UB = 10.0
-DIST_ATTACH_LB = 5.0
-
-RPM_FINAL = 280.0
 
 @atexit.register 
 def clean():
