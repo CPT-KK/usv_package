@@ -234,7 +234,7 @@ class Control():
         # sign(self.angleLeftSP) * sign(atan2(aySP, axSP)) == -1
         # sign(self.angleLeftSP) * sign(atan2(aySP, axSP)) == 0 <-> aySP == 0
         if (sign(self.angleLeftSP) * sign(arctan2(aySP, axSP)) == 0):
-            rpmTranslate = self.MASS * sign(axSP) * sqrt(axSP ** 2) / 2.0
+            rpmTranslate = self.__MASS * sign(axSP) * sqrt(axSP ** 2) / 2.0
         elif (sign(self.angleLeftSP) * sign(arctan2(aySP, axSP)) > 0):
             rpmTranslate = self.__MASS * sqrt(axSP ** 2 + aySP ** 2) / 2.0
         else:
