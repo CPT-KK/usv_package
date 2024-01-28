@@ -105,7 +105,7 @@ def main(args=None):
     isDockWaitFinalPlan = False
     isTestPlan = False
 
-    isTestEnable = True
+    isTestEnable = False
 
     # 无人船状态
     usvState = "SELF_CHECK"
@@ -267,7 +267,7 @@ def main(args=None):
                 # 如果吊舱没有识别，则退回到 SUAV 导引
                 if (not usvPose.isPodFindTV):
                     yawSP = usvPose.yaw
-                    usvState = "PURSUE_POD_LOST"
+                    usvState = "PURSUE_SUAV"
                     continue
 
                 # 使用吊舱的角度控制无人船

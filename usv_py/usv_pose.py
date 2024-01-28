@@ -174,14 +174,6 @@ class Pose():
 
     def podReset(self):
         self.podResetPub.publish(Int8(data=1))
-        self.podResetPub.publish(Int8(data=1))
-        self.podResetPub.publish(Int8(data=1))
-        self.podResetPub.publish(Int8(data=1))
-        self.podResetPub.publish(Int8(data=1))
-        self.podResetPub.publish(Int8(data=1))
-        self.podResetPub.publish(Int8(data=1))
-        self.podResetPub.publish(Int8(data=1))
-        self.podResetPub.publish(Int8(data=1))
 
     def lidarCallback(self, msg):          
         if (len(msg.poses) % 2 == 0):
