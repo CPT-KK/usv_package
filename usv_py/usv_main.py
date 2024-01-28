@@ -13,7 +13,8 @@ from usv_path_planner import PathPlanner
 from usv_guidance import Guidance
 from usv_control import Control
 from usv_communication import Communication
-from usv_math import removeOutliers, wrapToPi, linearClip, rotationZ, sign
+from usv_math import removeOutliers, wrapToPi, linearClip, rotationZ, sign, updateTVHeading, calcHighest
+
 from usv_record import genTable, USVData
 from usv_constants import *
 
@@ -30,36 +31,6 @@ def clean():
 def interuptFunc(signum, frame):
     console.print("\n[red]>>>>>>> Ctrl + C pressed! Exiting...")
     exit()
-
-def updateTVHeading(existHeading, newHeading):
-    newHeading2 = wrapToPi(newHeading + pi)
-    angleGap1 = abs(wrapToPi(newHeading - existHeading))
-    angleGap2 = abs(wrapToPi(newHeading2 - existHeading))
-
-    if (angleGap1 <= angleGap2):
-        return wrapToPi(newHeading)
-    else:
-        return wrapToPi(newHeading2)
-
-def calcHighest(tvHighestXMean, tvHighestYMean, tvHighestZMean, tvLengthMean, yawf):
-    if (tvHighestZMean >= HEALTHY_Z_TOL):   
-        # 最高点测量健康，向最高点映射到船中轴线上的点泊近
-        # 注意：这里的 rotationZ 是要对点（向量）进行旋转，即求取点在旋转后的坐标（同一坐标系下），
-        # 而不是同一个点在不同坐标系下的表示，故取负号
-        [tvHighestXMean2, _] = rotationZ(tvHighestXMean, tvHighestYMean, yawf)
-        if (tvHighestXMean2 >= 0):
-            xf = (-0.5 * tvLengthMean + tvHighestXMean2) / 2
-            yf = 0.0
-        else:
-            xf = (0.5 * tvLengthMean + tvHighestXMean2) / 2
-            yf = 0.0
-        [xf, yf] = rotationZ(xf, yf, -yawf)
-    else: 
-        # 最高点测量不健康，设置为目标船中心
-        xf = 0.0
-        yf = 0.0
-
-    return [xf, yf]
 
 def main(args=None):
     # 控制台输出初始化
@@ -531,7 +502,7 @@ def main(args=None):
                 [deckCenterX, deckCenterY] = rotationZ(-usvPose.xLidar + xf, -usvPose.yLidar + yf, usvPose.yaw)
                 deckyaw = yawf - usvPose.yaw
 
-                usvControl.thrustSet(80, 80, deg2rad(105), deg2rad(96))
+                usvControl.thrustSet(RPM_FINAL, RPM_FINAL, ANGLE_LEFT_FINAL, ANGLE_RIGHT_FINAL)
                 usvControl.thrustPub()
 
                 latestMsg = f"TAKEOFF signal sent!!! Real-time deck point at [{deckCenterX:.2f}, {deckCenterY:.2f}]m @ {rad2deg(deckyaw):.2f}deg."              

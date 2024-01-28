@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-
+from usv_constants import *
 from numpy import pi, sign, arctan2, sin, cos, abs, array, sqrt, percentile
 from sklearn.cluster import DBSCAN
 from collections import Counter
@@ -85,3 +85,33 @@ def removeOutliers(data, eps, min_samples):
 # for i in checklist:
 #     print("%.2f" % (wrapToPi(i)))
     # print(wrapToPi(-i))
+
+def updateTVHeading(existHeading, newHeading):
+    newHeading2 = wrapToPi(newHeading + pi)
+    angleGap1 = abs(wrapToPi(newHeading - existHeading))
+    angleGap2 = abs(wrapToPi(newHeading2 - existHeading))
+
+    if (angleGap1 <= angleGap2):
+        return wrapToPi(newHeading)
+    else:
+        return wrapToPi(newHeading2)
+
+def calcHighest(tvHighestXMean, tvHighestYMean, tvHighestZMean, tvLengthMean, tvYaw):
+    if (tvHighestZMean >= HEALTHY_Z_TOL):   
+        # 最高点测量健康，向最高点映射到船中轴线上的点泊近
+        # 注意：这里的 rotationZ 是要对点（向量）进行旋转，即求取点在旋转后的坐标（同一坐标系下），
+        # 而不是同一个点在不同坐标系下的表示，故取负号
+        [tvHighestXMean2, _] = rotationZ(tvHighestXMean, tvHighestYMean, tvYaw)
+        if (tvHighestXMean2 >= 0):
+            xf = (-0.5 * tvLengthMean + tvHighestXMean2) / 2
+            yf = 0.0
+        else:
+            xf = (0.5 * tvLengthMean + tvHighestXMean2) / 2
+            yf = 0.0
+        [xf, yf] = rotationZ(xf, yf, -tvYaw)
+    else: 
+        # 最高点测量不健康，设置为目标船中心
+        xf = 0.0
+        yf = 0.0
+
+    return [xf, yf]
