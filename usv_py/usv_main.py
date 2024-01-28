@@ -94,7 +94,7 @@ def main(args=None):
     
     # 初始化标志位
     isObsAvoidEnable = True
-    isInitalBackStableEnable = False
+    isInitalBackStableEnable = True
 
     isGoindOutPlan = False
     isDockNearbyPlan = False
@@ -190,8 +190,9 @@ def main(args=None):
                     latestMsg = "Waiting sUAV countdown..."
                     usvState = "READY"
 
-                # usvControl.thrustSet(RPM_START, RPM_START, 0, 0)
-                # usvControl.thrustPub()
+                if (isInitalBackStableEnable):
+                    usvControl.thrustSet(RPM_START, RPM_START, 0, 0)
+                    usvControl.thrustPub()
 
             elif usvState == "READY":
                 if (usvComm.suavState == "COUNTDOWN"):
@@ -238,7 +239,9 @@ def main(args=None):
                 # 如果吊舱识别，则进入到吊舱导引
                 if (usvPose.isPodFindTV) & (abs(usvPose.tvAnglePod - usvPose.tvAngleEst) <= ANGLE_EST_POD_GAP):####### ALERT #######
                     usvState = "PURSUE_POD"
-                    continue            
+                    continue
+                else:
+                    usvPose.podReset()
                     
                 # 如果激光雷达识别，则进入到 LIDAR 导引
                 if (usvPose.isLidarFindTV):
@@ -358,12 +361,6 @@ def main(args=None):
                 tvInfo[2, tvInfoIdx] = usvPose.tvWidth
                 tvInfoIdx = tvInfoIdx + 1
 
-                # 读取目标船的最高点信息
-                tvHighestXYZs[0, tvHighestInfoIdx] = usvPose.tvHighestX
-                tvHighestXYZs[1, tvHighestInfoIdx] = usvPose.tvHighestY
-                tvHighestXYZs[2, tvHighestInfoIdx] = usvPose.tvHighestZ
-                tvHighestInfoIdx = tvHighestInfoIdx + 1
-
                 latestMsg = f"Estimating target vessel heading: {rad2deg(usvPose.tvHeading):.2f} deg. L: {usvPose.tvLength:.2f} m. W: {usvPose.tvWidth:.2f} m. Path [{usvGuidance.currentIdx} >> {usvGuidance.endIdx}]."
 
                 # 如果测量段结束了，打印出测量段测量结果，进入变轨段
@@ -373,7 +370,6 @@ def main(args=None):
                     tvHeadings = tvInfo[0, :]
                     tvLengths = tvInfo[1, :]
                     tvWidths = tvInfo[2, :]
-                    tvHighestXYZs = tvHighestXYZs[:, 0:tvHighestInfoIdx-1]
 
                     # 如果标准差大于 ANGLE_DOCK_MEASURE_JUMP，认为大概率是-90°与90°跳变的情况，因此对 tvHeadings 中负角度加一个 pi
                     if (std(tvHeadings) > ANGLE_DOCK_MEASURE_JUMP):
@@ -383,17 +379,11 @@ def main(args=None):
                     tvHeadings = removeOutliers(tvHeadings, 0.087266, 20)
                     tvLengths = removeOutliers(tvLengths, 0.2, 20)
                     tvWidths = removeOutliers(tvWidths, 0.2, 20)
-                    tvHighestXs = removeOutliers(tvHighestXYZs[0, :], 0.1, 20)
-                    tvHighestYs = removeOutliers(tvHighestXYZs[1, :], 0.1, 20)
-                    tvHighestZs = removeOutliers(tvHighestXYZs[2, :], 0.1, 20)
-        
+
                     # 计算平均值，并将结果角度映射到-90°~90°
                     tvHeadingMean = arctan(tan(mean(tvHeadings)))
                     tvLengthMean = mean(tvLengths)
                     tvWidthMean = mean(tvWidths)                
-                    tvHighestXMean = mean(tvHighestXs)
-                    tvHighestYMean = mean(tvHighestYs)
-                    tvHighestZMean = mean(tvHighestZs)
 
                     usvState = "DOCK_APPROACH"
                     continue
@@ -443,15 +433,25 @@ def main(args=None):
                 [uSP, vSP, rSP, axbSP, aybSP, etaSP] = usvControl.moveUSVVec(xSP, ySP, yawSP, usvPose.xLidar, usvPose.yLidar, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.yaw, usvPose.r)
 
                 latestMsg = f"Try to stablize at [{xSP:.2f}, {ySP:.2f}]m, {rad2deg(yawSP):.2f}deg. Pos tol: [{norm([usvPose.xLidar - xSP, usvPose.yLidar - ySP]):.2f}/{DIST_DOCK_STEADY_TOL}]m. Vel tol: [{norm([usvPose.uDVL, usvPose.vDVL]):.2f}/{VEL_DOCK_STEADY_TOL}]m/s."
-                
-                # 一旦船靠近到阈值以下范围，进入固连
-                if (norm([usvPose.xLidar - xSP, usvPose.yLidar - ySP]) <= DIST_DOCK_STEADY_TOL) & (norm([usvPose.uDVL, usvPose.vDVL]) <= VEL_DOCK_STEADY_TOL):   
-                    usvState = "DOCK_ATTACH"
-                    continue
 
-                # 超时
-                if (rospy.Time.now().to_sec() - timer0 > SECS_TIMEOUT_DOCK_STEADY):
-                    usvState = "DOCK_ATTACH"
+                # 测量最高点
+                # 读取目标船的最高点信息
+                tvHighestXYZs[0, tvHighestInfoIdx] = usvPose.tvHighestX
+                tvHighestXYZs[1, tvHighestInfoIdx] = usvPose.tvHighestY
+                tvHighestXYZs[2, tvHighestInfoIdx] = usvPose.tvHighestZ
+                tvHighestInfoIdx = tvHighestInfoIdx + 1
+                
+                # 一旦船靠近到阈值以下范围或超时，进入固连
+                if ((norm([usvPose.xLidar - xSP, usvPose.yLidar - ySP]) <= DIST_DOCK_STEADY_TOL) & (norm([usvPose.uDVL, usvPose.vDVL]) <= VEL_DOCK_STEADY_TOL)) | (rospy.Time.now().to_sec() - timer0 > SECS_TIMEOUT_DOCK_STEADY):   
+                    tvHighestXYZs = tvHighestXYZs[:, 0:tvHighestInfoIdx-1]
+                    tvHighestXs = removeOutliers(tvHighestXYZs[0, :], 0.1, 20)
+                    tvHighestYs = removeOutliers(tvHighestXYZs[1, :], 0.1, 20)
+                    tvHighestZs = removeOutliers(tvHighestXYZs[2, :], 0.1, 20)
+                    tvHighestXMean = mean(tvHighestXs)
+                    tvHighestYMean = mean(tvHighestYs)
+                    tvHighestZMean = mean(tvHighestZs)
+
+                    usvState = "DOCK_ATTACH"                  
                     continue
             
             elif usvState == "DOCK_ATTACH":
@@ -464,6 +464,7 @@ def main(args=None):
 
                 # 通过目标船在无人船船体系下的坐标计算两船侧向的距离
                 yawf = updateTVHeading(usvPose.yaw, usvPose.tvHeading)
+                yawSP = yawf
                 lateralDist = abs(usvPose.tvYBody)
 
                 if (usvControl.angleLeftEst < pi / 2) | (usvControl.angleRightEst < pi / 2):
@@ -498,6 +499,7 @@ def main(args=None):
 
                 # 计算给小物体搬运的坐标点
                 yawf = updateTVHeading(usvPose.yaw, usvPose.tvHeading)
+                yawSP = yawf
                 [xf, yf] = calcHighest(tvHighestXMean, tvHighestYMean, tvHighestZMean, tvLengthMean, yawf)
                 [deckCenterX, deckCenterY] = rotationZ(-usvPose.xLidar + xf, -usvPose.yLidar + yf, usvPose.yaw)
                 deckyaw = yawf - usvPose.yaw
@@ -524,6 +526,7 @@ def main(args=None):
             elif usvState == "DOCK_FINAL":      
                 # 计算给小物体搬运的坐标点
                 yawf = updateTVHeading(usvPose.yaw, usvPose.tvHeading)
+                yawSP = yawf
                 [xf, yf] = calcHighest(tvHighestXMean, tvHighestYMean, tvHighestZMean, tvLengthMean, yawf)
                 [deckCenterX, deckCenterY] = rotationZ(-usvPose.xLidar + xf, -usvPose.yLidar + yf, usvPose.yaw)
                 deckyaw = yawf - usvPose.yaw
