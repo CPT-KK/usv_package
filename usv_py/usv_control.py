@@ -49,6 +49,8 @@ class Control():
     # Actuator 当前状态估计变量
     rpmLeftEst = float("nan")      # 左侧发动机转速 estimate
     rpmRightEst = float("nan")     # 右侧发动机转速 estimate
+    statusLeft = 0
+    statusRight = 0
     angleLeftEst = float("nan")    # 左侧舵角 estimate
     angleRightEst = float("nan")   # 右侧舵角 estimate
 
@@ -300,6 +302,14 @@ class Control():
         self.rpmRightEst = msg.data
         return
     
+    def lStatusCallback(self, msg):
+        self.statusLeft = msg.data
+        return  
+    
+    def rStatusCallback(self, msg):
+        self.statusRight = msg.data
+        return
+    
     def lAngleCallback(self, msg):
         self.angleLeftEst = deg2rad(-msg.data)
         return
@@ -307,6 +317,7 @@ class Control():
     def rAngleCallback(self, msg):
         self.angleRightEst = deg2rad(-msg.data)
         return
+    
 
     def battSOCCallback(self, msg):
         self.battSOC[int(msg.data[0]) - 1] = msg.data[1]

@@ -104,8 +104,8 @@ def genTable(usvState, latestMsg, usvPose, usvControl, usvComm, dt, uSP, vSP, ya
             "[bold]Engine",
             f"L_cmd: {usvControl.rpmLeftSP:.2f} RPM | {rad2deg(usvControl.angleLeftSP):.2f} deg", 
             f"R_cmd: {usvControl.rpmRightSP:.2f} RPM | {rad2deg(usvControl.angleRightSP):.2f} deg", 
-            f"L: {usvControl.rpmLeftEst:.2f} RPM | {rad2deg(usvControl.angleLeftEst):.2f} deg", 
-            f"R: {usvControl.rpmRightEst:.2f} RPM | {rad2deg(usvControl.angleRightEst):.2f} deg",
+            f"L [{usvControl.statusLeft:2X}]: {usvControl.rpmLeftEst:.2f} RPM | {rad2deg(usvControl.angleLeftEst):.2f} deg", 
+            f"R [{usvControl.statusRight:2X}]: {usvControl.rpmRightEst:.2f} RPM | {rad2deg(usvControl.angleRightEst):.2f} deg",
             "",
             "[bold]Battery",
             f"1: {usvControl.battSOC[0]:.1f} % | ↓{usvControl.battCellVoltMin[0]:.3f} v", 
@@ -134,7 +134,7 @@ def genTable(usvState, latestMsg, usvPose, usvControl, usvComm, dt, uSP, vSP, ya
     return theTable
 
 class USVData():
-    element = ["USV_State", "t", "x_GPS", "y_GPS", "yaw", "u", "v", "r", "uSP", "vSP", "yawSP", "rSP", "xSP", "ySP", "axbSP", "aybSP", "etaSP", "x_DVL", "y_DVL", "u_DVL", "v_DVL", "ax", "ay", "az", "roll", "pitch", "x_Lidar", "y_Lidar", "search_tv_x", "search_tv_y", "search_angle", "pod_angle", "pod_state", "lidar_object_num", "lidar_angle", "target_vessel_heading", "target_vessel_length", "target_vessel_width", "target_vessel_highest_x", "target_vessel_highest_y", "target_vessel_highest_z", "lidar_target_body_x", "lidar_target_body_y", "obs_x", "obs_y", "obs_angle", "rpm_left_cmd", "rpm_right_cmd", "angle_left_cmd", "angle_right_cmd", "rpm_left", "rpm_right", "angle_left", "angle_right", "battery_1_SOC", "battery_2_SOC", "battery_3_SOC", "battery_4_SOC", "battery_1_cell_volt_min", "battery_2_cell_volt_min", "battery_3_cell_volt_min", "battery_4_cell_volt_min"]
+    element = ["USV_State", "t", "x_GPS", "y_GPS", "yaw", "u", "v", "r", "uSP", "vSP", "yawSP", "rSP", "xSP", "ySP", "axbSP", "aybSP", "etaSP", "x_DVL", "y_DVL", "u_DVL", "v_DVL", "ax", "ay", "az", "roll", "pitch", "x_Lidar", "y_Lidar", "search_tv_x", "search_tv_y", "search_angle", "pod_angle", "pod_state", "lidar_object_num", "lidar_angle", "target_vessel_heading", "target_vessel_length", "target_vessel_width", "target_vessel_highest_x", "target_vessel_highest_y", "target_vessel_highest_z", "lidar_target_body_x", "lidar_target_body_y", "obs_x", "obs_y", "obs_angle", "rpm_left_cmd", "rpm_right_cmd", "angle_left_cmd", "angle_right_cmd", "rpm_left", "rpm_right", "status_left", "status_right", "angle_left", "angle_right", "battery_1_SOC", "battery_2_SOC", "battery_3_SOC", "battery_4_SOC", "battery_1_cell_volt_min", "battery_2_cell_volt_min", "battery_3_cell_volt_min", "battery_4_cell_volt_min"]
     elementStr = " ".join(element)
     elementTemplate = "%s " + "%.5f " * (len(element) - 2) + "%.5f"
 
@@ -153,7 +153,7 @@ class USVData():
             self.thisTime = rospy.Time.now().to_sec()
             
             with open(self.fileNameStr, 'a') as f:          
-                f.write(self.elementTemplate % (usvState, dt, usvPose.x, usvPose.y, usvPose.yaw, usvPose.u, usvPose.v, usvPose.r, uSP, vSP, yawSP, rSP, xSP, ySP, axbSP, aybSP, etaSP, usvPose.xDVL, usvPose.yDVL, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.azb, usvPose.roll, usvPose.pitch, usvPose.xLidar, usvPose.yLidar, usvPose.tvEstPosX, usvPose.tvEstPosY, usvPose.tvAngleEst, usvPose.tvAnglePod, usvPose.podState, usvPose.objectNum, usvPose.tvAngleLidar, usvPose.tvHeading, usvPose.tvLength, usvPose.tvWidth, usvPose.tvHighestX, usvPose.tvHighestY, usvPose.tvHighestZ, usvPose.tvXBody, usvPose.tvYBody, usvPose.obsX, usvPose.obsY, usvPose.obsAngleLidar, usvControl.rpmLeftSP, usvControl.rpmRightSP, usvControl.angleLeftSP, usvControl.angleRightSP, usvControl.rpmLeftEst, usvControl.rpmRightEst, usvControl.angleLeftEst, usvControl.angleRightEst, usvControl.battSOC[0], usvControl.battSOC[1], usvControl.battSOC[2], usvControl.battSOC[3], usvControl.battCellVoltMin[0], usvControl.battCellVoltMin[1], usvControl.battCellVoltMin[2], usvControl.battCellVoltMin[3]) + '\n')
+                f.write(self.elementTemplate % (usvState, dt, usvPose.x, usvPose.y, usvPose.yaw, usvPose.u, usvPose.v, usvPose.r, uSP, vSP, yawSP, rSP, xSP, ySP, axbSP, aybSP, etaSP, usvPose.xDVL, usvPose.yDVL, usvPose.uDVL, usvPose.vDVL, usvPose.axb, usvPose.ayb, usvPose.azb, usvPose.roll, usvPose.pitch, usvPose.xLidar, usvPose.yLidar, usvPose.tvEstPosX, usvPose.tvEstPosY, usvPose.tvAngleEst, usvPose.tvAnglePod, usvPose.podState, usvPose.objectNum, usvPose.tvAngleLidar, usvPose.tvHeading, usvPose.tvLength, usvPose.tvWidth, usvPose.tvHighestX, usvPose.tvHighestY, usvPose.tvHighestZ, usvPose.tvXBody, usvPose.tvYBody, usvPose.obsX, usvPose.obsY, usvPose.obsAngleLidar, usvControl.rpmLeftSP, usvControl.rpmRightSP, usvControl.angleLeftSP, usvControl.angleRightSP, usvControl.rpmLeftEst, usvControl.rpmRightEst, usvControl.statusLeft, usvControl.statusRight, usvControl.angleLeftEst, usvControl.angleRightEst, usvControl.battSOC[0], usvControl.battSOC[1], usvControl.battSOC[2], usvControl.battSOC[3], usvControl.battCellVoltMin[0], usvControl.battCellVoltMin[1], usvControl.battCellVoltMin[2], usvControl.battCellVoltMin[3]) + '\n')
        
 
 if __name__ == '__main__':
