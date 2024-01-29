@@ -8,7 +8,7 @@ RPM_START = -160
 
 L_HALF = 1.75
 
-USP_GOINT_OUT = 1.5
+USP_GOINT_OUT = 1.0
 SECS_GOING_OUT = 15
 
 USP_SUAV_PURSUE = 2.75                  # 搜索无人机引导时 USV 的轴向速度

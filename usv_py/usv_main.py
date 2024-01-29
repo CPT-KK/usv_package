@@ -67,7 +67,7 @@ def main(args=None):
     isObsAvoidEnable = True
     isInitalBackStableEnable = True
 
-    isGoindOutPlan = False
+    isGoingOutPlan = False
     isDockNearbyPlan = False
     isDockMeasurePlan = False
     isDockApproachPlan = False
@@ -174,11 +174,10 @@ def main(args=None):
                     usvControl.thrustSet(RPM_START, RPM_START, 0, 0)
                     usvControl.thrustPub()
             
-            elif usvState == "STANDBY":
-                    
+            elif usvState == "STANDBY":                   
                 if (usvComm.suavState == "DOCK") | (usvComm.suavState == "GUIDE"):
                     usvState = "GOING_OUT"
-                    latestMsg = "USV is going out from the bay..."
+                    latestMsg = "USV is going out from the jetty..."
                     continue
                 
                 if (isInitalBackStableEnable):
@@ -186,10 +185,10 @@ def main(args=None):
                     usvControl.thrustPub()
                 
             elif usvState == "GOING_OUT":
-                if (isGoindOutPlan == False):
+                if (isGoingOutPlan == False):
                     timer1 = rospy.Time.now().to_sec()
                     yawSP = usvPose.yaw
-                    isGoindOutPlan = True
+                    isGoingOutPlan = True
 
                 if (rospy.Time.now().to_sec() - timer1 <= SECS_GOING_OUT):
                     uSP = USP_GOINT_OUT
@@ -227,7 +226,7 @@ def main(args=None):
                 # 接收 SUAV 的航向信息
                 latestMsg = f"Following heading {rad2deg(usvPose.tvAngleEst):.2f} deg from sUAV."
                 uSP = USP_SUAV_PURSUE
-                yawSP = usvPose.tvAngleEst     
+                yawSP = usvPose.tvAngleEst
                 
                 # 控制无人船
                 [uSP, rSP, axbSP, etaSP] = usvControl.moveUSV(uSP, yawSP, usvPose.uDVL, usvPose.axb, usvPose.yaw, usvPose.r)
@@ -391,7 +390,6 @@ def main(args=None):
                 if (isDockSteadyPlan == False):
                     # 将当前时间写入 t1 计时器
                     timer0 = rospy.Time.now().to_sec()
-                    timer1 = rospy.Time.now().to_sec()
                     isDockSteadyPlan = True
                 
                 # 更新航向值
