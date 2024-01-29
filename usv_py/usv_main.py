@@ -450,6 +450,8 @@ def main(args=None):
                     continue
                 elif (lateralDist <= DIST_ATTACH_TOL + 0.5 * tvWidthMean + L_HALF):
                     pass
+                elif (usvControl.angleLeftEst < pi / 2) | (usvControl.angleRightEst < pi / 2):
+                    timer1 = rospy.Time.now().to_sec()
                 else:
                     # 如果不满足静止条件，需要重置 t1 计时器
                     timer1 = rospy.Time.now().to_sec()
