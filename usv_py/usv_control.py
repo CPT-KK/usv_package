@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import rospy
-from std_msgs.msg import Float32, Int16, Float32MultiArray
+from std_msgs.msg import Float32, Int16, Int8, Float32MultiArray
 
 from numpy import sin, cos, tan, arcsin, arccos, arctan, arctan2, rad2deg, deg2rad, clip, abs, sign, pi, sqrt, array, max
 from numpy.linalg import norm
@@ -50,6 +50,8 @@ class Control():
     rpmRightEst = float("nan")     # 右侧发动机转速 estimate
     statusLeft = 0
     statusRight = 0
+    driveReadyLeft = 0
+    driveReadyRight = 0
     angleLeftEst = float("nan")    # 左侧舵角 estimate
     angleRightEst = float("nan")   # 右侧舵角 estimate
 
@@ -67,6 +69,8 @@ class Control():
         # For USV actuator estimates
         self.__lThrustSubscriber = rospy.Subscriber("/usv/torqeedo/left/estimate", Int16, self.lThrustCallback, queue_size=1)
         self.__rThrustSubscriber = rospy.Subscriber("/usv/torqeedo/right/estimate", Int16, self.rThrustCallback, queue_size=1)
+        self.__lStatusSubscriber = rospy.Subscriber("/usv/torqeedo/left/status", Int8, self.lStatusCallback, queue_size=1)
+        self.__rStatusSubscriber = rospy.Subscriber("/usv/torqeedo/right/status", Int8, self.rStatusCallback, queue_size=1)
         self.__lAngleSubscriber = rospy.Subscriber("/usv/pod/left/estimate", Float32, self.lAngleCallback, queue_size=1)
         self.__rAngleSubscriber = rospy.Subscriber("/usv/pod/right/estimate", Float32, self.rAngleCallback, queue_size=1)
 
@@ -281,10 +285,17 @@ class Control():
         return
 
     def thrustPub(self):
-        lT = Int16(data=int(self.rpmLeftSP))
-        rT = Int16(data=int(self.rpmRightSP))
-        lA = Float32(data=rad2deg(-self.angleLeftSP))
-        rA = Float32(data=rad2deg(-self.angleRightSP))
+        if (self.driveReadyLeft == 0) | (self.driveReadyRight == 0):
+            rospy.warn("Drive not ready!")
+            lT = Int16(data=0)
+            rT = Int16(data=0)
+            lA = Float32(data=0)
+            rA = Float32(data=0)
+        else:
+            lT = Int16(data=int(self.rpmLeftSP))
+            rT = Int16(data=int(self.rpmRightSP))
+            lA = Float32(data=rad2deg(-self.angleLeftSP))
+            rA = Float32(data=rad2deg(-self.angleRightSP))
 
         self.__lThrustPublisher.publish(lT)
         self.__rThrustPublisher.publish(rT)
@@ -303,10 +314,12 @@ class Control():
     
     def lStatusCallback(self, msg):
         self.statusLeft = msg.data
+        self.driveReadyLeft = (msg.data & 0b10000000) >> 7
         return  
     
     def rStatusCallback(self, msg):
         self.statusRight = msg.data
+        self.driveReadyRight = (msg.data & 0b10000000) >> 7
         return
     
     def lAngleCallback(self, msg):
