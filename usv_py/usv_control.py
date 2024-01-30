@@ -80,7 +80,7 @@ class Control():
 
         # PID 初始化
         self.__uPID = PID(0.8, 0.06, -0.012)
-        self.__yawPID = PID(0.23, 0.0002, -0.02)
+        self.__yawPID = PID(0.25, 0.0002, -0.02)
         self.__rPID = PID(14, 0.5, -0.1)
 
         self.__xPID = PID(0.2, 0.00, 0.0)
