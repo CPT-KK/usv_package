@@ -138,9 +138,8 @@ class USVData():
     elementStr = " ".join(element)
     elementTemplate = "%s " + "%.5f " * (len(element) - 2) + "%.5f"
 
-    def __init__(self):
-        timeStr = time.strftime('%Y%m%d_%H%M%S', time.localtime())
-        self.fileNameStr = "usv_data_" + timeStr + ".txt"
+    def __init__(self, currTimeStamp):
+        self.fileNameStr = "usv_data_" + currTimeStamp + ".txt"
         with open(self.fileNameStr, 'w') as f:
             f.write(self.elementStr + '\n')
 
