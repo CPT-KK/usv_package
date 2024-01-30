@@ -286,7 +286,7 @@ class Control():
 
     def thrustPub(self):
         if (self.driveReadyLeft == 0) | (self.driveReadyRight == 0):
-            rospy.logwarn("Drive not ready!")
+            rospy.logerr(f"Motor[{self.driveReadyLeft}, {self.driveReadyRight}] not ready!")
             lT = Int16(data=0)
             rT = Int16(data=0)
             lA = Float32(data=0)
