@@ -21,10 +21,12 @@ from usv_constants import *
 # 控制台输出
 console = Console(record=True)
 
+# 当前时间
+currTimeStamp = time.strftime('%Y%m%d_%H%M%S', time.localtime())
+
 @atexit.register 
 def clean():
-    timeStr = time.strftime('%Y%m%d_%H%M%S', time.localtime())
-    fileNameStr = "usv_console_output_" + timeStr + ".html"
+    fileNameStr = "usv_output_" + currTimeStamp + ".html"
     console.print(">>>>>>> USV program has exited.")
     console.save_html(fileNameStr)
 
@@ -53,7 +55,7 @@ def main(args=None):
     usvPathPlanner = PathPlanner()
     usvGuidance = Guidance()
     usvControl = Control()
-    usvData = USVData()
+    usvData = USVData(currTimeStamp)
     console.print("[green]>>>>>>> Function classes initialized.")
 
     # 开一个线程用于处理 rospy.spin()
