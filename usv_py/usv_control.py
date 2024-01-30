@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import rospy
-from std_msgs.msg import Float32, Int16, Int8, Float32MultiArray
+from std_msgs.msg import Float32, Int16, Float32MultiArray
 
 from numpy import sin, cos, tan, arcsin, arccos, arctan, arctan2, rad2deg, deg2rad, clip, abs, sign, pi, sqrt, array, max
 from numpy.linalg import norm
@@ -69,8 +69,8 @@ class Control():
         # For USV actuator estimates
         self.__lThrustSubscriber = rospy.Subscriber("/usv/torqeedo/left/estimate", Int16, self.lThrustCallback, queue_size=1)
         self.__rThrustSubscriber = rospy.Subscriber("/usv/torqeedo/right/estimate", Int16, self.rThrustCallback, queue_size=1)
-        self.__lStatusSubscriber = rospy.Subscriber("/usv/torqeedo/left/status", Int8, self.lStatusCallback, queue_size=1)
-        self.__rStatusSubscriber = rospy.Subscriber("/usv/torqeedo/right/status", Int8, self.rStatusCallback, queue_size=1)
+        self.__lStatusSubscriber = rospy.Subscriber("/usv/torqeedo/left/status", Int16, self.lStatusCallback, queue_size=1)
+        self.__rStatusSubscriber = rospy.Subscriber("/usv/torqeedo/right/status", Int16, self.rStatusCallback, queue_size=1)
         self.__lAngleSubscriber = rospy.Subscriber("/usv/pod/left/estimate", Float32, self.lAngleCallback, queue_size=1)
         self.__rAngleSubscriber = rospy.Subscriber("/usv/pod/right/estimate", Float32, self.rAngleCallback, queue_size=1)
 
@@ -286,7 +286,7 @@ class Control():
 
     def thrustPub(self):
         if (self.driveReadyLeft == 0) | (self.driveReadyRight == 0):
-            rospy.warn("Drive not ready!")
+            rospy.logwarn("Drive not ready!")
             lT = Int16(data=0)
             rT = Int16(data=0)
             lA = Float32(data=0)
