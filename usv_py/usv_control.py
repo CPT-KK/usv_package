@@ -13,27 +13,26 @@ from PID import PID
 class Control():
      
     # 控制器限幅参数
-    __axbSPMax = 2.0        # 控制器中 axbSP 的最大值
-    __aybSPMax = 2.0        # 矢量控制器中 aybSP 的最大值
+    __AXB_SP_MAX = 2.0        # 控制器中 axbSP 的最大值
+    __AYB_SP_MAX = 2.0        # 矢量控制器中 aybSP 的最大值
 
-    __uSPMax = 4.0          # 差动控制器中 uSP 的最大值
-    __uSPVecMax = 1.0       # 矢量控制器中 uSP 的最大值
-    __vSPMax = 1.2          # 矢量控制器中 vSP 的最大值
-    __rSPMax = deg2rad(8)   # 控制器中 rSP 的最大值
+    __U_SP_MAX = 4.0          # 差动控制器中 uSP 的最大值
+    __U_SP_VEC_MAX = 1.0       # 矢量控制器中 uSP 的最大值
+    __V_SP_MAX = 1.2          # 矢量控制器中 vSP 的最大值
+    __R_SP_MAX = deg2rad(8)   # 控制器中 rSP 的最大值
     
     # 矢量控制器所处状态
     vecCtrlState = 0        # 0: 正在修正轴向和航向的误差；1: 正在修正侧向的误差
 
     # USV RPM and pod angle limits
-    __rpmMin = 35                   # 最小转速
-    __rpmMax = 1000                 # 最大转速
-    __rpmRotateMax = 800            # 用于转动的最大转速
-    __angleMax = deg2rad(136)        # 舵角最大值
-    __angleMin = deg2rad(-44)
-    __angleMaxState0 = deg2rad(25)  # Control state 0 下的舵角最大值
+    __RPM_MIN = 35                   # 最小转速
+    __RPM_MAX = 1000                 # 最大转速
+    __RPM_ROTATE_MAX = 800            # 用于转动的最大转速
+    __ANGLE_MAX = deg2rad(136)        # 舵角最大值
+    __ANGLE_MIN = deg2rad(-44)
+    __ANGLE_MAX_STATE0 = deg2rad(25)  # Control state 0 下的舵角最大值
 
-    __rpmRateMax = 250
-    __angleRateMax = deg2rad(30)
+    __RPM_RATE_MAX = 70
 
     # 无人船参数
     __MASS = 800.0          # 质量
@@ -104,7 +103,7 @@ class Control():
             uSP = uSP * (0.1 + 0.9 * (1 - abs(yawErr) / (pi / 4)))  
 
         # 轴向速度限幅
-        uSP = clip(uSP, -self.__uSPMax, self.__uSPMax)
+        uSP = clip(uSP, -self.__U_SP_MAX, self.__U_SP_MAX)
 
         # 计算轴向速度误差
         uErr = uSP - u
@@ -113,13 +112,13 @@ class Control():
         axbSP = self.__uPID.compute(uErr, axb)
 
         # 加速度 setpoints 限幅
-        axbSP = clip(axbSP, -self.__axbSPMax, self.__axbSPMax)
+        axbSP = clip(axbSP, -self.__AXB_SP_MAX, self.__AXB_SP_MAX)
 
         # 计算期望朝向角速度
         rSP = self.__yawPID.compute(yawErr, r)
 
         # 期望朝向角速度限幅
-        rSP = clip(rSP, -self.__rSPMax, self.__rSPMax)
+        rSP = clip(rSP, -self.__R_SP_MAX, self.__R_SP_MAX)
 
         # 计算期望角速度误差
         rErr = rSP - r
@@ -161,44 +160,44 @@ class Control():
         if (self.vecCtrlState == 1):
             # 计算并修正轴向误差
             uSP = self.__xPID.compute(xErr, u)
-            uSP = clip(uSP, -self.__uSPVecMax, self.__uSPVecMax)
+            uSP = clip(uSP, -self.__U_SP_VEC_MAX, self.__U_SP_VEC_MAX)
             uErr = uSP - u
             axbSP = self.__vxPID.compute(uErr, axb)
-            axbSP = clip(axbSP, -self.__axbSPMax, self.__axbSPMax)
+            axbSP = clip(axbSP, -self.__AXB_SP_MAX, self.__AXB_SP_MAX)
 
             # 计算并修正侧向误差
             vSP = self.__yPID.compute(yErr, v)
-            vSP = clip(vSP, -self.__vSPMax, self.__vSPMax)
+            vSP = clip(vSP, -self.__V_SP_MAX, self.__V_SP_MAX)
             vErr = vSP - v
             aybSP = self.__vyPID.compute(vErr, ayb)
-            aybSP = clip(aybSP, -self.__aybSPMax, self.__aybSPMax)
+            aybSP = clip(aybSP, -self.__AYB_SP_MAX, self.__AYB_SP_MAX)
 
             # 限制 axbSP 不能负的太多
-            if (arctan(aybSP / axbSP) < self.__angleMin):
-                axbSP = aybSP / tan(self.__angleMax)
+            if (arctan(aybSP / axbSP) < self.__ANGLE_MIN):
+                axbSP = aybSP / tan(self.__ANGLE_MAX)
         else:
             # 计算并修正轴向误差
             uSP = self.__xPID.compute(xErr, u)
-            uSP = clip(uSP, -self.__uSPVecMax, self.__uSPVecMax)
+            uSP = clip(uSP, -self.__U_SP_VEC_MAX, self.__U_SP_VEC_MAX)
             uErr = uSP - u
             axbSP = self.__vxPID.compute(uErr, axb)
-            axbSP = clip(axbSP, -self.__axbSPMax, self.__axbSPMax)
+            axbSP = clip(axbSP, -self.__AXB_SP_MAX, self.__AXB_SP_MAX)
 
             # 计算并修正侧向误差
             vSP = self.__yPID.compute(yErr, v)
-            vSP = clip(vSP, -self.__vSPMax, self.__vSPMax)
+            vSP = clip(vSP, -self.__V_SP_MAX, self.__V_SP_MAX)
             vErr = vSP - v
             aybSP = self.__vyPID.compute(vErr, ayb)
-            aybSP = clip(aybSP, -self.__aybSPMax, self.__aybSPMax)
+            aybSP = clip(aybSP, -self.__AYB_SP_MAX, self.__AYB_SP_MAX)
 
             # 计算并修正航向误差
             rSP = self.__yawPID.compute(yawErr, r)
-            rSP = clip(rSP, -self.__rSPMax, self.__rSPMax)
+            rSP = clip(rSP, -self.__R_SP_MAX, self.__R_SP_MAX)
             rErr = rSP - r
             etaSP = self.__rPID.compute(rErr)
 
             # 侧向加速度要被轴向加速度限幅
-            aybSP = clip(aybSP, -abs(axbSP) * tan(self.__angleMaxState0), abs(axbSP) * tan(self.__angleMaxState0))
+            aybSP = clip(aybSP, -abs(axbSP) * tan(self.__ANGLE_MAX_STATE0), abs(axbSP) * tan(self.__ANGLE_MAX_STATE0))
             
         # 送入混控
         self.mixer(axbSP, aybSP, etaSP)
@@ -217,15 +216,15 @@ class Control():
             self.angleRightSP = arctan(aySP / axSP)
 
         # 这里假设 angleLeftSP 在 [-pi/2, pi/2] 之间
-        if (self.angleLeftSP < self.__angleMin):
+        if (self.angleLeftSP < self.__ANGLE_MIN):
             self.angleLeftSP = self.angleLeftSP + pi
 
-        if (self.angleRightSP < self.__angleMin):
+        if (self.angleRightSP < self.__ANGLE_MIN):
             self.angleRightSP = self.angleRightSP + pi
 
         # 推力偏角限幅
-        self.angleLeftSP = clip(self.angleLeftSP, self.__angleMin, self.__angleMax)
-        self.angleRightSP = clip(self.angleRightSP, self.__angleMin, self.__angleMax)
+        self.angleLeftSP = clip(self.angleLeftSP, self.__ANGLE_MIN, self.__ANGLE_MAX)
+        self.angleRightSP = clip(self.angleRightSP, self.__ANGLE_MIN, self.__ANGLE_MAX)
 
         # 现在，电机角度确定，需要确定推力大小
         # 计算一侧发动机平动和转动所需推力大小的参考值
@@ -251,25 +250,25 @@ class Control():
         
         # 计算左右两侧转动所需推力
         # 为了避免除以 cos(self.angleLeftEst) 出现除以 0 导致结果为无穷的情况，加一个限幅
-        rpmRotateLeft = clip(rpmRotate / cos(self.angleLeftEst), -self.__rpmRotateMax, self.__rpmRotateMax)
-        rpmRotateRight = clip(rpmRotate / cos(self.angleRightEst), -self.__rpmRotateMax, self.__rpmRotateMax)
+        rpmRotateLeft = clip(rpmRotate / cos(self.angleLeftEst), -self.__RPM_ROTATE_MAX, self.__RPM_ROTATE_MAX)
+        rpmRotateRight = clip(rpmRotate / cos(self.angleRightEst), -self.__RPM_ROTATE_MAX, self.__RPM_ROTATE_MAX)
 
         # 计算左右两侧真实推力设置值的大小
         rpmLeftErr = rpmTranslateLeft - rpmRotateLeft - self.rpmLeftSP
         rpmRightErr = rpmTranslateRight + rpmRotateRight - self.rpmRightSP
-        if (abs(rpmLeftErr) > self.__rpmRateMax):
-            self.rpmLeftSP = self.rpmLeftSP + sign(rpmLeftErr) * self.__rpmRateMax
+        if (abs(rpmLeftErr) > self.__RPM_RATE_MAX):
+            self.rpmLeftSP = self.rpmLeftSP + sign(rpmLeftErr) * self.__RPM_RATE_MAX
         else:
             self.rpmLeftSP = rpmTranslateLeft - rpmRotateLeft
         
-        if (abs(rpmRightErr) > self.__rpmRateMax):
-            self.rpmRightSP = self.rpmRightSP + sign(rpmRightErr) * self.__rpmRateMax
+        if (abs(rpmRightErr) > self.__RPM_RATE_MAX):
+            self.rpmRightSP = self.rpmRightSP + sign(rpmRightErr) * self.__RPM_RATE_MAX
         else:
             self.rpmRightSP = rpmTranslateRight + rpmRotateRight
 
         # 推力大小限幅
-        self.rpmLeftSP = clip(self.rpmLeftSP, -self.__rpmMax, self.__rpmMax)
-        self.rpmRightSP = clip(self.rpmRightSP, -self.__rpmMax, self.__rpmMax)
+        self.rpmLeftSP = clip(self.rpmLeftSP, -self.__RPM_MAX, self.__RPM_MAX)
+        self.rpmRightSP = clip(self.rpmRightSP, -self.__RPM_MAX, self.__RPM_MAX)
 
         return
     
