@@ -153,7 +153,7 @@ def main(args=None):
                     usvControl.thrustPub()
 
             elif usvState == "COMM_TEST":
-                if (usvComm.suavState == "COMM_TEST" or usvComm.suavState == "READY" or usvComm.suavState == "COUNTDOWN" or usvComm.suavState == "SEARCH" or usvComm.suavState == "GUIDE") & (usvComm.tuav1State == "COMM_TEST" or usvComm.tuav1State == "READY" or usvComm.tuav1State == "WAIT"):
+                if (usvComm.suavState in COMM_TEST_SUAV_STATES_ALLOWED) & (usvComm.tuav1State in COMM_TEST_TUAV1_STATES_ALLOWED):
                     latestMsg = "Waiting sUAV countdown..."
                     usvState = "READY"
 
@@ -162,7 +162,7 @@ def main(args=None):
                     usvControl.thrustPub()
 
             elif usvState == "READY":
-                if (usvComm.suavState == "COUNTDOWN" or usvComm.suavState == "SEARCH" or usvComm.suavState == "GUIDE"):
+                if (usvComm.suavState in READY_SUAV_STATES_ALLOWED):
                     latestMsg = "Waiting sUAV to provide headings..."
                     usvState = "STANDBY"
 
