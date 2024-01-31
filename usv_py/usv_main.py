@@ -93,12 +93,6 @@ def main(args=None):
     timer0 = rospy.Time.now().to_sec()
     timer1 = rospy.Time.now().to_sec()
 
-    # 保存目标船朝向角的数组
-    tvInfo = zeros((3, 5000))
-    tvInfoIdx = 0
-    tvHighestXYZs = zeros((3, 5000))
-    tvHighestInfoIdx = 0
-
     # Set point 量
     uSP = float("nan")
     vSP = float("nan")
@@ -318,6 +312,10 @@ def main(args=None):
                 if (isDockMeasurePlan == False):
                     currPath = usvPathPlanner.planDockMeasure(usvPose.xLidar, usvPose.yLidar, 0, 0)
                     usvGuidance.setPath(currPath)
+
+                    tvInfo = zeros((3, 5000))
+                    tvInfoIdx = 0
+
                     isDockMeasurePlan = True
 
                 # 读取激光雷达信息（这个时候应该能保证读到目标船吧？），生成控制指令
@@ -392,6 +390,10 @@ def main(args=None):
                 if (isDockSteadyPlan == False):
                     # 将当前时间写入 t1 计时器
                     timer0 = rospy.Time.now().to_sec()
+
+                    tvHighestXYZs = zeros((3, 5000))
+                    tvHighestInfoIdx = 0
+
                     isDockSteadyPlan = True
                 
                 # 更新航向值
@@ -482,6 +484,13 @@ def main(args=None):
 
                 # usvControl.thrustSet(120, 120, deg2rad(105), deg2rad(96))
                 # usvControl.thrustPub()
+
+                # if (usvPose.tvDist > DIST_WAIT_FINAL):
+                #     isDockSteadyPlan = False
+                #     isDockAttachPlan = False
+                #     isDockWaitFinalPlan = False
+                #     usvState = "DOCK_STEADY"
+                #     continue
                 
                 # 如果稳定，则发送起飞状态
                 if (rospy.Time.now().to_sec() - timer1 > SECS_WAIT_FINAL):   
