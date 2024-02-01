@@ -263,12 +263,12 @@ class Control():
         if (abs(rpmLeftErr) > self.__RPM_RATE_MAX):
             self.rpmLeftSP = self.rpmLeftSP + sign(rpmLeftErr) * self.__RPM_RATE_MAX
         else:
-            self.rpmLeftSP = rpmTranslateLeft - rpmRotateLeft
+            self.rpmLeftSP = self.rpmLeftSP + rpmLeftErr
         
         if (abs(rpmRightErr) > self.__RPM_RATE_MAX):
             self.rpmRightSP = self.rpmRightSP + sign(rpmRightErr) * self.__RPM_RATE_MAX
         else:
-            self.rpmRightSP = rpmTranslateRight + rpmRotateRight
+            self.rpmRightSP = self.rpmRightSP + rpmRightErr         
 
         # 推力大小限幅
         self.rpmLeftSP = clip(self.rpmLeftSP, -self.__RPM_MAX, self.__RPM_MAX)
