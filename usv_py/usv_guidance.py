@@ -30,7 +30,7 @@ class Guidance():
     isPathInit = False
 
     def __init__(self):
-        self.yErrPID = PID(1.05, 0.045, -0.1)
+        self.yErrPID = PID(1.05, 0.045, -0.1, 0.5236, -0.5236)
         pass
 
     def setPath(self, inPath, inEndIdx=0):
