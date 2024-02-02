@@ -21,6 +21,7 @@ class Communication():
     largeObjAngle = 0
 
     suavState = "EMPTY"
+    suavminiState = "EMPTY"
     tuav1State = "EMPTY"
     armState = "EMPTY"
 
@@ -40,6 +41,7 @@ class Communication():
 
         # 分系统状态
         self.suavStateSub = rospy.Subscriber('/suav/state', String, self.suavStateCallback, queue_size=10)
+        self.suavminiStateSub = rospy.Subscriber('/suavmini/state', String, self.suavminiStateCallback, queue_size=10)
         self.tuav1StateSub = rospy.Subscriber('/tuav6/state', String, self.tuav1StateCallback, queue_size=10)
         self.tuav1StateSub = rospy.Subscriber('/tuav8/state', String, self.tuav1StateCallback, queue_size=10)
         self.armStateSub = rospy.Subscriber('/arm/state', String, self.armStateCallback, queue_size=10)
@@ -71,6 +73,9 @@ class Communication():
 
     def suavStateCallback(self, msg):
         self.suavState = msg.data
+
+    def suavminiStateCallback(self, msg):
+        self.suavminiState = msg.data
 
     def tuav1StateCallback(self, msg):
         self.tuav1State = msg.data

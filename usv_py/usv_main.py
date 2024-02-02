@@ -171,7 +171,7 @@ def main(args=None):
                     usvControl.thrustPub()
             
             elif usvState == "STANDBY":                   
-                if (usvComm.suavState == "DOCK") | (usvComm.suavState == "GUIDE"):
+                if ((usvComm.suavState == "DOCK") | (usvComm.suavState == "GUIDE")) | ((usvComm.suavminiState == "DOCK") | (usvComm.suavminiState == "GUIDE") & (usvComm.suavState == "REPORT")):
                     usvState = "GOING_OUT"
                     latestMsg = "USV is going out from the jetty..."
                     continue
@@ -194,7 +194,8 @@ def main(args=None):
                 # 控制无人船
                 [uSP, rSP, axbSP, etaSP] = usvControl.moveUSV(uSP, yawSP, usvPose.uDVL, usvPose.axb, usvPose.yaw, usvPose.r)
 
-                if (usvComm.suavState == "GUIDE"):
+
+                if (usvComm.suavState == "GUIDE") | ((usvComm.suavminiState == "GUIDE") & (usvComm.suavState == "REPORT")):
                     usvState = "PURSUE_SUAV"
                     continue
 
