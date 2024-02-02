@@ -79,7 +79,7 @@ class Control():
         self.__battCellVoltMinSubscriber = rospy.Subscriber("/usv/battery/min_cell_volt", Float32MultiArray, self.battCellVoltMinCallback, queue_size=1)
 
         # PID 初始化
-        self.__uPID = PID(0.8, 0.06, -0.012, 0.8, -0.8)
+        self.__uPID = PID(0.8, 0.06, -0.012, 1.2, -1.2)
         self.__yawPID = PID(0.25, 0.0002, -0.02, 0.5236, -0.5236)
         self.__rPID = PID(14, 0.5, -0.1, 0.05236, -0.05236)
 
