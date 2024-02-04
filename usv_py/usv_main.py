@@ -138,9 +138,12 @@ def main(args=None):
                 pubTopicList = sum(rospy.get_published_topics(), [])
                 usvPose.isLidarValid = ('/filter/target' in pubTopicList)
 
-                if (usvPose.isImuValid) & (usvPose.isDvlValid) & (usvPose.isPodValid) & (usvPose.isLidarValid) & \
-                    (not isnan(usvControl.angleLeftEst)) & (not isnan(usvControl.angleRightEst)) & \
-                    (not isnan(usvControl.rpmLeftEst) & (not isnan(usvControl.rpmRightEst))):
+                if (usvPose.isImuValid) & (usvPose.isDvlValid) & \
+                   (usvPose.isPodValid) & (usvPose.isLidarValid) & \
+                   (not isnan(usvControl.angleLeftEst)) & \
+                   (not isnan(usvControl.angleRightEst)) & \
+                   (not isnan(usvControl.rpmLeftEst) & \
+                   (not isnan(usvControl.rpmRightEst))):
                     if (isTestEnable):
                         usvState = "PURSUE_POD"
                         continue
@@ -171,7 +174,7 @@ def main(args=None):
                     usvControl.thrustPub()
             
             elif usvState == "STANDBY":                   
-                if ((usvComm.suavState == "DOCK") | (usvComm.suavState == "GUIDE")) | ((usvComm.suavminiState == "DOCK") | (usvComm.suavminiState == "GUIDE") & (usvComm.suavState == "REPORT")):
+                if ((usvComm.suavState == "DOCK") | (usvComm.suavState == "GUIDE")):
                     usvState = "GOING_OUT"
                     latestMsg = "USV is going out from the jetty..."
                     continue
@@ -194,8 +197,7 @@ def main(args=None):
                 # 控制无人船
                 [uSP, rSP, axbSP, etaSP] = usvControl.moveUSV(uSP, yawSP, usvPose.uDVL, usvPose.axb, usvPose.yaw, usvPose.r)
 
-
-                if (usvComm.suavState == "GUIDE") | ((usvComm.suavminiState == "GUIDE") & (usvComm.suavState == "REPORT")):
+                if (usvComm.suavState == "GUIDE"):
                     usvState = "PURSUE_SUAV"
                     continue
 

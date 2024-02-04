@@ -60,7 +60,7 @@ def genTable(usvState, latestMsg, usvPose, usvControl, usvComm, dt, uSP, vSP, ya
             f"Angle: {bool2okstr(isMotorValid[2])}, {bool2okstr(isMotorValid[3])}",
             "",
             "[bold]S.S state:",
-            f"sUAV: {usvComm.suavState}", f"sUAV: {usvComm.suavminiState}", f"tUAV1: {usvComm.tuav1State}"
+            f"sUAV: {usvComm.suavState}", f"tUAV1: {usvComm.tuav1State}"
         ],
         # 
         "Motions": [
