@@ -15,25 +15,25 @@ READY_SUAV_STATES_ALLOWED = ["COUNTDOWN", "SEARCH", "GUIDE"]
 USP_GOINT_OUT = 1.0
 SECS_GOING_OUT = 15
 
-USP_SUAV_PURSUE = 2.75                  # 搜索无人机引导时 USV 的轴向速度
+USP_SUAV_PURSUE = 2.25                  # 搜索无人机引导时 USV 的轴向速度
 ANGLE_EST_POD_GAP = deg2rad(30)
-USP_POD_PURSUE = 2.75                    # 吊舱引导时 USV 的轴向速度
+USP_POD_PURSUE = 2.25                    # 吊舱引导时 USV 的轴向速度
 DIST_ALLOW_POD = 400.0                  # 吊舱引导时允许的吊舱距离
 
-USP_LIDAR_PURSUE_UB = 2.75               # 激光雷达引导时 USV 的轴向速度上界
+USP_LIDAR_PURSUE_UB = 2.25               # 激光雷达引导时 USV 的轴向速度上界
 USP_LIDAR_PURSUE_LB = 1.7               # 激光雷达引导时 USV 的轴向速度下界
 DIST_LIDAR_PURSUE_UB = 100.0            # 激光雷达引导时取到 USP_LIDAR_PURSUE_UB 的 USV-TV 距离
 DIST_LIDAR_PURSUE_LB = 75.0             # 激光雷达引导时取到 USP_LIDAR_PURSUE_LB 的 USV-TV 距离
 DIST_PURSUE_TO_APPROACH = 70.0          # 由 PURSUE 切换到 DOCK_NEARBY 的 USV-TV 距离
 
-USP_OBS_PURSUE = 2.75                   # 避障时 USV 的轴向速度
+USP_OBS_PURSUE = 2.25                   # 避障时 USV 的轴向速度
 ANGLE_AVOID_OBS = deg2rad(35.0)         # 避障时 USV 的航向附加量
 
 USP_DOCK_NEARBY = 1.8                   # DOCK_NEARBY 时 USV 的轴向速度
-DIST_TONEXT_DOCK_NEARBY = 12.0          # DOCK_NEARBY 时切换追踪点为轨迹下一点的距离
+DIST_TONEXT_DOCK_NEARBY = 14.0          # DOCK_NEARBY 时切换追踪点为轨迹下一点的距离
 
 USP_DOCK_MEASURE = 1.5                  # DOCK_MEASURE 时 USV 的轴向速度
-DIST_TONEXT_DOCK_MEASURE = 12.0          # DOCK_MEASURE 时切换追踪点为轨迹下一点的距离
+DIST_TONEXT_DOCK_MEASURE = 14.0          # DOCK_MEASURE 时切换追踪点为轨迹下一点的距离
 ANGLE_DOCK_MEASURE_JUMP = deg2rad(20.0) # DOCK_MEASURE 时认为激光雷达估计目标船朝向可能跳变的角度判据
 HEALTHY_Z_TOL = 1.2                     # DOCK_MEASURE 时健康的高度阈值
 
